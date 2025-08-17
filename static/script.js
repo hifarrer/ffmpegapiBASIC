@@ -312,7 +312,9 @@ class VideoMerger {
     }
 
     handleVideosError(errorMessage) {
-        this.showVideosAlert('danger', `Error: ${errorMessage}`);
+        // Convert line breaks to HTML for better display
+        const formattedMessage = errorMessage.replace(/\n/g, '<br>');
+        this.showVideosAlert('danger', `Error: ${formattedMessage}`);
     }
 
     async handleImageAudioCleanup() {

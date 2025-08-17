@@ -105,6 +105,66 @@ def download_video_from_url(url, output_path):
         logging.error(f"Failed to download video from {url}: {str(e)}")
         return False, f"Failed to download video: {str(e)}"
 
+def get_video_dimensions(video_path):
+    """Get video dimensions using ffprobe"""
+    try:
+        cmd = [
+            'ffprobe',
+            '-v', 'quiet',
+            '-print_format', 'json',
+            '-show_streams',
+            '-select_streams', 'v:0',
+            video_path
+        ]
+        
+        result = subprocess.run(cmd, capture_output=True, text=True, timeout=30)
+        
+        if result.returncode == 0:
+            import json
+            data = json.loads(result.stdout)
+            streams = data.get('streams', [])
+            
+            if streams:
+                width = streams[0].get('width')
+                height = streams[0].get('height')
+                if width and height:
+                    return True, (int(width), int(height))
+        
+        return False, "Could not get video dimensions"
+        
+    except Exception as e:
+        logging.error(f"Error getting video dimensions: {str(e)}")
+        return False, f"Error analyzing video: {str(e)}"
+
+def check_video_compatibility(video_paths):
+    """Check if all videos have compatible dimensions"""
+    dimensions = []
+    
+    for i, video_path in enumerate(video_paths):
+        success, result = get_video_dimensions(video_path)
+        if not success:
+            return False, f"Could not analyze video {i+1}: {result}"
+        
+        dimensions.append(result)
+        logging.info(f"Video {i+1} dimensions: {result[0]}x{result[1]}")
+    
+    # Check if all videos have the same dimensions
+    first_dimensions = dimensions[0]
+    for i, dims in enumerate(dimensions[1:], 1):
+        if dims != first_dimensions:
+            # Calculate aspect ratios for better error message
+            first_ratio = round(first_dimensions[0] / first_dimensions[1], 2)
+            current_ratio = round(dims[0] / dims[1], 2)
+            
+            return False, (
+                f"Videos have different aspect ratios and cannot be merged:\n"
+                f"• Video 1: {first_dimensions[0]}x{first_dimensions[1]} (aspect ratio {first_ratio}:1)\n"
+                f"• Video {i+1}: {dims[0]}x{dims[1]} (aspect ratio {current_ratio}:1)\n\n"
+                f"Please use videos with the same aspect ratio for best results."
+            )
+    
+    return True, "All videos are compatible"
+
 def merge_videos_with_ffmpeg(video_paths, output_path, audio_path=None):
     """Merge multiple videos using FFMPEG"""
     try:
@@ -446,6 +506,16 @@ def merge_videos():
                         'success': False,
                         'error': 'Uploaded audio file is not a valid audio format'
                     }), 400
+            
+            # Check video compatibility (aspect ratios)
+            compatibility_success, compatibility_message = check_video_compatibility(downloaded_videos)
+            if not compatibility_success:
+                for temp_file in temp_files_to_cleanup:
+                    cleanup_file(temp_file)
+                return jsonify({
+                    'success': False,
+                    'error': compatibility_message
+                }), 400
             
             # Generate output filename
             output_filename = f"{unique_id}_merged_output.mp4"
