@@ -2,12 +2,13 @@
 
 ## Overview
 
-This is a comprehensive web-based video processing tool that provides two main functionalities using FFMPEG:
+This is a comprehensive web-based video processing tool that provides three main functionalities using FFMPEG:
 
 1. **Image & Audio Merger** (`/api/merge_image_audio`): Creates videos by combining an image file with an audio file
 2. **Video Merger** (`/api/merge_videos`): Concatenates multiple videos from URLs into a single video, with optional audio replacement
+3. **Picture-in-Picture** (`/api/picture_in_picture`): Creates picture-in-picture videos by overlaying one video on top of another with customizable position and scale
 
-The application features a tabbed interface for easy access to both tools, built with Flask for the backend and vanilla JavaScript for the frontend, using Bootstrap's dark theme for a professional appearance.
+The application features a tabbed interface for easy access to all three tools, built with Flask for the backend and vanilla JavaScript for the frontend, using Bootstrap's dark theme for a professional appearance.
 
 ## User Preferences
 
@@ -31,7 +32,8 @@ Preferred communication style: Simple, everyday language.
 
 **File Processing Pipeline**
 - **Image & Audio Processing**: Client-side file validation, server-side MIME type validation, FFMPEG video creation with image loop and audio sync
-- **Video URL Processing**: URL validation, video downloading from external sources, FFMPEG concatenation with optional audio replacement
+- **Video URL Processing**: URL validation, video downloading from external sources, FFMPEG concatenation with optional audio replacement, aspect ratio validation
+- **Picture-in-Picture Processing**: Dual video download, FFMPEG overlay composition with customizable positioning and scaling
 - Temporary file storage during processing with automatic cleanup
 - Comprehensive error handling and progress tracking
 

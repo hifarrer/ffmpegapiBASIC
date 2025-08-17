@@ -4,6 +4,7 @@ class VideoMerger {
     constructor() {
         this.initializeImageAudioTab();
         this.initializeVideosTab();
+        this.initializePipTab();
     }
 
     initializeImageAudioTab() {
@@ -74,6 +75,43 @@ class VideoMerger {
         // Initial validation
         this.validateVideosForm();
         this.setupVideoUrlEventListeners();
+    }
+
+    initializePipTab() {
+        this.pipForm = document.getElementById('pipForm');
+        this.pipSubmitBtn = document.getElementById('pipSubmitBtn');
+        this.pipProgressContainer = document.getElementById('pipProgressContainer');
+        this.pipAlertContainer = document.getElementById('pipAlertContainer');
+        this.pipResultContainer = document.getElementById('pipResultContainer');
+        this.pipDownloadBtn = document.getElementById('pipDownloadBtn');
+        this.pipCleanupBtn = document.getElementById('pipCleanupBtn');
+        this.pipResetBtn = document.getElementById('pipResetBtn');
+        this.pipCurrentFilename = null;
+
+        // Event listeners for Picture-in-Picture tab
+        this.pipForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            this.handlePipSubmit();
+        });
+
+        document.getElementById('mainVideoUrl').addEventListener('input', () => {
+            this.validatePipForm();
+        });
+
+        document.getElementById('pipVideoUrl').addEventListener('input', () => {
+            this.validatePipForm();
+        });
+
+        this.pipCleanupBtn.addEventListener('click', () => {
+            this.handlePipCleanup();
+        });
+
+        this.pipResetBtn.addEventListener('click', () => {
+            this.resetPipForm();
+        });
+
+        // Initial validation
+        this.validatePipForm();
     }
 
     validateImageAudioFiles() {
@@ -456,6 +494,135 @@ class VideoMerger {
             info: 'info-circle'
         };
         return icons[type] || 'info-circle';
+    }
+
+    // Picture-in-Picture methods
+    async handlePipSubmit() {
+        const mainVideoUrl = document.getElementById('mainVideoUrl').value.trim();
+        const pipVideoUrl = document.getElementById('pipVideoUrl').value.trim();
+
+        if (!mainVideoUrl || !pipVideoUrl) {
+            this.showPipAlert('danger', 'Both video URLs are required.');
+            return;
+        }
+
+        const formData = new FormData();
+        formData.append('main_video_url', mainVideoUrl);
+        formData.append('pip_video_url', pipVideoUrl);
+        formData.append('position', document.getElementById('pipPosition').value);
+        formData.append('scale', document.getElementById('pipScale').value);
+
+        this.setPipLoadingState(true);
+        this.hidePipAlert();
+        this.hidePipResult();
+
+        try {
+            const response = await fetch('/api/picture_in_picture', {
+                method: 'POST',
+                body: formData
+            });
+
+            const result = await response.json();
+
+            if (result.success) {
+                this.handlePipSuccess(result);
+            } else {
+                this.handlePipError(result.error);
+            }
+
+        } catch (error) {
+            console.error('PiP processing error:', error);
+            this.handlePipError('Network error occurred. Please try again.');
+        } finally {
+            this.setPipLoadingState(false);
+        }
+    }
+
+    validatePipForm() {
+        const mainVideoUrl = document.getElementById('mainVideoUrl').value.trim();
+        const pipVideoUrl = document.getElementById('pipVideoUrl').value.trim();
+        this.pipSubmitBtn.disabled = !mainVideoUrl || !pipVideoUrl;
+    }
+
+    setPipLoadingState(loading) {
+        if (loading) {
+            this.pipSubmitBtn.disabled = true;
+            this.pipSubmitBtn.classList.add('loading');
+            this.pipProgressContainer.style.display = 'block';
+        } else {
+            this.pipSubmitBtn.disabled = false;
+            this.pipSubmitBtn.classList.remove('loading');
+            this.pipProgressContainer.style.display = 'none';
+        }
+    }
+
+    handlePipSuccess(result) {
+        this.pipCurrentFilename = result.filename;
+        this.pipDownloadBtn.href = result.download_url;
+        this.pipDownloadBtn.download = result.filename;
+        
+        this.showPipAlert('success', result.message);
+        this.showPipResult();
+    }
+
+    handlePipError(errorMessage) {
+        this.showPipAlert('danger', `Error: ${errorMessage}`);
+    }
+
+    async handlePipCleanup() {
+        if (!this.pipCurrentFilename) return;
+
+        try {
+            const response = await fetch(`/api/cleanup/${this.pipCurrentFilename}`, {
+                method: 'POST'
+            });
+
+            const result = await response.json();
+            
+            if (result.success) {
+                this.showPipAlert('info', 'File successfully deleted from server.');
+                this.hidePipResult();
+                this.pipCurrentFilename = null;
+            } else {
+                this.showPipAlert('warning', 'Could not delete file from server.');
+            }
+
+        } catch (error) {
+            console.error('Cleanup error:', error);
+            this.showPipAlert('warning', 'Could not delete file from server.');
+        }
+    }
+
+    resetPipForm() {
+        this.pipForm.reset();
+        document.getElementById('pipPosition').value = 'bottom-right';
+        document.getElementById('pipScale').value = 'iw/4:ih/4';
+        this.hidePipAlert();
+        this.hidePipResult();
+        this.validatePipForm();
+        this.pipCurrentFilename = null;
+    }
+
+    showPipAlert(type, message) {
+        this.pipAlertContainer.innerHTML = `
+            <div class="alert alert-${type} alert-dismissible fade show" role="alert">
+                <i class="fas fa-${this.getAlertIcon(type)} me-2"></i>
+                ${message}
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+        `;
+    }
+
+    hidePipAlert() {
+        this.pipAlertContainer.innerHTML = '';
+    }
+
+    showPipResult() {
+        this.pipResultContainer.style.display = 'block';
+    }
+
+    hidePipResult() {
+        this.pipResultContainer.style.display = 'none';
     }
 }
 

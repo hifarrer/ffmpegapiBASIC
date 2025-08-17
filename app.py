@@ -332,6 +332,54 @@ def merge_videos_filter_complex(video_paths, output_path, audio_path=None):
         logging.error(f"Video merge with filter_complex error: {str(e)}")
         return False, f"Video merge error: {str(e)}"
 
+def create_picture_in_picture_with_ffmpeg(main_video_path, pip_video_path, output_path, position='bottom-right', scale='iw/4:ih/4'):
+    """Create picture-in-picture video using FFMPEG"""
+    try:
+        # Position mappings
+        position_overlays = {
+            'top-left': '10:10',
+            'top-center': '(main_w-overlay_w)/2:10', 
+            'top-right': 'main_w-overlay_w-10:10',
+            'middle-left': '10:(main_h-overlay_h)/2',
+            'middle': '(main_w-overlay_w)/2:(main_h-overlay_h)/2',
+            'middle-right': 'main_w-overlay_w-10:(main_h-overlay_h)/2',
+            'bottom-left': '10:main_h-overlay_h-10',
+            'bottom-center': '(main_w-overlay_w)/2:main_h-overlay_h-10',
+            'bottom-right': 'main_w-overlay_w-10:main_h-overlay_h-10'
+        }
+        
+        overlay_position = position_overlays.get(position, position_overlays['bottom-right'])
+        
+        # Build FFMPEG command for picture-in-picture
+        cmd = [
+            'ffmpeg',
+            '-i', main_video_path,
+            '-i', pip_video_path,
+            '-filter_complex', f'[1]scale={scale}[pip];[0][pip]overlay={overlay_position}',
+            '-c:v', 'libx264',
+            '-c:a', 'aac',
+            '-preset', 'fast',
+            '-y',
+            output_path
+        ]
+        
+        logging.info(f"Running FFMPEG PiP command: {' '.join(cmd)}")
+        result = subprocess.run(cmd, capture_output=True, text=True, timeout=600)
+        
+        if result.returncode == 0:
+            logging.info("Picture-in-picture processing completed successfully")
+            return True, "Picture-in-picture video created successfully"
+        else:
+            logging.error(f"FFMPEG PiP error: {result.stderr}")
+            return False, f"Picture-in-picture creation failed: {result.stderr}"
+            
+    except subprocess.TimeoutExpired:
+        logging.error("Picture-in-picture processing timed out")
+        return False, "Picture-in-picture processing timed out"
+    except Exception as e:
+        logging.error(f"Picture-in-picture processing error: {str(e)}")
+        return False, f"Picture-in-picture error: {str(e)}"
+
 @app.route('/')
 def index():
     """Main page with upload form"""
@@ -568,6 +616,102 @@ def download_video(filename):
             'success': False,
             'error': 'Video file not found'
         }), 404
+
+@app.route('/api/picture_in_picture', methods=['POST'])
+def picture_in_picture():
+    """API endpoint to create picture-in-picture video from two URLs"""
+    try:
+        # Get video URLs from form data
+        main_video_url = request.form.get('main_video_url', '').strip()
+        pip_video_url = request.form.get('pip_video_url', '').strip()
+        
+        if not main_video_url or not pip_video_url:
+            return jsonify({
+                'success': False,
+                'error': 'Both main video URL and picture-in-picture video URL are required'
+            }), 400
+        
+        # Get optional parameters
+        position = request.form.get('position', 'bottom-right')
+        scale = request.form.get('scale', 'iw/4:ih/4')
+        
+        # Generate unique ID for this operation
+        unique_id = str(uuid.uuid4())
+        
+        # Download both videos
+        temp_files_to_cleanup = []
+        
+        try:
+            # Download main video
+            main_video_filename = f"{unique_id}_main_video.mp4"
+            main_video_path = os.path.join(UPLOAD_FOLDER, main_video_filename)
+            
+            success, message = download_video_from_url(main_video_url, main_video_path)
+            if not success:
+                return jsonify({
+                    'success': False,
+                    'error': f'Failed to download main video: {message}'
+                }), 400
+            
+            temp_files_to_cleanup.append(main_video_path)
+            
+            # Download PiP video
+            pip_video_filename = f"{unique_id}_pip_video.mp4"
+            pip_video_path = os.path.join(UPLOAD_FOLDER, pip_video_filename)
+            
+            success, message = download_video_from_url(pip_video_url, pip_video_path)
+            if not success:
+                for temp_file in temp_files_to_cleanup:
+                    cleanup_file(temp_file)
+                return jsonify({
+                    'success': False,
+                    'error': f'Failed to download picture-in-picture video: {message}'
+                }), 400
+            
+            temp_files_to_cleanup.append(pip_video_path)
+            
+            # Generate output filename
+            output_filename = f"{unique_id}_pip_output.mp4"
+            output_path = os.path.join(OUTPUT_FOLDER, output_filename)
+            
+            # Create picture-in-picture video
+            success, message = create_picture_in_picture_with_ffmpeg(
+                main_video_path, pip_video_path, output_path, position, scale
+            )
+            
+            # Cleanup temporary files
+            for temp_file in temp_files_to_cleanup:
+                cleanup_file(temp_file)
+            
+            if success:
+                # Return success response with download URL
+                download_url = url_for('download_video', filename=output_filename, _external=True)
+                return jsonify({
+                    'success': True,
+                    'message': message,
+                    'download_url': download_url,
+                    'filename': output_filename
+                })
+            else:
+                # Cleanup output file on failure
+                cleanup_file(output_path)
+                return jsonify({
+                    'success': False,
+                    'error': message
+                }), 500
+                
+        except Exception as processing_error:
+            # Cleanup any temporary files on error
+            for temp_file in temp_files_to_cleanup:
+                cleanup_file(temp_file)
+            raise processing_error
+            
+    except Exception as e:
+        logging.error(f"Unexpected error in picture_in_picture: {str(e)}")
+        return jsonify({
+            'success': False,
+            'error': 'An unexpected error occurred during picture-in-picture processing'
+        }), 500
 
 @app.route('/api/cleanup/<filename>', methods=['POST'])
 def cleanup_video(filename):
