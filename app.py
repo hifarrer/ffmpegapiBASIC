@@ -108,7 +108,7 @@ def download_video_from_url(url, output_path):
 def merge_videos_with_ffmpeg(video_paths, output_path, audio_path=None):
     """Merge multiple videos using FFMPEG"""
     try:
-        # Create a temporary file list for FFMPEG concat
+        # First, let's try the simple concat approach
         temp_list_path = f"{output_path}.txt"
         
         with open(temp_list_path, 'w') as f:
@@ -117,39 +117,30 @@ def merge_videos_with_ffmpeg(video_paths, output_path, audio_path=None):
                 escaped_path = video_path.replace("'", "'\"'\"'")
                 f.write(f"file '{escaped_path}'\n")
         
-        # Base FFMPEG command for concatenating videos
-        cmd = [
-            'ffmpeg',
-            '-f', 'concat',
-            '-safe', '0',
-            '-i', temp_list_path,
-            '-c', 'copy',  # Copy streams without re-encoding for speed
-            '-y',  # Overwrite output file
-            output_path
-        ]
-        
         # If audio is provided, we need a more complex command
         if audio_path:
-            # First, merge videos without audio
+            # First, merge videos without audio using re-encoding for compatibility
             temp_video_path = f"{output_path}_temp.mp4"
             temp_cmd = [
                 'ffmpeg',
                 '-f', 'concat',
                 '-safe', '0',
                 '-i', temp_list_path,
-                '-c', 'copy',
+                '-c:v', 'libx264',  # Re-encode video for compatibility
+                '-c:a', 'aac',      # Re-encode audio
+                '-preset', 'fast',  # Fast encoding preset
                 '-an',  # Remove audio from concatenated video
                 '-y',
                 temp_video_path
             ]
             
             logging.info(f"Running FFMPEG concat command: {' '.join(temp_cmd)}")
-            result = subprocess.run(temp_cmd, capture_output=True, text=True, timeout=300)
+            result = subprocess.run(temp_cmd, capture_output=True, text=True, timeout=600)
             
             if result.returncode != 0:
-                cleanup_file(temp_list_path)
-                cleanup_file(temp_video_path)
-                return False, f"Video concatenation failed: {result.stderr}"
+                # If concat fails, try the filter_complex approach
+                logging.warning("Concat method failed, trying filter_complex approach")
+                return merge_videos_filter_complex(video_paths, output_path, audio_path)
             
             # Then add the audio to the concatenated video
             final_cmd = [
@@ -172,8 +163,28 @@ def merge_videos_with_ffmpeg(video_paths, output_path, audio_path=None):
             cleanup_file(temp_video_path)
             
         else:
+            # Try simple concat first with re-encoding for compatibility
+            cmd = [
+                'ffmpeg',
+                '-f', 'concat',
+                '-safe', '0',
+                '-i', temp_list_path,
+                '-c:v', 'libx264',  # Re-encode video for compatibility
+                '-c:a', 'aac',      # Re-encode audio
+                '-preset', 'fast',  # Fast encoding preset
+                '-y',
+                output_path
+            ]
+            
             logging.info(f"Running FFMPEG concat command: {' '.join(cmd)}")
-            result = subprocess.run(cmd, capture_output=True, text=True, timeout=300)
+            result = subprocess.run(cmd, capture_output=True, text=True, timeout=600)
+            
+            if result.returncode != 0:
+                # If concat fails, try the filter_complex approach
+                logging.warning("Concat method failed, trying filter_complex approach")
+                cleanup_file(temp_list_path)
+                return merge_videos_filter_complex(video_paths, output_path, audio_path)
+                
             cleanup_file(temp_list_path)
         
         if result.returncode == 0:
@@ -190,6 +201,75 @@ def merge_videos_with_ffmpeg(video_paths, output_path, audio_path=None):
     except Exception as e:
         logging.error(f"Video merge processing error: {str(e)}")
         cleanup_file(temp_list_path)
+        return False, f"Video merge error: {str(e)}"
+
+def merge_videos_filter_complex(video_paths, output_path, audio_path=None):
+    """Alternative video merging using filter_complex (more compatible but slower)"""
+    try:
+        # Build filter_complex command for concatenating videos
+        inputs = []
+        for video_path in video_paths:
+            inputs.extend(['-i', video_path])
+        
+        # Create filter_complex string
+        num_videos = len(video_paths)
+        video_filters = []
+        audio_filters = []
+        
+        for i in range(num_videos):
+            video_filters.append(f"[{i}:v]")
+            audio_filters.append(f"[{i}:a]")
+        
+        filter_complex = f"{''.join(video_filters)}concat=n={num_videos}:v=1:a=1[outv][outa]"
+        
+        if audio_path:
+            # If custom audio is provided, only use video streams
+            filter_complex = f"{''.join(video_filters)}concat=n={num_videos}:v=1:a=0[outv]"
+            
+            cmd = [
+                'ffmpeg'
+            ] + inputs + [
+                '-i', audio_path,
+                '-filter_complex', filter_complex,
+                '-map', '[outv]',
+                '-map', f'{num_videos}:a',  # Map the custom audio file
+                '-c:v', 'libx264',
+                '-c:a', 'aac',
+                '-preset', 'fast',
+                '-b:a', '192k',
+                '-shortest',
+                '-y',
+                output_path
+            ]
+        else:
+            cmd = [
+                'ffmpeg'
+            ] + inputs + [
+                '-filter_complex', filter_complex,
+                '-map', '[outv]',
+                '-map', '[outa]',
+                '-c:v', 'libx264',
+                '-c:a', 'aac',
+                '-preset', 'fast',
+                '-y',
+                output_path
+            ]
+        
+        logging.info(f"Running FFMPEG filter_complex command: {' '.join(cmd)}")
+        result = subprocess.run(cmd, capture_output=True, text=True, timeout=900)  # Longer timeout for complex processing
+        
+        if result.returncode == 0:
+            logging.info("Video merge with filter_complex completed successfully")
+            return True, "Videos merged successfully using advanced method"
+        else:
+            logging.error(f"FFMPEG filter_complex error: {result.stderr}")
+            return False, f"Video merge failed: {result.stderr}"
+            
+    except subprocess.TimeoutExpired:
+        logging.error("Video merge with filter_complex timed out")
+        return False, "Video merge processing timed out"
+    except Exception as e:
+        logging.error(f"Video merge with filter_complex error: {str(e)}")
         return False, f"Video merge error: {str(e)}"
 
 @app.route('/')
