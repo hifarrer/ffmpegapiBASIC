@@ -2,7 +2,12 @@
 
 ## Overview
 
-This is a web-based video creation tool that allows users to merge image and audio files into videos using FFMPEG. The application provides a simple interface for uploading an image file (PNG, JPG, JPEG) and an audio file (MP3, WAV, M4A), then processes them server-side to generate a combined video output. The tool is built with Flask for the backend and vanilla JavaScript for the frontend, featuring a dark-themed responsive design.
+This is a comprehensive web-based video processing tool that provides two main functionalities using FFMPEG:
+
+1. **Image & Audio Merger** (`/api/merge_image_audio`): Creates videos by combining an image file with an audio file
+2. **Video Merger** (`/api/merge_videos`): Concatenates multiple videos from URLs into a single video, with optional audio replacement
+
+The application features a tabbed interface for easy access to both tools, built with Flask for the backend and vanilla JavaScript for the frontend, using Bootstrap's dark theme for a professional appearance.
 
 ## User Preferences
 
@@ -25,11 +30,10 @@ Preferred communication style: Simple, everyday language.
 - Error handling and logging throughout the application flow
 
 **File Processing Pipeline**
-- Client-side file validation before upload
-- Server-side MIME type validation for security
-- Temporary file storage during processing
-- FFMPEG command execution for video generation
-- Automatic cleanup of temporary files
+- **Image & Audio Processing**: Client-side file validation, server-side MIME type validation, FFMPEG video creation with image loop and audio sync
+- **Video URL Processing**: URL validation, video downloading from external sources, FFMPEG concatenation with optional audio replacement
+- Temporary file storage during processing with automatic cleanup
+- Comprehensive error handling and progress tracking
 
 **Security Measures**
 - File extension and MIME type validation

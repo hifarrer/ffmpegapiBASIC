@@ -94,13 +94,111 @@ def create_video_with_ffmpeg(image_path, audio_path, output_path):
         logging.error(f"FFMPEG processing error: {str(e)}")
         return False, f"Video processing error: {str(e)}"
 
+def download_video_from_url(url, output_path):
+    """Download video from URL to local path"""
+    try:
+        import urllib.request
+        logging.info(f"Downloading video from: {url}")
+        urllib.request.urlretrieve(url, output_path)
+        return True, "Video downloaded successfully"
+    except Exception as e:
+        logging.error(f"Failed to download video from {url}: {str(e)}")
+        return False, f"Failed to download video: {str(e)}"
+
+def merge_videos_with_ffmpeg(video_paths, output_path, audio_path=None):
+    """Merge multiple videos using FFMPEG"""
+    try:
+        # Create a temporary file list for FFMPEG concat
+        temp_list_path = f"{output_path}.txt"
+        
+        with open(temp_list_path, 'w') as f:
+            for video_path in video_paths:
+                # Escape single quotes in file paths for FFMPEG
+                escaped_path = video_path.replace("'", "'\"'\"'")
+                f.write(f"file '{escaped_path}'\n")
+        
+        # Base FFMPEG command for concatenating videos
+        cmd = [
+            'ffmpeg',
+            '-f', 'concat',
+            '-safe', '0',
+            '-i', temp_list_path,
+            '-c', 'copy',  # Copy streams without re-encoding for speed
+            '-y',  # Overwrite output file
+            output_path
+        ]
+        
+        # If audio is provided, we need a more complex command
+        if audio_path:
+            # First, merge videos without audio
+            temp_video_path = f"{output_path}_temp.mp4"
+            temp_cmd = [
+                'ffmpeg',
+                '-f', 'concat',
+                '-safe', '0',
+                '-i', temp_list_path,
+                '-c', 'copy',
+                '-an',  # Remove audio from concatenated video
+                '-y',
+                temp_video_path
+            ]
+            
+            logging.info(f"Running FFMPEG concat command: {' '.join(temp_cmd)}")
+            result = subprocess.run(temp_cmd, capture_output=True, text=True, timeout=300)
+            
+            if result.returncode != 0:
+                cleanup_file(temp_list_path)
+                cleanup_file(temp_video_path)
+                return False, f"Video concatenation failed: {result.stderr}"
+            
+            # Then add the audio to the concatenated video
+            final_cmd = [
+                'ffmpeg',
+                '-i', temp_video_path,
+                '-i', audio_path,
+                '-c:v', 'copy',  # Copy video without re-encoding
+                '-c:a', 'aac',   # Encode audio as AAC
+                '-b:a', '192k',  # Audio bitrate
+                '-shortest',     # End when shortest input ends
+                '-y',
+                output_path
+            ]
+            
+            logging.info(f"Running FFMPEG audio merge command: {' '.join(final_cmd)}")
+            result = subprocess.run(final_cmd, capture_output=True, text=True, timeout=300)
+            
+            # Cleanup temporary files
+            cleanup_file(temp_list_path)
+            cleanup_file(temp_video_path)
+            
+        else:
+            logging.info(f"Running FFMPEG concat command: {' '.join(cmd)}")
+            result = subprocess.run(cmd, capture_output=True, text=True, timeout=300)
+            cleanup_file(temp_list_path)
+        
+        if result.returncode == 0:
+            logging.info("Video merge processing completed successfully")
+            return True, "Videos merged successfully"
+        else:
+            logging.error(f"FFMPEG merge error: {result.stderr}")
+            return False, f"Video merge failed: {result.stderr}"
+            
+    except subprocess.TimeoutExpired:
+        logging.error("Video merge processing timed out")
+        cleanup_file(temp_list_path)
+        return False, "Video merge processing timed out"
+    except Exception as e:
+        logging.error(f"Video merge processing error: {str(e)}")
+        cleanup_file(temp_list_path)
+        return False, f"Video merge error: {str(e)}"
+
 @app.route('/')
 def index():
     """Main page with upload form"""
     return render_template('index.html')
 
-@app.route('/api/merge', methods=['POST'])
-def merge_files():
+@app.route('/api/merge_image_audio', methods=['POST'])
+def merge_image_audio():
     """API endpoint to merge image and audio into video"""
     try:
         # Check if files are present
@@ -198,6 +296,116 @@ def merge_files():
         return jsonify({
             'success': False,
             'error': 'An unexpected error occurred during processing'
+        }), 500
+
+@app.route('/api/merge_videos', methods=['POST'])
+def merge_videos():
+    """API endpoint to merge multiple videos from URLs"""
+    try:
+        # Get video URLs from form data
+        video_urls = []
+        for key, value in request.form.items():
+            if key.startswith('video_url_'):
+                if value.strip():
+                    video_urls.append(value.strip())
+        
+        if len(video_urls) < 2:
+            return jsonify({
+                'success': False,
+                'error': 'At least 2 video URLs are required'
+            }), 400
+        
+        # Check for optional audio file
+        audio_file = None
+        audio_path = None
+        if 'audio' in request.files and request.files['audio'].filename != '':
+            audio_file = request.files['audio']
+            if not allowed_file(audio_file.filename, ALLOWED_AUDIO_EXTENSIONS):
+                return jsonify({
+                    'success': False,
+                    'error': f'Invalid audio format. Allowed: {", ".join(ALLOWED_AUDIO_EXTENSIONS).upper()}'
+                }), 400
+
+        # Generate unique ID for this operation
+        unique_id = str(uuid.uuid4())
+        
+        # Download all videos
+        downloaded_videos = []
+        temp_files_to_cleanup = []
+        
+        try:
+            for i, url in enumerate(video_urls):
+                video_filename = f"{unique_id}_video_{i}.mp4"
+                video_path = os.path.join(UPLOAD_FOLDER, video_filename)
+                
+                success, message = download_video_from_url(url, video_path)
+                if not success:
+                    # Cleanup any downloaded files
+                    for temp_file in temp_files_to_cleanup:
+                        cleanup_file(temp_file)
+                    return jsonify({
+                        'success': False,
+                        'error': f'Failed to download video {i+1}: {message}'
+                    }), 400
+                
+                downloaded_videos.append(video_path)
+                temp_files_to_cleanup.append(video_path)
+            
+            # Handle optional audio file
+            if audio_file:
+                audio_filename = f"{unique_id}_{secure_filename(audio_file.filename)}"
+                audio_path = os.path.join(UPLOAD_FOLDER, audio_filename)
+                audio_file.save(audio_path)
+                temp_files_to_cleanup.append(audio_path)
+                
+                # Validate audio file type
+                if not validate_file_type(audio_path, 'audio'):
+                    for temp_file in temp_files_to_cleanup:
+                        cleanup_file(temp_file)
+                    return jsonify({
+                        'success': False,
+                        'error': 'Uploaded audio file is not a valid audio format'
+                    }), 400
+            
+            # Generate output filename
+            output_filename = f"{unique_id}_merged_output.mp4"
+            output_path = os.path.join(OUTPUT_FOLDER, output_filename)
+            
+            # Merge videos
+            success, message = merge_videos_with_ffmpeg(downloaded_videos, output_path, audio_path)
+            
+            # Cleanup temporary files
+            for temp_file in temp_files_to_cleanup:
+                cleanup_file(temp_file)
+            
+            if success:
+                # Return success response with download URL
+                download_url = url_for('download_video', filename=output_filename, _external=True)
+                return jsonify({
+                    'success': True,
+                    'message': message,
+                    'download_url': download_url,
+                    'filename': output_filename
+                })
+            else:
+                # Cleanup output file on failure
+                cleanup_file(output_path)
+                return jsonify({
+                    'success': False,
+                    'error': message
+                }), 500
+                
+        except Exception as processing_error:
+            # Cleanup any temporary files on error
+            for temp_file in temp_files_to_cleanup:
+                cleanup_file(temp_file)
+            raise processing_error
+            
+    except Exception as e:
+        logging.error(f"Unexpected error in merge_videos: {str(e)}")
+        return jsonify({
+            'success': False,
+            'error': 'An unexpected error occurred during video processing'
         }), 500
 
 @app.route('/download/<filename>')

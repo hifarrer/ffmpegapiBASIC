@@ -17,12 +17,40 @@
                         <i class="fas fa-film me-3"></i>
                         Video Merger
                     </h1>
-                    <p class="lead">Merge your image and audio files into a professional video using FFMPEG</p>
+                    <p class="lead">Merge image & audio or combine multiple videos using FFMPEG</p>
                 </div>
 
-                <div class="card">
-                    <div class="card-body p-4">
-                        <form id="uploadForm" enctype="multipart/form-data">
+                <!-- Tab Navigation -->
+                <ul class="nav nav-tabs mb-4" id="mergerTabs" role="tablist">
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link active" id="image-audio-tab" data-bs-toggle="tab" 
+                                data-bs-target="#image-audio" type="button" role="tab">
+                            <i class="fas fa-image me-2"></i>
+                            Merge Image & Audio
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="videos-tab" data-bs-toggle="tab" 
+                                data-bs-target="#videos" type="button" role="tab">
+                            <i class="fas fa-video me-2"></i>
+                            Merge Videos
+                        </button>
+                    </li>
+                </ul>
+
+                <!-- Tab Content -->
+                <div class="tab-content" id="mergerTabContent">
+                    <!-- Image & Audio Tab -->
+                    <div class="tab-pane fade show active" id="image-audio" role="tabpanel">
+                        <div class="card">
+                            <div class="card-header">
+                                <h5 class="card-title mb-0">
+                                    <i class="fas fa-plus-circle me-2"></i>
+                                    Create Video from Image & Audio
+                                </h5>
+                            </div>
+                            <div class="card-body p-4">
+                                <form id="imageAudioForm" enctype="multipart/form-data">
                             <div class="row">
                                 <div class="col-md-6 mb-4">
                                     <label for="imageFile" class="form-label">
@@ -45,7 +73,7 @@
                             </div>
 
                             <div class="d-grid">
-                                <button type="submit" class="btn btn-primary btn-lg" id="submitBtn">
+                                <button type="submit" class="btn btn-primary btn-lg" id="imageAudioSubmitBtn">
                                     <i class="fas fa-play me-2"></i>
                                     Create Video
                                 </button>
@@ -53,7 +81,7 @@
                         </form>
 
                         <!-- Progress Bar -->
-                        <div id="progressContainer" class="mt-4" style="display: none;">
+                        <div id="imageAudioProgressContainer" class="mt-4" style="display: none;">
                             <div class="d-flex align-items-center mb-2">
                                 <div class="spinner-border spinner-border-sm me-2" role="status">
                                     <span class="visually-hidden">Loading...</span>
@@ -67,10 +95,10 @@
                         </div>
 
                         <!-- Alert Messages -->
-                        <div id="alertContainer" class="mt-4"></div>
+                        <div id="imageAudioAlertContainer" class="mt-4"></div>
 
                         <!-- Results -->
-                        <div id="resultContainer" class="mt-4" style="display: none;">
+                        <div id="imageAudioResultContainer" class="mt-4" style="display: none;">
                             <div class="card">
                                 <div class="card-header">
                                     <h5 class="card-title mb-0">
@@ -81,15 +109,15 @@
                                 <div class="card-body">
                                     <p class="card-text">Your video has been generated and is ready for download.</p>
                                     <div class="d-flex gap-2 flex-wrap">
-                                        <a id="downloadBtn" href="#" class="btn btn-success" download>
+                                        <a id="imageAudioDownloadBtn" href="#" class="btn btn-success" download>
                                             <i class="fas fa-download me-2"></i>
                                             Download Video
                                         </a>
-                                        <button id="cleanupBtn" class="btn btn-outline-secondary">
+                                        <button id="imageAudioCleanupBtn" class="btn btn-outline-secondary">
                                             <i class="fas fa-trash me-2"></i>
                                             Delete from Server
                                         </button>
-                                        <button id="resetBtn" class="btn btn-outline-primary">
+                                        <button id="imageAudioResetBtn" class="btn btn-outline-primary">
                                             <i class="fas fa-plus me-2"></i>
                                             Create Another Video
                                         </button>
@@ -99,10 +127,116 @@
                         </div>
                     </div>
                 </div>
+            </div>
 
-                <!-- File Information -->
+            <!-- Videos Tab -->
+            <div class="tab-pane fade" id="videos" role="tabpanel">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="card-title mb-0">
+                            <i class="fas fa-link me-2"></i>
+                            Merge Multiple Videos from URLs
+                        </h5>
+                    </div>
+                    <div class="card-body p-4">
+                        <form id="videosForm" enctype="multipart/form-data">
+                            <div class="mb-4">
+                                <label class="form-label">
+                                    <i class="fas fa-video me-2"></i>
+                                    Video URLs (minimum 2 required)
+                                </label>
+                                <div id="videoUrlsContainer">
+                                    <div class="input-group mb-2">
+                                        <input type="url" class="form-control video-url" placeholder="https://example.com/video1.mp4" required>
+                                        <button type="button" class="btn btn-outline-danger remove-url" disabled>
+                                            <i class="fas fa-times"></i>
+                                        </button>
+                                    </div>
+                                    <div class="input-group mb-2">
+                                        <input type="url" class="form-control video-url" placeholder="https://example.com/video2.mp4" required>
+                                        <button type="button" class="btn btn-outline-danger remove-url">
+                                            <i class="fas fa-times"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                                <button type="button" class="btn btn-outline-secondary btn-sm" id="addVideoUrlBtn">
+                                    <i class="fas fa-plus me-2"></i>
+                                    Add Another Video URL
+                                </button>
+                                <div class="form-text">Videos will be merged in the order listed</div>
+                            </div>
+
+                            <div class="mb-4">
+                                <label for="videosAudioFile" class="form-label">
+                                    <i class="fas fa-music me-2"></i>
+                                    Optional Audio Override
+                                </label>
+                                <input type="file" class="form-control" id="videosAudioFile" name="audio" 
+                                       accept=".mp3,.wav,.m4a">
+                                <div class="form-text">If provided, this audio will replace the audio track of the final video</div>
+                            </div>
+
+                            <div class="d-grid">
+                                <button type="submit" class="btn btn-primary btn-lg" id="videosSubmitBtn">
+                                    <i class="fas fa-play me-2"></i>
+                                    Merge Videos
+                                </button>
+                            </div>
+                        </form>
+
+                        <!-- Progress Bar -->
+                        <div id="videosProgressContainer" class="mt-4" style="display: none;">
+                            <div class="d-flex align-items-center mb-2">
+                                <div class="spinner-border spinner-border-sm me-2" role="status">
+                                    <span class="visually-hidden">Loading...</span>
+                                </div>
+                                <span>Downloading and merging videos...</span>
+                            </div>
+                            <div class="progress">
+                                <div class="progress-bar progress-bar-striped progress-bar-animated" 
+                                     role="progressbar" style="width: 100%"></div>
+                            </div>
+                        </div>
+
+                        <!-- Alert Messages -->
+                        <div id="videosAlertContainer" class="mt-4"></div>
+
+                        <!-- Results -->
+                        <div id="videosResultContainer" class="mt-4" style="display: none;">
+                            <div class="card">
+                                <div class="card-header">
+                                    <h5 class="card-title mb-0">
+                                        <i class="fas fa-check-circle text-success me-2"></i>
+                                        Videos Merged Successfully
+                                    </h5>
+                                </div>
+                                <div class="card-body">
+                                    <p class="card-text">Your videos have been merged and are ready for download.</p>
+                                    <div class="d-flex gap-2 flex-wrap">
+                                        <a id="videosDownloadBtn" href="#" class="btn btn-success" download>
+                                            <i class="fas fa-download me-2"></i>
+                                            Download Video
+                                        </a>
+                                        <button id="videosCleanupBtn" class="btn btn-outline-secondary">
+                                            <i class="fas fa-trash me-2"></i>
+                                            Delete from Server
+                                        </button>
+                                        <button id="videosResetBtn" class="btn btn-outline-primary">
+                                            <i class="fas fa-plus me-2"></i>
+                                            Merge More Videos
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+                <!-- Information Cards -->
                 <div class="row mt-4">
-                    <div class="col-md-6">
+                    <div class="col-md-4">
                         <div class="card">
                             <div class="card-header">
                                 <h6 class="card-title mb-0">
@@ -119,7 +253,7 @@
                             </div>
                         </div>
                     </div>
-                    <div class="col-md-6">
+                    <div class="col-md-4">
                         <div class="card">
                             <div class="card-header">
                                 <h6 class="card-title mb-0">
@@ -132,6 +266,23 @@
                                     <li><i class="fas fa-check text-success me-2"></i>Formats: MP3, WAV, M4A</li>
                                     <li><i class="fas fa-check text-success me-2"></i>Max size: 100MB</li>
                                     <li><i class="fas fa-check text-success me-2"></i>Any quality supported</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="card">
+                            <div class="card-header">
+                                <h6 class="card-title mb-0">
+                                    <i class="fas fa-info-circle me-2"></i>
+                                    Video URLs
+                                </h6>
+                            </div>
+                            <div class="card-body">
+                                <ul class="list-unstyled mb-0">
+                                    <li><i class="fas fa-check text-success me-2"></i>Direct MP4 links</li>
+                                    <li><i class="fas fa-check text-success me-2"></i>Publicly accessible</li>
+                                    <li><i class="fas fa-check text-success me-2"></i>Min 2 videos required</li>
                                 </ul>
                             </div>
                         </div>

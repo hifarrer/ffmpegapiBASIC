@@ -1,58 +1,87 @@
-// FFMPEG Video Merger - Frontend JavaScript
+// FFMPEG Video Merger - Frontend JavaScript with Tab Support
 
 class VideoMerger {
     constructor() {
-        this.form = document.getElementById('uploadForm');
-        this.submitBtn = document.getElementById('submitBtn');
-        this.progressContainer = document.getElementById('progressContainer');
-        this.alertContainer = document.getElementById('alertContainer');
-        this.resultContainer = document.getElementById('resultContainer');
-        this.downloadBtn = document.getElementById('downloadBtn');
-        this.cleanupBtn = document.getElementById('cleanupBtn');
-        this.resetBtn = document.getElementById('resetBtn');
-        this.currentFilename = null;
-
-        this.initializeEventListeners();
-        this.validateFiles();
+        this.initializeImageAudioTab();
+        this.initializeVideosTab();
     }
 
-    initializeEventListeners() {
-        // Form submission
-        this.form.addEventListener('submit', (e) => {
+    initializeImageAudioTab() {
+        this.imageAudioForm = document.getElementById('imageAudioForm');
+        this.imageAudioSubmitBtn = document.getElementById('imageAudioSubmitBtn');
+        this.imageAudioProgressContainer = document.getElementById('imageAudioProgressContainer');
+        this.imageAudioAlertContainer = document.getElementById('imageAudioAlertContainer');
+        this.imageAudioResultContainer = document.getElementById('imageAudioResultContainer');
+        this.imageAudioDownloadBtn = document.getElementById('imageAudioDownloadBtn');
+        this.imageAudioCleanupBtn = document.getElementById('imageAudioCleanupBtn');
+        this.imageAudioResetBtn = document.getElementById('imageAudioResetBtn');
+        this.imageAudioCurrentFilename = null;
+
+        // Event listeners for Image & Audio tab
+        this.imageAudioForm.addEventListener('submit', (e) => {
             e.preventDefault();
-            this.handleSubmit();
+            this.handleImageAudioSubmit();
         });
 
-        // File input change events
         document.getElementById('imageFile').addEventListener('change', () => {
-            this.validateFiles();
+            this.validateImageAudioFiles();
         });
 
         document.getElementById('audioFile').addEventListener('change', () => {
-            this.validateFiles();
+            this.validateImageAudioFiles();
         });
 
-        // Button click events
-        this.cleanupBtn.addEventListener('click', () => {
-            this.handleCleanup();
+        this.imageAudioCleanupBtn.addEventListener('click', () => {
+            this.handleImageAudioCleanup();
         });
 
-        this.resetBtn.addEventListener('click', () => {
-            this.resetForm();
+        this.imageAudioResetBtn.addEventListener('click', () => {
+            this.resetImageAudioForm();
         });
 
-        // File drag and drop enhancement
-        this.setupDragAndDrop();
+        this.validateImageAudioFiles();
     }
 
-    validateFiles() {
+    initializeVideosTab() {
+        this.videosForm = document.getElementById('videosForm');
+        this.videosSubmitBtn = document.getElementById('videosSubmitBtn');
+        this.videosProgressContainer = document.getElementById('videosProgressContainer');
+        this.videosAlertContainer = document.getElementById('videosAlertContainer');
+        this.videosResultContainer = document.getElementById('videosResultContainer');
+        this.videosDownloadBtn = document.getElementById('videosDownloadBtn');
+        this.videosCleanupBtn = document.getElementById('videosCleanupBtn');
+        this.videosResetBtn = document.getElementById('videosResetBtn');
+        this.videosCurrentFilename = null;
+
+        // Event listeners for Videos tab
+        this.videosForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            this.handleVideosSubmit();
+        });
+
+        document.getElementById('addVideoUrlBtn').addEventListener('click', () => {
+            this.addVideoUrlInput();
+        });
+
+        this.videosCleanupBtn.addEventListener('click', () => {
+            this.handleVideosCleanup();
+        });
+
+        this.videosResetBtn.addEventListener('click', () => {
+            this.resetVideosForm();
+        });
+
+        // Initial validation
+        this.validateVideosForm();
+        this.setupVideoUrlEventListeners();
+    }
+
+    validateImageAudioFiles() {
         const imageFile = document.getElementById('imageFile').files[0];
         const audioFile = document.getElementById('audioFile').files[0];
 
-        // Enable/disable submit button based on file selection
-        this.submitBtn.disabled = !imageFile || !audioFile;
+        this.imageAudioSubmitBtn.disabled = !imageFile || !audioFile;
 
-        // Show file information
         this.displayFileInfo('imageFile', imageFile);
         this.displayFileInfo('audioFile', audioFile);
     }
@@ -86,62 +115,30 @@ class VideoMerger {
         return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
     }
 
-    setupDragAndDrop() {
-        const fileInputs = [
-            document.getElementById('imageFile'),
-            document.getElementById('audioFile')
-        ];
-
-        fileInputs.forEach(input => {
-            const parent = input.parentNode;
-            
-            parent.addEventListener('dragover', (e) => {
-                e.preventDefault();
-                parent.classList.add('drag-over');
-            });
-
-            parent.addEventListener('dragleave', () => {
-                parent.classList.remove('drag-over');
-            });
-
-            parent.addEventListener('drop', (e) => {
-                e.preventDefault();
-                parent.classList.remove('drag-over');
-                
-                const files = e.dataTransfer.files;
-                if (files.length > 0) {
-                    input.files = files;
-                    this.validateFiles();
-                }
-            });
-        });
-    }
-
-    async handleSubmit() {
-        const formData = new FormData(this.form);
+    async handleImageAudioSubmit() {
+        const formData = new FormData(this.imageAudioForm);
         
-        // Validate file sizes
         const imageFile = document.getElementById('imageFile').files[0];
         const audioFile = document.getElementById('audioFile').files[0];
         
         const maxSize = 100 * 1024 * 1024; // 100MB
         
         if (imageFile.size > maxSize) {
-            this.showAlert('danger', 'Image file is too large. Maximum size is 100MB.');
+            this.showImageAudioAlert('danger', 'Image file is too large. Maximum size is 100MB.');
             return;
         }
         
         if (audioFile.size > maxSize) {
-            this.showAlert('danger', 'Audio file is too large. Maximum size is 100MB.');
+            this.showImageAudioAlert('danger', 'Audio file is too large. Maximum size is 100MB.');
             return;
         }
 
-        this.setLoadingState(true);
-        this.hideAlert();
-        this.hideResult();
+        this.setImageAudioLoadingState(true);
+        this.hideImageAudioAlert();
+        this.hideImageAudioResult();
 
         try {
-            const response = await fetch('/api/merge', {
+            const response = await fetch('/api/merge_image_audio', {
                 method: 'POST',
                 body: formData
             });
@@ -149,89 +146,264 @@ class VideoMerger {
             const result = await response.json();
 
             if (result.success) {
-                this.handleSuccess(result);
+                this.handleImageAudioSuccess(result);
             } else {
-                this.handleError(result.error);
+                this.handleImageAudioError(result.error);
             }
 
         } catch (error) {
             console.error('Upload error:', error);
-            this.handleError('Network error occurred. Please try again.');
+            this.handleImageAudioError('Network error occurred. Please try again.');
         } finally {
-            this.setLoadingState(false);
+            this.setImageAudioLoadingState(false);
         }
     }
 
-    setLoadingState(loading) {
-        if (loading) {
-            this.submitBtn.disabled = true;
-            this.submitBtn.classList.add('loading');
-            this.progressContainer.style.display = 'block';
-            
-            // Update button text
-            const btnText = this.submitBtn.querySelector('.btn-text');
-            if (!btnText) {
-                this.submitBtn.innerHTML = `<span class="btn-text">${this.submitBtn.innerHTML}</span>`;
-            }
-        } else {
-            this.submitBtn.disabled = false;
-            this.submitBtn.classList.remove('loading');
-            this.progressContainer.style.display = 'none';
-        }
-    }
+    async handleVideosSubmit() {
+        const videoUrls = Array.from(document.querySelectorAll('.video-url'))
+            .map(input => input.value.trim())
+            .filter(url => url);
 
-    handleSuccess(result) {
-        this.currentFilename = result.filename;
-        this.downloadBtn.href = result.download_url;
-        this.downloadBtn.download = result.filename;
+        if (videoUrls.length < 2) {
+            this.showVideosAlert('danger', 'At least 2 video URLs are required.');
+            return;
+        }
+
+        const formData = new FormData();
         
-        this.showAlert('success', result.message);
-        this.showResult();
-    }
+        // Add video URLs to form data
+        videoUrls.forEach((url, index) => {
+            formData.append(`video_url_${index}`, url);
+        });
+        
+        // Add optional audio file
+        const audioFile = document.getElementById('videosAudioFile').files[0];
+        if (audioFile) {
+            formData.append('audio', audioFile);
+        }
 
-    handleError(errorMessage) {
-        this.showAlert('danger', `Error: ${errorMessage}`);
-    }
-
-    async handleCleanup() {
-        if (!this.currentFilename) return;
+        this.setVideosLoadingState(true);
+        this.hideVideosAlert();
+        this.hideVideosResult();
 
         try {
-            const response = await fetch(`/api/cleanup/${this.currentFilename}`, {
+            const response = await fetch('/api/merge_videos', {
+                method: 'POST',
+                body: formData
+            });
+
+            const result = await response.json();
+
+            if (result.success) {
+                this.handleVideosSuccess(result);
+            } else {
+                this.handleVideosError(result.error);
+            }
+
+        } catch (error) {
+            console.error('Videos merge error:', error);
+            this.handleVideosError('Network error occurred. Please try again.');
+        } finally {
+            this.setVideosLoadingState(false);
+        }
+    }
+
+    addVideoUrlInput() {
+        const container = document.getElementById('videoUrlsContainer');
+        const inputGroup = document.createElement('div');
+        inputGroup.className = 'input-group mb-2';
+        inputGroup.innerHTML = `
+            <input type="url" class="form-control video-url" placeholder="https://example.com/video.mp4" required>
+            <button type="button" class="btn btn-outline-danger remove-url">
+                <i class="fas fa-times"></i>
+            </button>
+        `;
+        container.appendChild(inputGroup);
+        
+        // Add event listeners to new elements
+        this.setupVideoUrlEventListeners();
+        this.validateVideosForm();
+    }
+
+    setupVideoUrlEventListeners() {
+        document.querySelectorAll('.remove-url').forEach(btn => {
+            btn.replaceWith(btn.cloneNode(true)); // Remove existing listeners
+        });
+
+        document.querySelectorAll('.video-url').forEach(input => {
+            input.replaceWith(input.cloneNode(true)); // Remove existing listeners
+        });
+
+        // Add new listeners
+        document.querySelectorAll('.remove-url').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                if (document.querySelectorAll('.video-url').length > 2) {
+                    e.target.closest('.input-group').remove();
+                    this.validateVideosForm();
+                }
+            });
+        });
+
+        document.querySelectorAll('.video-url').forEach(input => {
+            input.addEventListener('input', () => {
+                this.validateVideosForm();
+            });
+        });
+
+        // Update remove button states
+        const removeButtons = document.querySelectorAll('.remove-url');
+        removeButtons.forEach((btn, index) => {
+            btn.disabled = removeButtons.length <= 2;
+        });
+    }
+
+    validateVideosForm() {
+        const videoUrls = Array.from(document.querySelectorAll('.video-url'))
+            .map(input => input.value.trim())
+            .filter(url => url);
+
+        this.videosSubmitBtn.disabled = videoUrls.length < 2;
+    }
+
+    setImageAudioLoadingState(loading) {
+        if (loading) {
+            this.imageAudioSubmitBtn.disabled = true;
+            this.imageAudioSubmitBtn.classList.add('loading');
+            this.imageAudioProgressContainer.style.display = 'block';
+        } else {
+            this.imageAudioSubmitBtn.disabled = false;
+            this.imageAudioSubmitBtn.classList.remove('loading');
+            this.imageAudioProgressContainer.style.display = 'none';
+        }
+    }
+
+    setVideosLoadingState(loading) {
+        if (loading) {
+            this.videosSubmitBtn.disabled = true;
+            this.videosSubmitBtn.classList.add('loading');
+            this.videosProgressContainer.style.display = 'block';
+        } else {
+            this.videosSubmitBtn.disabled = false;
+            this.videosSubmitBtn.classList.remove('loading');
+            this.videosProgressContainer.style.display = 'none';
+        }
+    }
+
+    handleImageAudioSuccess(result) {
+        this.imageAudioCurrentFilename = result.filename;
+        this.imageAudioDownloadBtn.href = result.download_url;
+        this.imageAudioDownloadBtn.download = result.filename;
+        
+        this.showImageAudioAlert('success', result.message);
+        this.showImageAudioResult();
+    }
+
+    handleImageAudioError(errorMessage) {
+        this.showImageAudioAlert('danger', `Error: ${errorMessage}`);
+    }
+
+    handleVideosSuccess(result) {
+        this.videosCurrentFilename = result.filename;
+        this.videosDownloadBtn.href = result.download_url;
+        this.videosDownloadBtn.download = result.filename;
+        
+        this.showVideosAlert('success', result.message);
+        this.showVideosResult();
+    }
+
+    handleVideosError(errorMessage) {
+        this.showVideosAlert('danger', `Error: ${errorMessage}`);
+    }
+
+    async handleImageAudioCleanup() {
+        if (!this.imageAudioCurrentFilename) return;
+
+        try {
+            const response = await fetch(`/api/cleanup/${this.imageAudioCurrentFilename}`, {
                 method: 'POST'
             });
 
             const result = await response.json();
             
             if (result.success) {
-                this.showAlert('info', 'File successfully deleted from server.');
-                this.hideResult();
-                this.currentFilename = null;
+                this.showImageAudioAlert('info', 'File successfully deleted from server.');
+                this.hideImageAudioResult();
+                this.imageAudioCurrentFilename = null;
             } else {
-                this.showAlert('warning', 'Could not delete file from server.');
+                this.showImageAudioAlert('warning', 'Could not delete file from server.');
             }
 
         } catch (error) {
             console.error('Cleanup error:', error);
-            this.showAlert('warning', 'Could not delete file from server.');
+            this.showImageAudioAlert('warning', 'Could not delete file from server.');
         }
     }
 
-    resetForm() {
-        this.form.reset();
-        this.hideAlert();
-        this.hideResult();
-        this.validateFiles();
-        this.currentFilename = null;
+    async handleVideosCleanup() {
+        if (!this.videosCurrentFilename) return;
+
+        try {
+            const response = await fetch(`/api/cleanup/${this.videosCurrentFilename}`, {
+                method: 'POST'
+            });
+
+            const result = await response.json();
+            
+            if (result.success) {
+                this.showVideosAlert('info', 'File successfully deleted from server.');
+                this.hideVideosResult();
+                this.videosCurrentFilename = null;
+            } else {
+                this.showVideosAlert('warning', 'Could not delete file from server.');
+            }
+
+        } catch (error) {
+            console.error('Cleanup error:', error);
+            this.showVideosAlert('warning', 'Could not delete file from server.');
+        }
+    }
+
+    resetImageAudioForm() {
+        this.imageAudioForm.reset();
+        this.hideImageAudioAlert();
+        this.hideImageAudioResult();
+        this.validateImageAudioFiles();
+        this.imageAudioCurrentFilename = null;
         
-        // Remove file info displays
         document.querySelectorAll('.file-info').forEach(info => {
             info.remove();
         });
     }
 
-    showAlert(type, message) {
-        this.alertContainer.innerHTML = `
+    resetVideosForm() {
+        // Reset to 2 URL inputs
+        const container = document.getElementById('videoUrlsContainer');
+        container.innerHTML = `
+            <div class="input-group mb-2">
+                <input type="url" class="form-control video-url" placeholder="https://example.com/video1.mp4" required>
+                <button type="button" class="btn btn-outline-danger remove-url" disabled>
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="input-group mb-2">
+                <input type="url" class="form-control video-url" placeholder="https://example.com/video2.mp4" required>
+                <button type="button" class="btn btn-outline-danger remove-url">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+        `;
+        
+        document.getElementById('videosAudioFile').value = '';
+        this.hideVideosAlert();
+        this.hideVideosResult();
+        this.videosCurrentFilename = null;
+        
+        this.setupVideoUrlEventListeners();
+        this.validateVideosForm();
+    }
+
+    showImageAudioAlert(type, message) {
+        this.imageAudioAlertContainer.innerHTML = `
             <div class="alert alert-${type} alert-dismissible fade show" role="alert">
                 <i class="fas fa-${this.getAlertIcon(type)} me-2"></i>
                 ${message}
@@ -240,16 +412,38 @@ class VideoMerger {
         `;
     }
 
-    hideAlert() {
-        this.alertContainer.innerHTML = '';
+    hideImageAudioAlert() {
+        this.imageAudioAlertContainer.innerHTML = '';
     }
 
-    showResult() {
-        this.resultContainer.style.display = 'block';
+    showImageAudioResult() {
+        this.imageAudioResultContainer.style.display = 'block';
     }
 
-    hideResult() {
-        this.resultContainer.style.display = 'none';
+    hideImageAudioResult() {
+        this.imageAudioResultContainer.style.display = 'none';
+    }
+
+    showVideosAlert(type, message) {
+        this.videosAlertContainer.innerHTML = `
+            <div class="alert alert-${type} alert-dismissible fade show" role="alert">
+                <i class="fas fa-${this.getAlertIcon(type)} me-2"></i>
+                ${message}
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+        `;
+    }
+
+    hideVideosAlert() {
+        this.videosAlertContainer.innerHTML = '';
+    }
+
+    showVideosResult() {
+        this.videosResultContainer.style.display = 'block';
+    }
+
+    hideVideosResult() {
+        this.videosResultContainer.style.display = 'none';
     }
 
     getAlertIcon(type) {
