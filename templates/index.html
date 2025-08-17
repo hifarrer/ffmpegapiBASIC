@@ -239,123 +239,99 @@
                     </div>
 
                     <!-- Picture in Picture Tab -->
-                    <div class="tab-pane fade" id="picture-in-picture" role="tabpanel" aria-labelledby="pip-tab" style="min-height: 400px;">
-                        <div class="card">
-                            <div class="card-header">
-                                <h5 class="card-title mb-0">
-                                    <i class="fas fa-layer-group me-2"></i>
-                                    Create Picture-in-Picture Video
-                                </h5>
+                    <div class="tab-pane fade" id="picture-in-picture" role="tabpanel" aria-labelledby="pip-tab">
+                        <h4><i class="fas fa-layer-group me-2"></i>Create Picture-in-Picture Video</h4>
+                        <p class="mb-4">Overlay one video on top of another with customizable positioning and scaling.</p>
+                        
+                        <form id="pipForm" class="mb-4">
+                            <div class="mb-3">
+                                <label for="mainVideoUrl" class="form-label">Main Video URL</label>
+                                <input type="url" class="form-control" id="mainVideoUrl" name="main_video_url" 
+                                       placeholder="https://example.com/main-video.mp4" required>
+                                <div class="form-text">The background/main video</div>
                             </div>
-                            <div class="card-body p-4">
-                                <form id="pipForm">
-                                    <div class="row">
-                                        <div class="col-md-6 mb-4">
-                                            <label for="mainVideoUrl" class="form-label">
-                                                <i class="fas fa-video me-2"></i>
-                                                Main Video URL
-                                            </label>
-                                            <input type="url" class="form-control" id="mainVideoUrl" name="main_video_url" 
-                                                   placeholder="https://example.com/main-video.mp4" required>
-                                            <div class="form-text">The background/main video</div>
-                                        </div>
-                                        <div class="col-md-6 mb-4">
-                                            <label for="pipVideoUrl" class="form-label">
-                                                <i class="fas fa-layer-group me-2"></i>
-                                                Picture-in-Picture Video URL
-                                            </label>
-                                            <input type="url" class="form-control" id="pipVideoUrl" name="pip_video_url" 
-                                                   placeholder="https://example.com/pip-video.mp4" required>
-                                            <div class="form-text">The overlay video (will be placed on top)</div>
-                                        </div>
-                                    </div>
-
-                                    <div class="row">
-                                        <div class="col-md-6 mb-4">
-                                            <label for="pipPosition" class="form-label">
-                                                <i class="fas fa-arrows-alt me-2"></i>
-                                                Position
-                                            </label>
-                                            <select class="form-select" id="pipPosition" name="position">
-                                                <option value="top-left">Top Left</option>
-                                                <option value="top-center">Top Center</option>
-                                                <option value="top-right">Top Right</option>
-                                                <option value="middle-left">Middle Left</option>
-                                                <option value="middle">Middle</option>
-                                                <option value="middle-right">Middle Right</option>
-                                                <option value="bottom-left">Bottom Left</option>
-                                                <option value="bottom-center">Bottom Center</option>
-                                                <option value="bottom-right" selected>Bottom Right</option>
-                                            </select>
-                                            <div class="form-text">Where to place the overlay video</div>
-                                        </div>
-                                        <div class="col-md-6 mb-4">
-                                            <label for="pipScale" class="form-label">
-                                                <i class="fas fa-expand-alt me-2"></i>
-                                                Scale
-                                            </label>
-                                            <select class="form-select" id="pipScale" name="scale">
-                                                <option value="iw/6:ih/6">Very Small (1/6)</option>
-                                                <option value="iw/5:ih/5">Small (1/5)</option>
-                                                <option value="iw/4:ih/4" selected>Medium (1/4)</option>
-                                                <option value="iw/3:ih/3">Large (1/3)</option>
-                                                <option value="iw/2:ih/2">Extra Large (1/2)</option>
-                                            </select>
-                                            <div class="form-text">Size of the overlay video</div>
-                                        </div>
-                                    </div>
-
-                                    <div class="d-grid">
-                                        <button type="submit" class="btn btn-primary btn-lg" id="pipSubmitBtn">
-                                            <i class="fas fa-layer-group me-2"></i>
-                                            Create Picture-in-Picture
-                                        </button>
-                                    </div>
-                                </form>
-
-                                <!-- Progress Bar -->
-                                <div id="pipProgressContainer" class="mt-4" style="display: none;">
-                                    <div class="d-flex align-items-center mb-2">
-                                        <div class="spinner-border spinner-border-sm me-2" role="status">
-                                            <span class="visually-hidden">Loading...</span>
-                                        </div>
-                                        <span>Downloading videos and creating picture-in-picture...</span>
-                                    </div>
-                                    <div class="progress">
-                                        <div class="progress-bar progress-bar-striped progress-bar-animated" 
-                                             role="progressbar" style="width: 100%"></div>
-                                    </div>
+                            
+                            <div class="mb-3">
+                                <label for="pipVideoUrl" class="form-label">Picture-in-Picture Video URL</label>
+                                <input type="url" class="form-control" id="pipVideoUrl" name="pip_video_url" 
+                                       placeholder="https://example.com/pip-video.mp4" required>
+                                <div class="form-text">The overlay video (will be placed on top)</div>
+                            </div>
+                            
+                            <div class="row mb-3">
+                                <div class="col-md-6">
+                                    <label for="pipPosition" class="form-label">Position</label>
+                                    <select class="form-select" id="pipPosition" name="position">
+                                        <option value="top-left">Top Left</option>
+                                        <option value="top-center">Top Center</option>
+                                        <option value="top-right">Top Right</option>
+                                        <option value="middle-left">Middle Left</option>
+                                        <option value="middle">Middle</option>
+                                        <option value="middle-right">Middle Right</option>
+                                        <option value="bottom-left">Bottom Left</option>
+                                        <option value="bottom-center">Bottom Center</option>
+                                        <option value="bottom-right" selected>Bottom Right</option>
+                                    </select>
                                 </div>
+                                <div class="col-md-6">
+                                    <label for="pipScale" class="form-label">Scale</label>
+                                    <select class="form-select" id="pipScale" name="scale">
+                                        <option value="iw/6:ih/6">Very Small (1/6)</option>
+                                        <option value="iw/5:ih/5">Small (1/5)</option>
+                                        <option value="iw/4:ih/4" selected>Medium (1/4)</option>
+                                        <option value="iw/3:ih/3">Large (1/3)</option>
+                                        <option value="iw/2:ih/2">Extra Large (1/2)</option>
+                                    </select>
+                                </div>
+                            </div>
+                            
+                            <button type="submit" class="btn btn-primary" id="pipSubmitBtn">
+                                <i class="fas fa-layer-group me-2"></i>
+                                Create Picture-in-Picture
+                            </button>
+                        </form>
 
-                                <!-- Alert Messages -->
-                                <div id="pipAlertContainer" class="mt-4"></div>
+                        <!-- Progress Bar -->
+                        <div id="pipProgressContainer" class="mb-4" style="display: none;">
+                            <div class="d-flex align-items-center mb-2">
+                                <div class="spinner-border spinner-border-sm me-2" role="status">
+                                    <span class="visually-hidden">Loading...</span>
+                                </div>
+                                <span>Downloading videos and creating picture-in-picture...</span>
+                            </div>
+                            <div class="progress">
+                                <div class="progress-bar progress-bar-striped progress-bar-animated" 
+                                     role="progressbar" style="width: 100%"></div>
+                            </div>
+                        </div>
 
-                                <!-- Results -->
-                                <div id="pipResultContainer" class="mt-4" style="display: none;">
-                                    <div class="card">
-                                        <div class="card-header">
-                                            <h5 class="card-title mb-0">
-                                                <i class="fas fa-check-circle text-success me-2"></i>
-                                                Picture-in-Picture Created Successfully
-                                            </h5>
-                                        </div>
-                                        <div class="card-body">
-                                            <p class="card-text">Your picture-in-picture video has been created and is ready for download.</p>
-                                            <div class="d-flex gap-2 flex-wrap">
-                                                <a id="pipDownloadBtn" href="#" class="btn btn-success" download>
-                                                    <i class="fas fa-download me-2"></i>
-                                                    Download Video
-                                                </a>
-                                                <button id="pipCleanupBtn" class="btn btn-outline-secondary">
-                                                    <i class="fas fa-trash me-2"></i>
-                                                    Delete from Server
-                                                </button>
-                                                <button id="pipResetBtn" class="btn btn-outline-primary">
-                                                    <i class="fas fa-plus me-2"></i>
-                                                    Create Another PiP
-                                                </button>
-                                            </div>
-                                        </div>
+                        <!-- Alert Messages -->
+                        <div id="pipAlertContainer" class="mb-4"></div>
+
+                        <!-- Results -->
+                        <div id="pipResultContainer" class="mb-4" style="display: none;">
+                            <div class="card">
+                                <div class="card-header">
+                                    <h5 class="card-title mb-0">
+                                        <i class="fas fa-check-circle text-success me-2"></i>
+                                        Picture-in-Picture Created Successfully
+                                    </h5>
+                                </div>
+                                <div class="card-body">
+                                    <p class="card-text">Your picture-in-picture video has been created and is ready for download.</p>
+                                    <div class="d-flex gap-2 flex-wrap">
+                                        <a id="pipDownloadBtn" href="#" class="btn btn-success" download>
+                                            <i class="fas fa-download me-2"></i>
+                                            Download Video
+                                        </a>
+                                        <button id="pipCleanupBtn" class="btn btn-outline-secondary">
+                                            <i class="fas fa-trash me-2"></i>
+                                            Delete from Server
+                                        </button>
+                                        <button id="pipResetBtn" class="btn btn-outline-primary">
+                                            <i class="fas fa-plus me-2"></i>
+                                            Create Another PiP
+                                        </button>
                                     </div>
                                 </div>
                             </div>
