@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en" data-bs-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FFMPEG Video Merger</title>
+    <link href="https://cdn.replit.com/agent/bootstrap-agent-dark-theme.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link href="{{ url_for('static', filename='style.css') }}" rel="stylesheet">
+</head>
+<body>
+    <div class="container py-5">
+        <div class="row justify-content-center">
+            <div class="col-lg-8">
+                <div class="text-center mb-5">
+                    <h1 class="display-4 mb-3">
+                        <i class="fas fa-film me-3"></i>
+                        Video Merger
+                    </h1>
+                    <p class="lead">Merge your image and audio files into a professional video using FFMPEG</p>
+                </div>
+
+                <div class="card">
+                    <div class="card-body p-4">
+                        <form id="uploadForm" enctype="multipart/form-data">
+                            <div class="row">
+                                <div class="col-md-6 mb-4">
+                                    <label for="imageFile" class="form-label">
+                                        <i class="fas fa-image me-2"></i>
+                                        Select Image
+                                    </label>
+                                    <input type="file" class="form-control" id="imageFile" name="image" 
+                                           accept=".png,.jpg,.jpeg" required>
+                                    <div class="form-text">Supported formats: PNG, JPG, JPEG</div>
+                                </div>
+                                <div class="col-md-6 mb-4">
+                                    <label for="audioFile" class="form-label">
+                                        <i class="fas fa-music me-2"></i>
+                                        Select Audio
+                                    </label>
+                                    <input type="file" class="form-control" id="audioFile" name="audio" 
+                                           accept=".mp3,.wav,.m4a" required>
+                                    <div class="form-text">Supported formats: MP3, WAV, M4A</div>
+                                </div>
+                            </div>
+
+                            <div class="d-grid">
+                                <button type="submit" class="btn btn-primary btn-lg" id="submitBtn">
+                                    <i class="fas fa-play me-2"></i>
+                                    Create Video
+                                </button>
+                            </div>
+                        </form>
+
+                        <!-- Progress Bar -->
+                        <div id="progressContainer" class="mt-4" style="display: none;">
+                            <div class="d-flex align-items-center mb-2">
+                                <div class="spinner-border spinner-border-sm me-2" role="status">
+                                    <span class="visually-hidden">Loading...</span>
+                                </div>
+                                <span>Processing your video...</span>
+                            </div>
+                            <div class="progress">
+                                <div class="progress-bar progress-bar-striped progress-bar-animated" 
+                                     role="progressbar" style="width: 100%"></div>
+                            </div>
+                        </div>
+
+                        <!-- Alert Messages -->
+                        <div id="alertContainer" class="mt-4"></div>
+
+                        <!-- Results -->
+                        <div id="resultContainer" class="mt-4" style="display: none;">
+                            <div class="card">
+                                <div class="card-header">
+                                    <h5 class="card-title mb-0">
+                                        <i class="fas fa-check-circle text-success me-2"></i>
+                                        Video Created Successfully
+                                    </h5>
+                                </div>
+                                <div class="card-body">
+                                    <p class="card-text">Your video has been generated and is ready for download.</p>
+                                    <div class="d-flex gap-2 flex-wrap">
+                                        <a id="downloadBtn" href="#" class="btn btn-success" download>
+                                            <i class="fas fa-download me-2"></i>
+                                            Download Video
+                                        </a>
+                                        <button id="cleanupBtn" class="btn btn-outline-secondary">
+                                            <i class="fas fa-trash me-2"></i>
+                                            Delete from Server
+                                        </button>
+                                        <button id="resetBtn" class="btn btn-outline-primary">
+                                            <i class="fas fa-plus me-2"></i>
+                                            Create Another Video
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- File Information -->
+                <div class="row mt-4">
+                    <div class="col-md-6">
+                        <div class="card">
+                            <div class="card-header">
+                                <h6 class="card-title mb-0">
+                                    <i class="fas fa-info-circle me-2"></i>
+                                    Image Requirements
+                                </h6>
+                            </div>
+                            <div class="card-body">
+                                <ul class="list-unstyled mb-0">
+                                    <li><i class="fas fa-check text-success me-2"></i>Formats: PNG, JPG, JPEG</li>
+                                    <li><i class="fas fa-check text-success me-2"></i>Max size: 100MB</li>
+                                    <li><i class="fas fa-check text-success me-2"></i>Any resolution supported</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="card">
+                            <div class="card-header">
+                                <h6 class="card-title mb-0">
+                                    <i class="fas fa-info-circle me-2"></i>
+                                    Audio Requirements
+                                </h6>
+                            </div>
+                            <div class="card-body">
+                                <ul class="list-unstyled mb-0">
+                                    <li><i class="fas fa-check text-success me-2"></i>Formats: MP3, WAV, M4A</li>
+                                    <li><i class="fas fa-check text-success me-2"></i>Max size: 100MB</li>
+                                    <li><i class="fas fa-check text-success me-2"></i>Any quality supported</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="text-center mt-4">
+                    <small class="text-muted">
+                        <i class="fas fa-shield-alt me-1"></i>
+                        Files are processed securely and automatically deleted after processing
+                    </small>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="{{ url_for('static', filename='script.js') }}"></script>
+</body>
+</html>
