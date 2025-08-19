@@ -209,12 +209,17 @@
                                 <code class="text-muted">/api/merge_image_audio</code>
                             </div>
                             <div class="card-body">
-                                <p>Create a video by combining a static image with an audio file. The image will be displayed for the duration of the audio.</p>
+                                <p>Create a video by combining a static image with an audio file. The image will be displayed for the duration of the audio. Supports both file uploads and URLs.</p>
                                 
-                                <h6>Request Format</h6>
+                                <h6>Request Formats</h6>
+                                <p>This endpoint supports two input methods:</p>
+                                <ul>
+                                    <li><strong>Method 1:</strong> File uploads with <code>multipart/form-data</code></li>
+                                    <li><strong>Method 2:</strong> URLs with <code>application/json</code></li>
+                                </ul>
+                                
+                                <h6>Method 1: File Upload Parameters</h6>
                                 <p><strong>Content-Type:</strong> <code>multipart/form-data</code></p>
-                                
-                                <h6>Parameters</h6>
                                 <div class="table-responsive">
                                     <table class="table table-sm">
                                         <thead>
@@ -246,6 +251,140 @@
                                             </tr>
                                         </tbody>
                                     </table>
+                                </div>
+
+                                <h6>Method 2: URL Parameters</h6>
+                                <p><strong>Content-Type:</strong> <code>application/json</code></p>
+                                <div class="table-responsive">
+                                    <table class="table table-sm">
+                                        <thead>
+                                            <tr>
+                                                <th>Parameter</th>
+                                                <th>Type</th>
+                                                <th>Required</th>
+                                                <th>Description</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <tr>
+                                                <td><code>image_url</code></td>
+                                                <td>String</td>
+                                                <td>Yes</td>
+                                                <td>URL to image file (PNG, JPG, JPEG)</td>
+                                            </tr>
+                                            <tr>
+                                                <td><code>audio_url</code></td>
+                                                <td>String</td>
+                                                <td>Yes</td>
+                                                <td>URL to audio file (MP3, WAV, M4A)</td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+
+                                <h6>Request Examples</h6>
+                                
+                                <!-- Nav tabs -->
+                                <ul class="nav nav-pills mb-3" id="merge-image-audio-tabs" role="tablist">
+                                    <li class="nav-item" role="presentation">
+                                        <button class="nav-link active" id="curl-upload-tab" data-bs-toggle="pill" data-bs-target="#curl-upload" type="button" role="tab" aria-controls="curl-upload" aria-selected="true">cURL (Upload)</button>
+                                    </li>
+                                    <li class="nav-item" role="presentation">
+                                        <button class="nav-link" id="curl-url-tab" data-bs-toggle="pill" data-bs-target="#curl-url" type="button" role="tab" aria-controls="curl-url" aria-selected="false">cURL (URLs)</button>
+                                    </li>
+                                    <li class="nav-item" role="presentation">
+                                        <button class="nav-link" id="python-tab" data-bs-toggle="pill" data-bs-target="#python" type="button" role="tab" aria-controls="python" aria-selected="false">Python</button>
+                                    </li>
+                                    <li class="nav-item" role="presentation">
+                                        <button class="nav-link" id="javascript-tab" data-bs-toggle="pill" data-bs-target="#javascript" type="button" role="tab" aria-controls="javascript" aria-selected="false">JavaScript</button>
+                                    </li>
+                                </ul>
+                                
+                                <!-- Tab panes -->
+                                <div class="tab-content" id="merge-image-audio-content">
+                                    <div class="tab-pane fade show active" id="curl-upload" role="tabpanel" aria-labelledby="curl-upload-tab">
+                                        <div class="code-block p-3">
+                                            <pre><code class="language-bash">curl -X POST {{ request.url_root }}api/merge_image_audio \
+  -H "X-API-Key: your_api_key_here" \
+  -F "image=@path/to/your/image.jpg" \
+  -F "audio=@path/to/your/audio.mp3"</code></pre>
+                                        </div>
+                                    </div>
+                                    <div class="tab-pane fade" id="curl-url" role="tabpanel" aria-labelledby="curl-url-tab">
+                                        <div class="code-block p-3">
+                                            <pre><code class="language-bash">curl -X POST {{ request.url_root }}api/merge_image_audio \
+  -H "X-API-Key: your_api_key_here" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "image_url": "https://example.com/image.jpg",
+    "audio_url": "https://example.com/audio.mp3"
+  }'</code></pre>
+                                        </div>
+                                    </div>
+                                    <div class="tab-pane fade" id="python" role="tabpanel" aria-labelledby="python-tab">
+                                        <div class="code-block p-3">
+                                            <pre><code class="language-python">import requests
+
+# Method 1: File upload
+with open('image.jpg', 'rb') as img, open('audio.mp3', 'rb') as aud:
+    files = {
+        'image': img,
+        'audio': aud
+    }
+    headers = {'X-API-Key': 'your_api_key_here'}
+    response = requests.post('{{ request.url_root }}api/merge_image_audio', 
+                           files=files, headers=headers)
+
+# Method 2: URLs
+data = {
+    'image_url': 'https://example.com/image.jpg',
+    'audio_url': 'https://example.com/audio.mp3'
+}
+headers = {
+    'X-API-Key': 'your_api_key_here',
+    'Content-Type': 'application/json'
+}
+response = requests.post('{{ request.url_root }}api/merge_image_audio', 
+                        json=data, headers=headers)
+
+print(response.json())</code></pre>
+                                        </div>
+                                    </div>
+                                    <div class="tab-pane fade" id="javascript" role="tabpanel" aria-labelledby="javascript-tab">
+                                        <div class="code-block p-3">
+                                            <pre><code class="language-javascript">// Method 1: File upload
+const formData = new FormData();
+formData.append('image', imageFile);
+formData.append('audio', audioFile);
+
+fetch('{{ request.url_root }}api/merge_image_audio', {
+    method: 'POST',
+    headers: {
+        'X-API-Key': 'your_api_key_here'
+    },
+    body: formData
+})
+.then(response => response.json())
+.then(data => console.log(data));
+
+// Method 2: URLs
+const data = {
+    image_url: 'https://example.com/image.jpg',
+    audio_url: 'https://example.com/audio.mp3'
+};
+
+fetch('{{ request.url_root }}api/merge_image_audio', {
+    method: 'POST',
+    headers: {
+        'X-API-Key': 'your_api_key_here',
+        'Content-Type': 'application/json'
+    },
+    body: JSON.stringify(data)
+})
+.then(response => response.json())
+.then(data => console.log(data));</code></pre>
+                                        </div>
+                                    </div>
                                 </div>
 
                                 <h6>Response</h6>
@@ -762,6 +901,7 @@ if (result.success) {
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-core.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/plugins/autoloader/prism-autoloader.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     
     <script>
         // Smooth scrolling for table of contents
