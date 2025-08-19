@@ -1,7 +1,8 @@
 from flask import Blueprint, render_template, redirect, url_for, flash, request, jsonify
 from flask_login import login_user, logout_user, login_required, current_user
-from models import db, User, ApiKey
+from models import db, User, ApiKey, SubscriptionPlan, UserSubscription
 from forms import RegistrationForm, LoginForm, ApiKeyForm
+from datetime import datetime, timedelta
 
 auth = Blueprint('auth', __name__)
 
@@ -22,6 +23,21 @@ def register():
         
         # Generate initial API key for new user
         user.generate_api_key("My First API Key")
+        
+        # Assign free plan to new user
+        free_plan = SubscriptionPlan.query.filter_by(name='Free', is_active=True).first()
+        if free_plan:
+            subscription = UserSubscription()
+            subscription.user_id = user.id
+            subscription.plan_id = free_plan.id
+            subscription.status = 'active'
+            subscription.billing_cycle = 'monthly'
+            subscription.current_period_start = datetime.utcnow()
+            subscription.current_period_end = datetime.utcnow() + timedelta(days=30)
+            subscription.api_calls_used = 0
+            
+            db.session.add(subscription)
+            db.session.commit()
         
         flash('Registration successful! You can now log in.', 'success')
         return redirect(url_for('auth.login'))

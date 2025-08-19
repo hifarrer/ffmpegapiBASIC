@@ -100,7 +100,7 @@ with app.app_context():
         logging.info(f"Created default site API key: {SITE_DEFAULT_API_KEY}")
 
 def require_api_key(f):
-    """Decorator to require API key for API endpoints"""
+    """Decorator to require API key for API endpoints with usage limit checking"""
     @wraps(f)
     def decorated_function(*args, **kwargs):
         # Check for API key in header, query param, or form data
@@ -119,6 +119,49 @@ def require_api_key(f):
                 'success': False,
                 'error': 'Invalid or inactive API key.'
             }), 401
+        
+        # Check user's subscription and API usage limits
+        user = key_record.user
+        subscription = UserSubscription.query.filter_by(user_id=user.id, status='active').first()
+        
+        if not subscription:
+            # Try to assign free plan if user has no subscription
+            free_plan = SubscriptionPlan.query.filter_by(name='Free', is_active=True).first()
+            if free_plan:
+                subscription = UserSubscription()
+                subscription.user_id = user.id
+                subscription.plan_id = free_plan.id
+                subscription.status = 'active'
+                subscription.billing_cycle = 'monthly'
+                subscription.current_period_start = datetime.utcnow()
+                subscription.current_period_end = datetime.utcnow() + timedelta(days=30)
+                subscription.api_calls_used = 0
+                
+                db.session.add(subscription)
+                db.session.commit()
+            else:
+                return jsonify({
+                    'success': False,
+                    'error': 'No active subscription found. Please contact support.'
+                }), 403
+        
+        # Check if user can make API call
+        if not subscription.can_make_api_call():
+            plan_name = subscription.plan.name
+            api_limit = subscription.plan.api_calls_per_month
+            api_used = subscription.api_calls_used
+            
+            return jsonify({
+                'success': False,
+                'error': f'API call limit exceeded. You have used {api_used}/{api_limit} calls for your {plan_name} plan. Please upgrade your plan to continue using the API.',
+                'current_plan': plan_name,
+                'api_calls_used': api_used,
+                'api_calls_limit': api_limit,
+                'upgrade_url': url_for('pricing', _external=True)
+            }), 429
+        
+        # Increment API usage
+        subscription.increment_api_usage()
         
         # Mark API key as used
         key_record.mark_used()
