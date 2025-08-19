@@ -10,6 +10,8 @@ This is a comprehensive web-based video processing tool that provides three main
 
 **Authentication & API Keys**: All API endpoints now require authentication via API keys. Users can register for accounts and generate multiple API keys through a dashboard. The site provides a default API key for guest usage on the landing page.
 
+**API Documentation**: Comprehensive documentation page (`/docs`) available without login, featuring interactive examples, code samples in multiple languages (cURL, Python, JavaScript), and detailed endpoint specifications.
+
 The application features an accordion interface for easy access to all three tools, built with Flask for the backend and vanilla JavaScript for the frontend, using Bootstrap's dark theme for a professional appearance.
 
 ## User Preferences

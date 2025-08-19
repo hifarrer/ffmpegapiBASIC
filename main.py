@@ -475,6 +475,11 @@ def dashboard():
     """User dashboard showing their API keys"""
     return redirect(url_for('auth.dashboard'))
 
+@app.route('/docs')
+def api_docs():
+    """API documentation page - no login required"""
+    return render_template('api_docs.html')
+
 @app.route('/api/merge_image_audio', methods=['POST'])
 @require_api_key
 def merge_image_audio():

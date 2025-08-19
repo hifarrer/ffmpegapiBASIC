@@ -1,0 +1,800 @@
+<!DOCTYPE html>
+<html lang="en" data-bs-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>API Documentation - FFMPEG Video Merger</title>
+    <link href="https://cdn.replit.com/agent/bootstrap-agent-dark-theme.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-dark.min.css" rel="stylesheet">
+    <style>
+        .api-endpoint {
+            background: var(--bs-dark);
+            border-left: 4px solid var(--bs-primary);
+            margin-bottom: 2rem;
+        }
+        .method-badge {
+            font-size: 0.75rem;
+            font-weight: bold;
+            padding: 0.25rem 0.5rem;
+        }
+        .method-post { background-color: #28a745; }
+        .method-get { background-color: #007bff; }
+        .code-block {
+            background: #1e1e1e;
+            border: 1px solid var(--bs-border-color);
+            border-radius: 0.375rem;
+        }
+        .nav-pills .nav-link.active {
+            background-color: var(--bs-primary);
+        }
+        .toc-link {
+            text-decoration: none;
+            color: var(--bs-secondary);
+            padding: 0.25rem 0;
+            display: block;
+            border-left: 2px solid transparent;
+            padding-left: 1rem;
+        }
+        .toc-link:hover, .toc-link.active {
+            color: var(--bs-primary);
+            border-left-color: var(--bs-primary);
+            text-decoration: none;
+        }
+    </style>
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar navbar-dark bg-primary">
+        <div class="container">
+            <a class="navbar-brand" href="{{ url_for('index') }}">
+                <i class="fas fa-video me-2"></i>FFMPEG Video Merger
+            </a>
+            <div>
+                <a href="{{ url_for('index') }}" class="btn btn-outline-light btn-sm me-2">
+                    <i class="fas fa-arrow-left me-1"></i>Back to Tools
+                </a>
+                {% if not current_user.is_authenticated %}
+                    <a href="{{ url_for('auth.register') }}" class="btn btn-light btn-sm">Get API Key</a>
+                {% else %}
+                    <a href="{{ url_for('auth.dashboard') }}" class="btn btn-outline-light btn-sm">Dashboard</a>
+                {% endif %}
+            </div>
+        </div>
+    </nav>
+
+    <div class="container-fluid py-4">
+        <div class="row">
+            <!-- Table of Contents -->
+            <div class="col-lg-3">
+                <div class="sticky-top" style="top: 1rem;">
+                    <div class="card">
+                        <div class="card-header">
+                            <h6 class="mb-0"><i class="fas fa-list me-2"></i>Table of Contents</h6>
+                        </div>
+                        <div class="card-body">
+                            <nav class="nav flex-column">
+                                <a class="toc-link" href="#overview">Overview</a>
+                                <a class="toc-link" href="#authentication">Authentication</a>
+                                <a class="toc-link" href="#endpoints">API Endpoints</a>
+                                <a class="toc-link ms-3" href="#merge-image-audio">Image & Audio Merge</a>
+                                <a class="toc-link ms-3" href="#merge-videos">Video Merge</a>
+                                <a class="toc-link ms-3" href="#picture-in-picture">Picture in Picture</a>
+                                <a class="toc-link" href="#errors">Error Handling</a>
+                                <a class="toc-link" href="#examples">Code Examples</a>
+                                <a class="toc-link" href="#limits">Rate Limits</a>
+                            </nav>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Main Documentation -->
+            <div class="col-lg-9">
+                <div class="mb-5">
+                    <h1 class="display-5 mb-3">
+                        <i class="fas fa-code me-3"></i>API Documentation
+                    </h1>
+                    <p class="lead">Complete guide to using the FFMPEG Video Processing API</p>
+                </div>
+
+                <!-- Overview -->
+                <section id="overview" class="mb-5">
+                    <h2><i class="fas fa-info-circle me-2"></i>Overview</h2>
+                    <p>The FFMPEG Video Merger API provides three powerful video processing capabilities:</p>
+                    
+                    <div class="row">
+                        <div class="col-md-4 mb-3">
+                            <div class="card h-100">
+                                <div class="card-body text-center">
+                                    <i class="fas fa-image fa-2x text-primary mb-3"></i>
+                                    <h5>Image + Audio</h5>
+                                    <p class="small">Create videos by combining static images with audio files</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <div class="card h-100">
+                                <div class="card-body text-center">
+                                    <i class="fas fa-film fa-2x text-primary mb-3"></i>
+                                    <h5>Video Merge</h5>
+                                    <p class="small">Concatenate multiple videos from URLs into one seamless video</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <div class="card h-100">
+                                <div class="card-body text-center">
+                                    <i class="fas fa-layer-group fa-2x text-primary mb-3"></i>
+                                    <h5>Picture in Picture</h5>
+                                    <p class="small">Overlay one video on top of another with customizable positioning</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="alert alert-info mt-4">
+                        <i class="fas fa-lightbulb me-2"></i>
+                        <strong>Base URL:</strong> <code>{{ request.url_root }}api/</code>
+                    </div>
+                </section>
+
+                <!-- Authentication -->
+                <section id="authentication" class="mb-5">
+                    <h2><i class="fas fa-key me-2"></i>Authentication</h2>
+                    <p>All API endpoints require authentication using API keys. You can provide your API key in three ways:</p>
+
+                    <div class="row">
+                        <div class="col-md-4 mb-3">
+                            <div class="card">
+                                <div class="card-header">
+                                    <h6 class="mb-0">Header (Recommended)</h6>
+                                </div>
+                                <div class="card-body">
+                                    <div class="code-block p-3">
+                                        <code>X-API-Key: your_api_key_here</code>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <div class="card">
+                                <div class="card-header">
+                                    <h6 class="mb-0">Query Parameter</h6>
+                                </div>
+                                <div class="card-body">
+                                    <div class="code-block p-3">
+                                        <code>?api_key=your_api_key_here</code>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <div class="card">
+                                <div class="card-header">
+                                    <h6 class="mb-0">Form Data</h6>
+                                </div>
+                                <div class="card-body">
+                                    <div class="code-block p-3">
+                                        <code>api_key=your_api_key_here</code>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="alert alert-warning">
+                        <i class="fas fa-exclamation-triangle me-2"></i>
+                        <strong>Need an API Key?</strong> 
+                        {% if current_user.is_authenticated %}
+                            <a href="{{ url_for('auth.dashboard') }}" class="alert-link">Visit your dashboard</a> to generate one.
+                        {% else %}
+                            <a href="{{ url_for('auth.register') }}" class="alert-link">Sign up for free</a> to get your API key.
+                        {% endif %}
+                    </div>
+                </section>
+
+                <!-- API Endpoints -->
+                <section id="endpoints" class="mb-5">
+                    <h2><i class="fas fa-plug me-2"></i>API Endpoints</h2>
+
+                    <!-- Image & Audio Merge -->
+                    <div id="merge-image-audio" class="api-endpoint">
+                        <div class="card">
+                            <div class="card-header">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <h4 class="mb-0">Image & Audio Merge</h4>
+                                    <span class="method-badge method-post">POST</span>
+                                </div>
+                                <code class="text-muted">/api/merge_image_audio</code>
+                            </div>
+                            <div class="card-body">
+                                <p>Create a video by combining a static image with an audio file. The image will be displayed for the duration of the audio.</p>
+                                
+                                <h6>Request Format</h6>
+                                <p><strong>Content-Type:</strong> <code>multipart/form-data</code></p>
+                                
+                                <h6>Parameters</h6>
+                                <div class="table-responsive">
+                                    <table class="table table-sm">
+                                        <thead>
+                                            <tr>
+                                                <th>Parameter</th>
+                                                <th>Type</th>
+                                                <th>Required</th>
+                                                <th>Description</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <tr>
+                                                <td><code>image</code></td>
+                                                <td>File</td>
+                                                <td>Yes</td>
+                                                <td>Image file (PNG, JPG, JPEG). Max 100MB.</td>
+                                            </tr>
+                                            <tr>
+                                                <td><code>audio</code></td>
+                                                <td>File</td>
+                                                <td>Yes</td>
+                                                <td>Audio file (MP3, WAV, M4A). Max 100MB.</td>
+                                            </tr>
+                                            <tr>
+                                                <td><code>api_key</code></td>
+                                                <td>String</td>
+                                                <td>Yes</td>
+                                                <td>Your API key (if not in header)</td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+
+                                <h6>Response</h6>
+                                <div class="code-block p-3">
+                                    <pre><code class="language-json">{
+  "success": true,
+  "message": "Video created successfully",
+  "download_url": "https://yourdomain.com/download/filename.mp4",
+  "filename": "unique_filename.mp4"
+}</code></pre>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Video Merge -->
+                    <div id="merge-videos" class="api-endpoint">
+                        <div class="card">
+                            <div class="card-header">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <h4 class="mb-0">Video Merge</h4>
+                                    <span class="method-badge method-post">POST</span>
+                                </div>
+                                <code class="text-muted">/api/merge_videos</code>
+                            </div>
+                            <div class="card-body">
+                                <p>Concatenate multiple videos from URLs into a single video. All videos should have the same aspect ratio for best results.</p>
+                                
+                                <h6>Request Format</h6>
+                                <p><strong>Content-Type:</strong> <code>application/json</code></p>
+                                
+                                <h6>Parameters</h6>
+                                <div class="table-responsive">
+                                    <table class="table table-sm">
+                                        <thead>
+                                            <tr>
+                                                <th>Parameter</th>
+                                                <th>Type</th>
+                                                <th>Required</th>
+                                                <th>Description</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <tr>
+                                                <td><code>video_urls</code></td>
+                                                <td>Array</td>
+                                                <td>Yes</td>
+                                                <td>Array of video URLs (minimum 2 required)</td>
+                                            </tr>
+                                            <tr>
+                                                <td><code>audio_url</code></td>
+                                                <td>String</td>
+                                                <td>No</td>
+                                                <td>Optional audio URL to replace original audio</td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+
+                                <h6>Request Example</h6>
+                                <div class="code-block p-3">
+                                    <pre><code class="language-json">{
+  "video_urls": [
+    "https://example.com/video1.mp4",
+    "https://example.com/video2.mp4",
+    "https://example.com/video3.mp4"
+  ],
+  "audio_url": "https://example.com/audio.mp3"
+}</code></pre>
+                                </div>
+
+                                <h6>Response</h6>
+                                <div class="code-block p-3">
+                                    <pre><code class="language-json">{
+  "success": true,
+  "message": "Videos merged successfully",
+  "download_url": "https://yourdomain.com/download/merged_filename.mp4",
+  "filename": "unique_merged_filename.mp4"
+}</code></pre>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Picture in Picture -->
+                    <div id="picture-in-picture" class="api-endpoint">
+                        <div class="card">
+                            <div class="card-header">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <h4 class="mb-0">Picture in Picture</h4>
+                                    <span class="method-badge method-post">POST</span>
+                                </div>
+                                <code class="text-muted">/api/picture_in_picture</code>
+                            </div>
+                            <div class="card-body">
+                                <p>Create a picture-in-picture video by overlaying one video on top of another with customizable positioning and scaling.</p>
+                                
+                                <h6>Request Format</h6>
+                                <p><strong>Content-Type:</strong> <code>application/json</code></p>
+                                
+                                <h6>Parameters</h6>
+                                <div class="table-responsive">
+                                    <table class="table table-sm">
+                                        <thead>
+                                            <tr>
+                                                <th>Parameter</th>
+                                                <th>Type</th>
+                                                <th>Required</th>
+                                                <th>Description</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <tr>
+                                                <td><code>main_video_url</code></td>
+                                                <td>String</td>
+                                                <td>Yes</td>
+                                                <td>URL of the main background video</td>
+                                            </tr>
+                                            <tr>
+                                                <td><code>pip_video_url</code></td>
+                                                <td>String</td>
+                                                <td>Yes</td>
+                                                <td>URL of the video to overlay (picture-in-picture)</td>
+                                            </tr>
+                                            <tr>
+                                                <td><code>position</code></td>
+                                                <td>String</td>
+                                                <td>No</td>
+                                                <td>Position of overlay. Options: top-left, top-center, top-right, middle-left, middle, middle-right, bottom-left, bottom-center, bottom-right. Default: bottom-right</td>
+                                            </tr>
+                                            <tr>
+                                                <td><code>scale</code></td>
+                                                <td>String</td>
+                                                <td>No</td>
+                                                <td>Scale of overlay video. Options: iw/4:ih/4 (quarter), iw/3:ih/3 (third), iw/2:ih/2 (half). Default: iw/4:ih/4</td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+
+                                <h6>Request Example</h6>
+                                <div class="code-block p-3">
+                                    <pre><code class="language-json">{
+  "main_video_url": "https://example.com/main-video.mp4",
+  "pip_video_url": "https://example.com/overlay-video.mp4",
+  "position": "top-right",
+  "scale": "iw/3:ih/3"
+}</code></pre>
+                                </div>
+
+                                <h6>Response</h6>
+                                <div class="code-block p-3">
+                                    <pre><code class="language-json">{
+  "success": true,
+  "message": "Picture-in-picture video created successfully",
+  "download_url": "https://yourdomain.com/download/pip_filename.mp4",
+  "filename": "unique_pip_filename.mp4"
+}</code></pre>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Error Handling -->
+                <section id="errors" class="mb-5">
+                    <h2><i class="fas fa-exclamation-triangle me-2"></i>Error Handling</h2>
+                    <p>All endpoints return consistent error responses with appropriate HTTP status codes.</p>
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <div class="card">
+                                <div class="card-header">
+                                    <h6 class="mb-0">Authentication Error (401)</h6>
+                                </div>
+                                <div class="card-body">
+                                    <div class="code-block p-3">
+                                        <pre><code class="language-json">{
+  "success": false,
+  "error": "API key is required"
+}</code></pre>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <div class="card">
+                                <div class="card-header">
+                                    <h6 class="mb-0">Validation Error (400)</h6>
+                                </div>
+                                <div class="card-body">
+                                    <div class="code-block p-3">
+                                        <pre><code class="language-json">{
+  "success": false,
+  "error": "Both image and audio files are required"
+}</code></pre>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <div class="card">
+                                <div class="card-header">
+                                    <h6 class="mb-0">File Too Large (413)</h6>
+                                </div>
+                                <div class="card-body">
+                                    <div class="code-block p-3">
+                                        <pre><code class="language-json">{
+  "success": false,
+  "error": "File too large. Maximum file size is 100MB."
+}</code></pre>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <div class="card">
+                                <div class="card-header">
+                                    <h6 class="mb-0">Processing Error (500)</h6>
+                                </div>
+                                <div class="card-body">
+                                    <div class="code-block p-3">
+                                        <pre><code class="language-json">{
+  "success": false,
+  "error": "FFMPEG processing failed: [details]"
+}</code></pre>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Code Examples -->
+                <section id="examples" class="mb-5">
+                    <h2><i class="fas fa-code me-2"></i>Code Examples</h2>
+
+                    <!-- Tabs for different languages -->
+                    <ul class="nav nav-pills mb-3" id="codeExampleTabs" role="tablist">
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link active" id="curl-tab" data-bs-toggle="pill" data-bs-target="#curl" type="button" role="tab">cURL</button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="python-tab" data-bs-toggle="pill" data-bs-target="#python" type="button" role="tab">Python</button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="javascript-tab" data-bs-toggle="pill" data-bs-target="#javascript" type="button" role="tab">JavaScript</button>
+                        </li>
+                    </ul>
+
+                    <div class="tab-content" id="codeExampleTabsContent">
+                        <!-- cURL Examples -->
+                        <div class="tab-pane fade show active" id="curl" role="tabpanel">
+                            <h5>Image & Audio Merge</h5>
+                            <div class="code-block p-3 mb-4">
+                                <pre><code class="language-bash">curl -X POST "{{ request.url_root }}api/merge_image_audio" \
+  -H "X-API-Key: your_api_key_here" \
+  -F "image=@/path/to/image.jpg" \
+  -F "audio=@/path/to/audio.mp3"</code></pre>
+                            </div>
+
+                            <h5>Video Merge</h5>
+                            <div class="code-block p-3 mb-4">
+                                <pre><code class="language-bash">curl -X POST "{{ request.url_root }}api/merge_videos" \
+  -H "Content-Type: application/json" \
+  -H "X-API-Key: your_api_key_here" \
+  -d '{
+    "video_urls": [
+      "https://example.com/video1.mp4",
+      "https://example.com/video2.mp4"
+    ]
+  }'</code></pre>
+                            </div>
+
+                            <h5>Picture in Picture</h5>
+                            <div class="code-block p-3">
+                                <pre><code class="language-bash">curl -X POST "{{ request.url_root }}api/picture_in_picture" \
+  -H "Content-Type: application/json" \
+  -H "X-API-Key: your_api_key_here" \
+  -d '{
+    "main_video_url": "https://example.com/main.mp4",
+    "pip_video_url": "https://example.com/overlay.mp4",
+    "position": "top-right",
+    "scale": "iw/4:ih/4"
+  }'</code></pre>
+                            </div>
+                        </div>
+
+                        <!-- Python Examples -->
+                        <div class="tab-pane fade" id="python" role="tabpanel">
+                            <h5>Image & Audio Merge</h5>
+                            <div class="code-block p-3 mb-4">
+                                <pre><code class="language-python">import requests
+
+url = "{{ request.url_root }}api/merge_image_audio"
+headers = {"X-API-Key": "your_api_key_here"}
+
+with open("image.jpg", "rb") as img, open("audio.mp3", "rb") as aud:
+    files = {
+        "image": img,
+        "audio": aud
+    }
+    response = requests.post(url, headers=headers, files=files)
+    
+if response.status_code == 200:
+    result = response.json()
+    download_url = result["download_url"]
+    print(f"Video created: {download_url}")
+else:
+    print(f"Error: {response.json()['error']}")</code></pre>
+                            </div>
+
+                            <h5>Video Merge</h5>
+                            <div class="code-block p-3 mb-4">
+                                <pre><code class="language-python">import requests
+import json
+
+url = "{{ request.url_root }}api/merge_videos"
+headers = {
+    "Content-Type": "application/json",
+    "X-API-Key": "your_api_key_here"
+}
+data = {
+    "video_urls": [
+        "https://example.com/video1.mp4",
+        "https://example.com/video2.mp4"
+    ]
+}
+
+response = requests.post(url, headers=headers, json=data)
+
+if response.status_code == 200:
+    result = response.json()
+    download_url = result["download_url"]
+    print(f"Videos merged: {download_url}")
+else:
+    print(f"Error: {response.json()['error']}")</code></pre>
+                            </div>
+
+                            <h5>Picture in Picture</h5>
+                            <div class="code-block p-3">
+                                <pre><code class="language-python">import requests
+
+url = "{{ request.url_root }}api/picture_in_picture"
+headers = {
+    "Content-Type": "application/json",
+    "X-API-Key": "your_api_key_here"
+}
+data = {
+    "main_video_url": "https://example.com/main.mp4",
+    "pip_video_url": "https://example.com/overlay.mp4",
+    "position": "top-right",
+    "scale": "iw/4:ih/4"
+}
+
+response = requests.post(url, headers=headers, json=data)
+
+if response.status_code == 200:
+    result = response.json()
+    download_url = result["download_url"]
+    print(f"PiP video created: {download_url}")
+else:
+    print(f"Error: {response.json()['error']}")</code></pre>
+                            </div>
+                        </div>
+
+                        <!-- JavaScript Examples -->
+                        <div class="tab-pane fade" id="javascript" role="tabpanel">
+                            <h5>Image & Audio Merge</h5>
+                            <div class="code-block p-3 mb-4">
+                                <pre><code class="language-javascript">const formData = new FormData();
+formData.append('image', imageFile);
+formData.append('audio', audioFile);
+
+const response = await fetch('{{ request.url_root }}api/merge_image_audio', {
+    method: 'POST',
+    headers: {
+        'X-API-Key': 'your_api_key_here'
+    },
+    body: formData
+});
+
+const result = await response.json();
+
+if (result.success) {
+    console.log('Video created:', result.download_url);
+} else {
+    console.error('Error:', result.error);
+}</code></pre>
+                            </div>
+
+                            <h5>Video Merge</h5>
+                            <div class="code-block p-3 mb-4">
+                                <pre><code class="language-javascript">const data = {
+    video_urls: [
+        'https://example.com/video1.mp4',
+        'https://example.com/video2.mp4'
+    ]
+};
+
+const response = await fetch('{{ request.url_root }}api/merge_videos', {
+    method: 'POST',
+    headers: {
+        'Content-Type': 'application/json',
+        'X-API-Key': 'your_api_key_here'
+    },
+    body: JSON.stringify(data)
+});
+
+const result = await response.json();
+
+if (result.success) {
+    console.log('Videos merged:', result.download_url);
+} else {
+    console.error('Error:', result.error);
+}</code></pre>
+                            </div>
+
+                            <h5>Picture in Picture</h5>
+                            <div class="code-block p-3">
+                                <pre><code class="language-javascript">const data = {
+    main_video_url: 'https://example.com/main.mp4',
+    pip_video_url: 'https://example.com/overlay.mp4',
+    position: 'top-right',
+    scale: 'iw/4:ih/4'
+};
+
+const response = await fetch('{{ request.url_root }}api/picture_in_picture', {
+    method: 'POST',
+    headers: {
+        'Content-Type': 'application/json',
+        'X-API-Key': 'your_api_key_here'
+    },
+    body: JSON.stringify(data)
+});
+
+const result = await response.json();
+
+if (result.success) {
+    console.log('PiP video created:', result.download_url);
+} else {
+    console.error('Error:', result.error);
+}</code></pre>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Rate Limits -->
+                <section id="limits" class="mb-5">
+                    <h2><i class="fas fa-tachometer-alt me-2"></i>Rate Limits & Guidelines</h2>
+                    
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <div class="card">
+                                <div class="card-header">
+                                    <h6 class="mb-0"><i class="fas fa-clock me-2"></i>Processing Times</h6>
+                                </div>
+                                <div class="card-body">
+                                    <ul class="list-unstyled mb-0">
+                                        <li><strong>Image + Audio:</strong> 1-5 minutes</li>
+                                        <li><strong>Video Merge:</strong> 2-10 minutes</li>
+                                        <li><strong>Picture in Picture:</strong> 3-15 minutes</li>
+                                    </ul>
+                                    <small class="text-muted">Processing time depends on file sizes and complexity</small>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <div class="card">
+                                <div class="card-header">
+                                    <h6 class="mb-0"><i class="fas fa-weight-hanging me-2"></i>File Limits</h6>
+                                </div>
+                                <div class="card-body">
+                                    <ul class="list-unstyled mb-0">
+                                        <li><strong>Max file size:</strong> 100MB per file</li>
+                                        <li><strong>Supported image formats:</strong> PNG, JPG, JPEG</li>
+                                        <li><strong>Supported audio formats:</strong> MP3, WAV, M4A</li>
+                                        <li><strong>Supported video formats:</strong> MP4, WebM, MOV</li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle me-2"></i>
+                        <strong>Best Practices:</strong> For video merging, ensure all videos have the same resolution and aspect ratio. For picture-in-picture, the overlay video should be smaller than the main video for best results.
+                    </div>
+                </section>
+
+                <!-- Footer -->
+                <div class="text-center py-4 border-top">
+                    <p class="text-muted">
+                        Need help? Questions about the API? 
+                        {% if current_user.is_authenticated %}
+                            <a href="{{ url_for('auth.dashboard') }}">Visit your dashboard</a> or 
+                        {% endif %}
+                        <a href="{{ url_for('index') }}">try the web interface</a> first.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-core.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/plugins/autoloader/prism-autoloader.min.js"></script>
+    
+    <script>
+        // Smooth scrolling for table of contents
+        document.querySelectorAll('.toc-link').forEach(link => {
+            link.addEventListener('click', function(e) {
+                e.preventDefault();
+                const targetId = this.getAttribute('href').substring(1);
+                const targetElement = document.getElementById(targetId);
+                if (targetElement) {
+                    targetElement.scrollIntoView({
+                        behavior: 'smooth',
+                        block: 'start'
+                    });
+                    
+                    // Update active link
+                    document.querySelectorAll('.toc-link').forEach(l => l.classList.remove('active'));
+                    this.classList.add('active');
+                }
+            });
+        });
+
+        // Update active link on scroll
+        window.addEventListener('scroll', () => {
+            const sections = document.querySelectorAll('section[id]');
+            const scrollPos = window.scrollY + 100;
+            
+            sections.forEach(section => {
+                const sectionTop = section.offsetTop;
+                const sectionHeight = section.offsetHeight;
+                const sectionId = section.getAttribute('id');
+                
+                if (scrollPos >= sectionTop && scrollPos < sectionTop + sectionHeight) {
+                    document.querySelectorAll('.toc-link').forEach(link => {
+                        link.classList.remove('active');
+                        if (link.getAttribute('href') === `#${sectionId}`) {
+                            link.classList.add('active');
+                        }
+                    });
+                }
+            });
+        });
+    </script>
+</body>
+</html>
