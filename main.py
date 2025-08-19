@@ -48,7 +48,7 @@ os.makedirs(OUTPUT_FOLDER, exist_ok=True)
 db.init_app(app)
 login_manager = LoginManager()
 login_manager.init_app(app)
-login_manager.login_view = 'auth.login'
+login_manager.login_view = 'auth.login'  # type: ignore
 login_manager.login_message = 'Please log in to access this page.'
 
 @login_manager.user_loader
@@ -269,6 +269,7 @@ def check_video_compatibility(video_paths):
 
 def merge_videos_with_ffmpeg(video_paths, output_path, audio_path=None):
     """Merge multiple videos using FFMPEG"""
+    temp_list_path = None
     try:
         # First, let's try the simple concat approach
         temp_list_path = f"{output_path}.txt"
@@ -358,11 +359,13 @@ def merge_videos_with_ffmpeg(video_paths, output_path, audio_path=None):
             
     except subprocess.TimeoutExpired:
         logging.error("Video merge processing timed out")
-        cleanup_file(temp_list_path)
+        if temp_list_path:
+            cleanup_file(temp_list_path)
         return False, "Video merge processing timed out"
     except Exception as e:
         logging.error(f"Video merge processing error: {str(e)}")
-        cleanup_file(temp_list_path)
+        if temp_list_path:
+            cleanup_file(temp_list_path)
         return False, f"Video merge error: {str(e)}"
 
 def merge_videos_filter_complex(video_paths, output_path, audio_path=None):
@@ -956,7 +959,7 @@ def change_password():
             return redirect(url_for('profile'))
         
         # Check password length
-        if len(new_password) < 6:
+        if new_password and len(new_password) < 6:
             flash('Password must be at least 6 characters long', 'error')
             return redirect(url_for('profile'))
         
