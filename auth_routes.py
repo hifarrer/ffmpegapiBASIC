@@ -56,7 +56,7 @@ def logout():
 @auth.route('/dashboard')
 @login_required
 def dashboard():
-    api_keys = current_user.api_keys.filter_by(is_active=True).all()
+    api_keys = [key for key in current_user.api_keys if key.is_active]
     return render_template('dashboard.html', api_keys=api_keys)
 
 @auth.route('/generate-api-key', methods=['GET', 'POST'])
