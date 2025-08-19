@@ -76,10 +76,12 @@
                             <nav class="nav flex-column">
                                 <a class="toc-link" href="#overview">Overview</a>
                                 <a class="toc-link" href="#authentication">Authentication</a>
+                                <a class="toc-link" href="#async-processing">Async Processing</a>
                                 <a class="toc-link" href="#endpoints">API Endpoints</a>
                                 <a class="toc-link ms-3" href="#merge-image-audio">Image & Audio Merge</a>
                                 <a class="toc-link ms-3" href="#merge-videos">Video Merge</a>
                                 <a class="toc-link ms-3" href="#picture-in-picture">Picture in Picture</a>
+                                <a class="toc-link ms-3" href="#job-status">Job Status</a>
                                 <a class="toc-link" href="#errors">Error Handling</a>
                                 <a class="toc-link" href="#examples">Code Examples</a>
                                 <a class="toc-link" href="#limits">Rate Limits</a>
@@ -194,6 +196,66 @@
                     </div>
                 </section>
 
+                <!-- Async Processing -->
+                <section id="async-processing" class="mb-5">
+                    <h2><i class="fas fa-clock me-2"></i>Async Processing</h2>
+                    <p>For long-running video processing tasks that may take several minutes, you can use async processing to avoid timeouts and improve user experience.</p>
+                    
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle me-2"></i>
+                        <strong>How it works:</strong> Add <code>"async": true</code> to your request JSON to process jobs in the background. You'll receive a <code>job_id</code> immediately and can check progress using the job status endpoint.
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h6>Sync Processing (Default)</h6>
+                            <ul class="list-unstyled">
+                                <li><i class="fas fa-check text-success me-2"></i>Process immediately</li>
+                                <li><i class="fas fa-check text-success me-2"></i>Get result in same response</li>
+                                <li><i class="fas fa-times text-danger me-2"></i>May timeout for large files</li>
+                            </ul>
+                        </div>
+                        <div class="col-md-6">
+                            <h6>Async Processing</h6>
+                            <ul class="list-unstyled">
+                                <li><i class="fas fa-check text-success me-2"></i>No timeout issues</li>
+                                <li><i class="fas fa-check text-success me-2"></i>Better for large files</li>
+                                <li><i class="fas fa-check text-success me-2"></i>Check progress anytime</li>
+                            </ul>
+                        </div>
+                    </div>
+
+                    <h6>Job Status Values</h6>
+                    <div class="table-responsive">
+                        <table class="table table-sm">
+                            <thead>
+                                <tr>
+                                    <th>Status</th>
+                                    <th>Description</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td><span class="badge bg-secondary">pending</span></td>
+                                    <td>Job is queued and waiting to be processed</td>
+                                </tr>
+                                <tr>
+                                    <td><span class="badge bg-primary">processing</span></td>
+                                    <td>Job is currently being processed</td>
+                                </tr>
+                                <tr>
+                                    <td><span class="badge bg-success">completed</span></td>
+                                    <td>Job finished successfully, download URL available</td>
+                                </tr>
+                                <tr>
+                                    <td><span class="badge bg-danger">failed</span></td>
+                                    <td>Job failed, error message available</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </section>
+
                 <!-- API Endpoints -->
                 <section id="endpoints" class="mb-5">
                     <h2><i class="fas fa-plug me-2"></i>API Endpoints</h2>
@@ -278,6 +340,12 @@
                                                 <td>Yes</td>
                                                 <td>URL to audio file (MP3, WAV, M4A)</td>
                                             </tr>
+                                            <tr>
+                                                <td><code>async</code></td>
+                                                <td>Boolean</td>
+                                                <td>No</td>
+                                                <td>Process job asynchronously (default: false)</td>
+                                            </tr>
                                         </tbody>
                                     </table>
                                 </div>
@@ -317,7 +385,8 @@
   -H "Content-Type: application/json" \
   -d '{
     "image_url": "https://example.com/image.jpg",
-    "audio_url": "https://example.com/audio.mp3"
+    "audio_url": "https://example.com/audio.mp3",
+    "async": true
   }'</code></pre>
                                         </div>
                                     </div>
@@ -336,9 +405,17 @@ with open('image.jpg', 'rb') as img, open('audio.mp3', 'rb') as aud:
                            files=files, headers=headers)
 
 # Method 2: URLs
+# Sync processing (default)
 data = {
     'image_url': 'https://example.com/image.jpg',
     'audio_url': 'https://example.com/audio.mp3'
+}
+
+# Async processing
+data_async = {
+    'image_url': 'https://example.com/image.jpg',
+    'audio_url': 'https://example.com/audio.mp3',
+    'async': True
 }
 headers = {
     'X-API-Key': 'your_api_key_here',
@@ -387,13 +464,24 @@ fetch('https://ffmpegapi.net/api/merge_image_audio', {
                                     </div>
                                 </div>
 
-                                <h6>Response</h6>
+                                <h6>Sync Response</h6>
                                 <div class="code-block p-3">
                                     <pre><code class="language-json">{
   "success": true,
   "message": "Video created successfully",
   "download_url": "https://ffmpegapi.net/download/filename.mp4",
   "filename": "unique_filename.mp4"
+}</code></pre>
+                                </div>
+
+                                <h6>Async Response</h6>
+                                <div class="code-block p-3">
+                                    <pre><code class="language-json">{
+  "success": true,
+  "job_id": "550e8400-e29b-41d4-a716-446655440000",
+  "status": "pending",
+  "message": "Job submitted for async processing. Use /api/job/{job_id}/status to check progress.",
+  "status_url": "https://ffmpegapi.net/api/job/550e8400-e29b-41d4-a716-446655440000/status"
 }</code></pre>
                                 </div>
                             </div>
@@ -440,6 +528,12 @@ fetch('https://ffmpegapi.net/api/merge_image_audio', {
                                                 <td>No</td>
                                                 <td>Optional audio URL to replace original audio</td>
                                             </tr>
+                                            <tr>
+                                                <td><code>async</code></td>
+                                                <td>Boolean</td>
+                                                <td>No</td>
+                                                <td>Process job asynchronously (default: false)</td>
+                                            </tr>
                                         </tbody>
                                     </table>
                                 </div>
@@ -452,17 +546,29 @@ fetch('https://ffmpegapi.net/api/merge_image_audio', {
     "https://example.com/video2.mp4",
     "https://example.com/video3.mp4"
   ],
-  "audio_url": "https://example.com/audio.mp3"
+  "audio_url": "https://example.com/audio.mp3",
+  "async": true
 }</code></pre>
                                 </div>
 
-                                <h6>Response</h6>
+                                <h6>Sync Response</h6>
                                 <div class="code-block p-3">
                                     <pre><code class="language-json">{
   "success": true,
   "message": "Videos merged successfully",
   "download_url": "https://ffmpegapi.net/download/merged_filename.mp4",
   "filename": "unique_merged_filename.mp4"
+}</code></pre>
+                                </div>
+
+                                <h6>Async Response</h6>
+                                <div class="code-block p-3">
+                                    <pre><code class="language-json">{
+  "success": true,
+  "job_id": "550e8400-e29b-41d4-a716-446655440000",
+  "status": "pending",
+  "message": "Job submitted for async processing. Use /api/job/{job_id}/status to check progress.",
+  "status_url": "https://ffmpegapi.net/api/job/550e8400-e29b-41d4-a716-446655440000/status"
 }</code></pre>
                                 </div>
                             </div>
@@ -527,6 +633,12 @@ fetch('https://ffmpegapi.net/api/merge_image_audio', {
                                                 <td>No</td>
                                                 <td>Audio source for final video. Options: video1 (main video audio), video2 (overlay video audio), mute (no audio). Default: video1</td>
                                             </tr>
+                                            <tr>
+                                                <td><code>async</code></td>
+                                                <td>Boolean</td>
+                                                <td>No</td>
+                                                <td>Process job asynchronously (default: false)</td>
+                                            </tr>
                                         </tbody>
                                     </table>
                                 </div>
@@ -538,7 +650,8 @@ fetch('https://ffmpegapi.net/api/merge_image_audio', {
   "pip_video_url": "https://example.com/overlay-video.mp4",
   "position": "top-right",
   "scale": "iw/3:ih/3",
-  "audio_option": "video2"
+  "audio_option": "video2",
+  "async": true
 }</code></pre>
                                 </div>
 
@@ -550,6 +663,123 @@ fetch('https://ffmpegapi.net/api/merge_image_audio', {
   "download_url": "https://ffmpegapi.net/download/pip_filename.mp4",
   "filename": "unique_pip_filename.mp4"
 }</code></pre>
+                                </div>
+
+                                <h6>Async Response</h6>
+                                <div class="code-block p-3">
+                                    <pre><code class="language-json">{
+  "success": true,
+  "job_id": "550e8400-e29b-41d4-a716-446655440000",
+  "status": "pending",
+  "message": "Job submitted for async processing. Use /api/job/{job_id}/status to check progress.",
+  "status_url": "https://ffmpegapi.net/api/job/550e8400-e29b-41d4-a716-446655440000/status"
+}</code></pre>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Job Status -->
+                    <div id="job-status" class="api-endpoint">
+                        <div class="card">
+                            <div class="card-header">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <h4 class="mb-0">Job Status</h4>
+                                    <span class="method-badge method-get">GET</span>
+                                </div>
+                                <code class="text-muted">/api/job/{job_id}/status</code>
+                            </div>
+                            <div class="card-body">
+                                <p>Check the status of an asynchronous job. Use this endpoint to monitor the progress of jobs submitted with <code>async: true</code>.</p>
+                                
+                                <h6>Parameters</h6>
+                                <div class="table-responsive">
+                                    <table class="table table-sm">
+                                        <thead>
+                                            <tr>
+                                                <th>Parameter</th>
+                                                <th>Type</th>
+                                                <th>Required</th>
+                                                <th>Description</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <tr>
+                                                <td><code>job_id</code></td>
+                                                <td>String</td>
+                                                <td>Yes</td>
+                                                <td>Job ID returned when submitting async request</td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+
+                                <h6>Request Example</h6>
+                                <div class="code-block p-3">
+                                    <pre><code class="language-bash">curl -X GET "https://ffmpegapi.net/api/job/550e8400-e29b-41d4-a716-446655440000/status" \
+  -H "X-API-Key: your_api_key_here"</code></pre>
+                                </div>
+
+                                <h6>Response Examples</h6>
+                                
+                                <div class="mb-3">
+                                    <h6 class="mb-2">Pending Job</h6>
+                                    <div class="code-block p-3">
+                                        <pre><code class="language-json">{
+  "success": true,
+  "job_id": "550e8400-e29b-41d4-a716-446655440000",
+  "job_type": "merge_image_audio",
+  "status": "pending",
+  "created_at": "2025-08-19T22:00:00.000Z",
+  "updated_at": "2025-08-19T22:00:00.000Z"
+}</code></pre>
+                                    </div>
+                                </div>
+
+                                <div class="mb-3">
+                                    <h6 class="mb-2">Processing Job</h6>
+                                    <div class="code-block p-3">
+                                        <pre><code class="language-json">{
+  "success": true,
+  "job_id": "550e8400-e29b-41d4-a716-446655440000",
+  "job_type": "merge_image_audio",
+  "status": "processing",
+  "created_at": "2025-08-19T22:00:00.000Z",
+  "updated_at": "2025-08-19T22:01:30.000Z"
+}</code></pre>
+                                    </div>
+                                </div>
+
+                                <div class="mb-3">
+                                    <h6 class="mb-2">Completed Job</h6>
+                                    <div class="code-block p-3">
+                                        <pre><code class="language-json">{
+  "success": true,
+  "job_id": "550e8400-e29b-41d4-a716-446655440000",
+  "job_type": "merge_image_audio",
+  "status": "completed",
+  "created_at": "2025-08-19T22:00:00.000Z",
+  "updated_at": "2025-08-19T22:03:45.000Z",
+  "message": "Video created successfully",
+  "download_url": "https://ffmpegapi.net/download/filename.mp4",
+  "filename": "unique_filename.mp4"
+}</code></pre>
+                                    </div>
+                                </div>
+
+                                <div class="mb-3">
+                                    <h6 class="mb-2">Failed Job</h6>
+                                    <div class="code-block p-3">
+                                        <pre><code class="language-json">{
+  "success": true,
+  "job_id": "550e8400-e29b-41d4-a716-446655440000",
+  "job_type": "merge_image_audio",
+  "status": "failed",
+  "created_at": "2025-08-19T22:00:00.000Z",
+  "updated_at": "2025-08-19T22:02:15.000Z",
+  "error": "Failed to download image: Invalid URL"
+}</code></pre>
+                                    </div>
                                 </div>
                             </div>
                         </div>
