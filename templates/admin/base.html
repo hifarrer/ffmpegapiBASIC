@@ -114,6 +114,13 @@
                             </a>
                         </li>
                         <li class="nav-item">
+                            <a class="nav-link {% if request.endpoint == 'admin.plans_management' %}active{% endif %}" 
+                               href="{{ url_for('admin.plans_management') }}">
+                                <i class="fas fa-credit-card me-2"></i>
+                                Plans
+                            </a>
+                        </li>
+                        <li class="nav-item">
                             <a class="nav-link {% if request.endpoint == 'admin.site_settings' %}active{% endif %}" 
                                href="{{ url_for('admin.site_settings') }}">
                                 <i class="fas fa-cog me-2"></i>

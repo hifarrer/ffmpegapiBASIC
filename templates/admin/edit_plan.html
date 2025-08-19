@@ -1,0 +1,160 @@
+{% extends "admin/base.html" %}
+
+{% block title %}Edit Plan: {{ plan.name }}{% endblock %}
+
+{% block content %}
+<div class="admin-header">
+    <h1><i class="fas fa-edit me-2"></i>Edit Plan: {{ plan.name }}</h1>
+    <p class="mb-0">Modify subscription plan details and pricing</p>
+</div>
+
+<div class="row justify-content-center">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-body">
+                <form method="POST">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="name" class="form-label">
+                                <i class="fas fa-tag me-2"></i>Plan Name
+                            </label>
+                            <input type="text" class="form-control" id="name" name="name" 
+                                   value="{{ plan.name }}" required>
+                            <div class="form-text">Unique name for this plan</div>
+                        </div>
+                        
+                        <div class="col-md-6 mb-3">
+                            <label for="sort_order" class="form-label">
+                                <i class="fas fa-sort-numeric-up me-2"></i>Sort Order
+                            </label>
+                            <input type="number" class="form-control" id="sort_order" name="sort_order" 
+                                   value="{{ plan.sort_order }}" min="0">
+                            <div class="form-text">Display order (lower numbers appear first)</div>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="description" class="form-label">
+                            <i class="fas fa-align-left me-2"></i>Description
+                        </label>
+                        <textarea class="form-control" id="description" name="description" rows="2">{{ plan.description or '' }}</textarea>
+                        <div class="form-text">Optional description for users</div>
+                    </div>
+                    
+                    <div class="mb-4">
+                        <label for="api_calls_per_month" class="form-label">
+                            <i class="fas fa-server me-2"></i>API Calls Per Month
+                        </label>
+                        <input type="number" class="form-control" id="api_calls_per_month" 
+                               name="api_calls_per_month" value="{{ plan.api_calls_per_month }}" 
+                               required min="0">
+                        <div class="form-text">Maximum API calls allowed per month</div>
+                    </div>
+                    
+                    <div class="card mb-4">
+                        <div class="card-header">
+                            <h6 class="card-title mb-0">
+                                <i class="fas fa-dollar-sign me-2"></i>Pricing
+                            </h6>
+                        </div>
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label for="monthly_price" class="form-label">Monthly Price ($)</label>
+                                    <input type="number" class="form-control" id="monthly_price" 
+                                           name="monthly_price" step="0.01" min="0" 
+                                           value="{{ '%.2f'|format(plan.monthly_price) }}">
+                                    <div class="form-text">Price charged monthly</div>
+                                </div>
+                                
+                                <div class="col-md-6 mb-3">
+                                    <label for="yearly_price" class="form-label">Yearly Price ($)</label>
+                                    <input type="number" class="form-control" id="yearly_price" 
+                                           name="yearly_price" step="0.01" min="0" 
+                                           value="{{ '%.2f'|format(plan.yearly_price) }}">
+                                    <div class="form-text">Price charged yearly (usually discounted)</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="card mb-4">
+                        <div class="card-header">
+                            <h6 class="card-title mb-0">
+                                <i class="fab fa-stripe me-2"></i>Stripe Integration
+                            </h6>
+                        </div>
+                        <div class="card-body">
+                            <div class="alert alert-info">
+                                <i class="fas fa-info-circle me-2"></i>
+                                <strong>Stripe Price IDs:</strong> These are created in your Stripe dashboard 
+                                and link this plan to Stripe's billing system.
+                            </div>
+                            
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label for="stripe_monthly_price_id" class="form-label">
+                                        Monthly Stripe Price ID
+                                    </label>
+                                    <input type="text" class="form-control" id="stripe_monthly_price_id" 
+                                           name="stripe_monthly_price_id" 
+                                           value="{{ plan.stripe_monthly_price_id or '' }}"
+                                           placeholder="price_1234567890abcdef">
+                                    <div class="form-text">Stripe price ID for monthly billing</div>
+                                </div>
+                                
+                                <div class="col-md-6 mb-3">
+                                    <label for="stripe_yearly_price_id" class="form-label">
+                                        Yearly Stripe Price ID
+                                    </label>
+                                    <input type="text" class="form-control" id="stripe_yearly_price_id" 
+                                           name="stripe_yearly_price_id" 
+                                           value="{{ plan.stripe_yearly_price_id or '' }}"
+                                           placeholder="price_0987654321fedcba">
+                                    <div class="form-text">Stripe price ID for yearly billing</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                        <a href="{{ url_for('admin.plans_management') }}" class="btn btn-outline-secondary me-md-2">
+                            <i class="fas fa-arrow-left me-2"></i>Cancel
+                        </a>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-save me-2"></i>Update Plan
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+        
+        <!-- Plan History -->
+        <div class="card mt-4">
+            <div class="card-header">
+                <h6 class="card-title mb-0">
+                    <i class="fas fa-history me-2"></i>Plan Information
+                </h6>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <p><strong>Created:</strong> {{ plan.created_at.strftime('%B %d, %Y at %I:%M %p') if plan.created_at else 'Unknown' }}</p>
+                        <p><strong>Status:</strong> 
+                            {% if plan.is_active %}
+                                <span class="badge bg-success">Active</span>
+                            {% else %}
+                                <span class="badge bg-secondary">Inactive</span>
+                            {% endif %}
+                        </p>
+                    </div>
+                    <div class="col-md-6">
+                        <p><strong>Last Updated:</strong> {{ plan.updated_at.strftime('%B %d, %Y at %I:%M %p') if plan.updated_at else 'Never' }}</p>
+                        <p><strong>Plan ID:</strong> #{{ plan.id }}</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

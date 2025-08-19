@@ -1,0 +1,171 @@
+{% extends "admin/base.html" %}
+
+{% block title %}Subscription Plans{% endblock %}
+
+{% block content %}
+<div class="admin-header">
+    <h1><i class="fas fa-credit-card me-2"></i>Subscription Plans</h1>
+    <p class="mb-0">Manage subscription plans and pricing</p>
+</div>
+
+<div class="row mb-3">
+    <div class="col-md-6">
+        <div class="d-flex align-items-center">
+            <h5 class="mb-0">Total Plans: {{ plans|length }}</h5>
+        </div>
+    </div>
+    <div class="col-md-6 text-end">
+        <a href="{{ url_for('admin.add_plan') }}" class="btn btn-primary me-2">
+            <i class="fas fa-plus me-2"></i>Add New Plan
+        </a>
+        {% if plans|length == 0 %}
+        <form method="POST" action="{{ url_for('admin.initialize_default_plans') }}" class="d-inline">
+            <button type="submit" class="btn btn-success">
+                <i class="fas fa-magic me-2"></i>Create Default Plans
+            </button>
+        </form>
+        {% endif %}
+    </div>
+</div>
+
+{% if plans %}
+    <div class="row">
+        {% for plan in plans %}
+        <div class="col-md-4 mb-4">
+            <div class="card h-100 {% if not plan.is_active %}opacity-75{% endif %}">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="card-title mb-0">
+                        {{ plan.name }}
+                        {% if not plan.is_active %}
+                            <span class="badge bg-secondary ms-2">Inactive</span>
+                        {% endif %}
+                    </h5>
+                    <div class="dropdown">
+                        <button class="btn btn-outline-secondary btn-sm" type="button" data-bs-toggle="dropdown">
+                            <i class="fas fa-ellipsis-v"></i>
+                        </button>
+                        <ul class="dropdown-menu">
+                            <li>
+                                <a class="dropdown-item" href="{{ url_for('admin.edit_plan', plan_id=plan.id) }}">
+                                    <i class="fas fa-edit me-2"></i>Edit
+                                </a>
+                            </li>
+                            <li>
+                                <form method="POST" action="{{ url_for('admin.toggle_plan_status', plan_id=plan.id) }}" class="d-inline">
+                                    {% if plan.is_active %}
+                                        <button type="submit" class="dropdown-item text-warning">
+                                            <i class="fas fa-pause me-2"></i>Deactivate
+                                        </button>
+                                    {% else %}
+                                        <button type="submit" class="dropdown-item text-success">
+                                            <i class="fas fa-play me-2"></i>Activate
+                                        </button>
+                                    {% endif %}
+                                </form>
+                            </li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li>
+                                <button class="dropdown-item text-danger" data-bs-toggle="modal" 
+                                        data-bs-target="#deletePlanModal{{ plan.id }}">
+                                    <i class="fas fa-trash me-2"></i>Delete
+                                </button>
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <p class="card-text text-muted">{{ plan.description or 'No description provided' }}</p>
+                    
+                    <div class="mb-3">
+                        <h6><i class="fas fa-server me-2"></i>API Calls</h6>
+                        <div class="d-flex justify-content-between">
+                            <span>Per Month:</span>
+                            <strong>{{ plan.api_calls_per_month }}</strong>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <h6><i class="fas fa-dollar-sign me-2"></i>Pricing</h6>
+                        <div class="d-flex justify-content-between mb-1">
+                            <span>Monthly:</span>
+                            <strong>${{ "%.2f"|format(plan.monthly_price) }}</strong>
+                        </div>
+                        <div class="d-flex justify-content-between">
+                            <span>Yearly:</span>
+                            <strong>${{ "%.2f"|format(plan.yearly_price) }}</strong>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <h6><i class="fab fa-stripe me-2"></i>Stripe Integration</h6>
+                        <div class="mb-1">
+                            <small class="text-muted">Monthly Price ID:</small>
+                            <br>
+                            <code class="small">{{ plan.stripe_monthly_price_id or 'Not set' }}</code>
+                        </div>
+                        <div>
+                            <small class="text-muted">Yearly Price ID:</small>
+                            <br>
+                            <code class="small">{{ plan.stripe_yearly_price_id or 'Not set' }}</code>
+                        </div>
+                    </div>
+                </div>
+                <div class="card-footer">
+                    <small class="text-muted">
+                        <i class="fas fa-sort-numeric-up me-1"></i>Sort Order: {{ plan.sort_order }}
+                    </small>
+                    <br>
+                    <small class="text-muted">
+                        <i class="fas fa-calendar me-1"></i>Created: {{ plan.created_at.strftime('%m/%d/%Y') if plan.created_at else 'Unknown' }}
+                    </small>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Delete Plan Modal -->
+        <div class="modal fade" id="deletePlanModal{{ plan.id }}" tabindex="-1">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">Confirm Deletion</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <p>Are you sure you want to delete the <strong>{{ plan.name }}</strong> plan?</p>
+                        <div class="alert alert-warning">
+                            <i class="fas fa-exclamation-triangle me-2"></i>
+                            This action cannot be undone. Users subscribed to this plan may be affected.
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                        <form method="POST" action="{{ url_for('admin.delete_plan', plan_id=plan.id) }}" class="d-inline">
+                            <button type="submit" class="btn btn-danger">
+                                <i class="fas fa-trash me-2"></i>Delete Plan
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    
+{% else %}
+    <div class="card">
+        <div class="card-body text-center py-5">
+            <i class="fas fa-credit-card fa-3x text-muted mb-3"></i>
+            <h4 class="text-muted">No Subscription Plans</h4>
+            <p class="text-muted mb-4">No subscription plans have been created yet.</p>
+            <form method="POST" action="{{ url_for('admin.initialize_default_plans') }}" class="d-inline">
+                <button type="submit" class="btn btn-success me-2">
+                    <i class="fas fa-magic me-2"></i>Create Default Plans
+                </button>
+            </form>
+            <a href="{{ url_for('admin.add_plan') }}" class="btn btn-primary">
+                <i class="fas fa-plus me-2"></i>Add New Plan
+            </a>
+        </div>
+    </div>
+{% endif %}
+{% endblock %}

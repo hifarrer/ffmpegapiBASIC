@@ -4,7 +4,7 @@ from werkzeug.security import check_password_hash, generate_password_hash
 from functools import wraps
 import logging
 from datetime import datetime, timedelta
-from models import User, ApiKey, db
+from models import User, ApiKey, SubscriptionPlan, db
 import os
 
 admin_bp = Blueprint('admin', __name__, url_prefix='/admin')
@@ -284,3 +284,167 @@ def analytics():
         logging.error(f"Error loading analytics: {str(e)}")
         flash('Error loading analytics data', 'danger')
         return render_template('admin/analytics.html', analytics={})
+
+@admin_bp.route('/plans')
+@admin_required
+def plans_management():
+    """Subscription plans management page"""
+    try:
+        plans = SubscriptionPlan.query.order_by(SubscriptionPlan.sort_order, SubscriptionPlan.id).all()
+        return render_template('admin/plans.html', plans=plans)
+        
+    except Exception as e:
+        logging.error(f"Error loading plans management: {str(e)}")
+        flash('Error loading plans data', 'danger')
+        return render_template('admin/plans.html', plans=[])
+
+@admin_bp.route('/plans/add', methods=['GET', 'POST'])
+@admin_required
+def add_plan():
+    """Add new subscription plan"""
+    if request.method == 'POST':
+        try:
+            plan = SubscriptionPlan()
+            plan.name = request.form.get('name')
+            plan.description = request.form.get('description')
+            plan.api_calls_per_month = int(request.form.get('api_calls_per_month', 0))
+            plan.monthly_price = float(request.form.get('monthly_price', 0))
+            plan.yearly_price = float(request.form.get('yearly_price', 0))
+            plan.stripe_monthly_price_id = request.form.get('stripe_monthly_price_id')
+            plan.stripe_yearly_price_id = request.form.get('stripe_yearly_price_id')
+            plan.sort_order = int(request.form.get('sort_order', 0))
+            
+            db.session.add(plan)
+            db.session.commit()
+            
+            flash(f'Plan "{plan.name}" created successfully', 'success')
+            return redirect(url_for('admin.plans_management'))
+            
+        except Exception as e:
+            logging.error(f"Error creating plan: {str(e)}")
+            db.session.rollback()
+            flash('Error creating plan', 'danger')
+    
+    return render_template('admin/add_plan.html')
+
+@admin_bp.route('/plans/<int:plan_id>/edit', methods=['GET', 'POST'])
+@admin_required
+def edit_plan(plan_id):
+    """Edit subscription plan"""
+    plan = SubscriptionPlan.query.get_or_404(plan_id)
+    
+    if request.method == 'POST':
+        try:
+            plan.name = request.form.get('name')
+            plan.description = request.form.get('description')
+            plan.api_calls_per_month = int(request.form.get('api_calls_per_month', 0))
+            plan.monthly_price = float(request.form.get('monthly_price', 0))
+            plan.yearly_price = float(request.form.get('yearly_price', 0))
+            plan.stripe_monthly_price_id = request.form.get('stripe_monthly_price_id')
+            plan.stripe_yearly_price_id = request.form.get('stripe_yearly_price_id')
+            plan.sort_order = int(request.form.get('sort_order', 0))
+            plan.updated_at = datetime.now()
+            
+            db.session.commit()
+            
+            flash(f'Plan "{plan.name}" updated successfully', 'success')
+            return redirect(url_for('admin.plans_management'))
+            
+        except Exception as e:
+            logging.error(f"Error updating plan: {str(e)}")
+            db.session.rollback()
+            flash('Error updating plan', 'danger')
+    
+    return render_template('admin/edit_plan.html', plan=plan)
+
+@admin_bp.route('/plans/<int:plan_id>/toggle-status', methods=['POST'])
+@admin_required
+def toggle_plan_status(plan_id):
+    """Toggle plan active status"""
+    try:
+        plan = SubscriptionPlan.query.get_or_404(plan_id)
+        plan.is_active = not plan.is_active
+        plan.updated_at = datetime.now()
+        db.session.commit()
+        
+        status = "activated" if plan.is_active else "deactivated"
+        flash(f'Plan "{plan.name}" {status}', 'success')
+        
+    except Exception as e:
+        logging.error(f"Error toggling plan status: {str(e)}")
+        db.session.rollback()
+        flash('Error updating plan status', 'danger')
+        
+    return redirect(url_for('admin.plans_management'))
+
+@admin_bp.route('/plans/<int:plan_id>/delete', methods=['POST'])
+@admin_required
+def delete_plan(plan_id):
+    """Delete a subscription plan"""
+    try:
+        plan = SubscriptionPlan.query.get_or_404(plan_id)
+        plan_name = plan.name
+        
+        db.session.delete(plan)
+        db.session.commit()
+        
+        flash(f'Plan "{plan_name}" deleted successfully', 'success')
+        
+    except Exception as e:
+        logging.error(f"Error deleting plan: {str(e)}")
+        db.session.rollback()
+        flash('Error deleting plan', 'danger')
+        
+    return redirect(url_for('admin.plans_management'))
+
+@admin_bp.route('/plans/initialize-defaults', methods=['POST'])
+@admin_required
+def initialize_default_plans():
+    """Initialize the default subscription plans"""
+    try:
+        # Check if plans already exist
+        if SubscriptionPlan.query.count() > 0:
+            flash('Default plans already exist', 'warning')
+            return redirect(url_for('admin.plans_management'))
+        
+        # Create default plans
+        plans_data = [
+            {
+                'name': 'Free',
+                'description': 'Perfect for testing and light usage',
+                'api_calls_per_month': 10,
+                'monthly_price': 0.00,
+                'yearly_price': 0.00,
+                'sort_order': 1
+            },
+            {
+                'name': 'Premium',
+                'description': 'Great for regular content creators',
+                'api_calls_per_month': 100,
+                'monthly_price': 7.00,
+                'yearly_price': 70.00,
+                'sort_order': 2
+            },
+            {
+                'name': 'Ultra',
+                'description': 'For power users and businesses',
+                'api_calls_per_month': 500,
+                'monthly_price': 25.00,
+                'yearly_price': 250.00,
+                'sort_order': 3
+            }
+        ]
+        
+        for plan_data in plans_data:
+            plan = SubscriptionPlan(**plan_data)
+            db.session.add(plan)
+        
+        db.session.commit()
+        flash('Default subscription plans created successfully', 'success')
+        
+    except Exception as e:
+        logging.error(f"Error creating default plans: {str(e)}")
+        db.session.rollback()
+        flash('Error creating default plans', 'danger')
+        
+    return redirect(url_for('admin.plans_management'))

@@ -12,7 +12,7 @@ from werkzeug.exceptions import RequestEntityTooLarge
 from werkzeug.middleware.proxy_fix import ProxyFix
 import mimetypes
 
-from models import db, User, ApiKey, SITE_DEFAULT_API_KEY
+from models import db, User, ApiKey, SubscriptionPlan, SITE_DEFAULT_API_KEY
 from forms import RegistrationForm, LoginForm, ApiKeyForm
 from auth_routes import auth
 

@@ -12,7 +12,7 @@ This is a comprehensive web-based video processing tool that provides three main
 
 **API Documentation**: Comprehensive documentation page (`/docs`) available without login, featuring interactive examples, code samples in multiple languages (cURL, Python, JavaScript), and detailed endpoint specifications.
 
-**Admin Panel**: Complete administrative interface (`/admin`) with user management, API key oversight, usage analytics, and system settings. Default credentials: admin/password123.
+**Admin Panel**: Complete administrative interface (`/admin`) with user management, API key oversight, subscription plan management, usage analytics, and system settings. Default credentials: admin/password123.
 
 The application features an accordion interface for easy access to all three tools, built with Flask for the backend and vanilla JavaScript for the frontend, using Bootstrap's dark theme for a professional appearance.
 

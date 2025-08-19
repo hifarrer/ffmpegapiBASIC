@@ -60,5 +60,24 @@ class ApiKey(db.Model):
     def __repr__(self):
         return f'<ApiKey {self.name}>'
 
+class SubscriptionPlan(db.Model):
+    __tablename__ = 'subscription_plans'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(50), nullable=False, unique=True)
+    description = db.Column(db.Text)
+    api_calls_per_month = db.Column(db.Integer, nullable=False)
+    monthly_price = db.Column(db.Numeric(10, 2), nullable=False, default=0.00)
+    yearly_price = db.Column(db.Numeric(10, 2), nullable=False, default=0.00)
+    stripe_monthly_price_id = db.Column(db.String(255))
+    stripe_yearly_price_id = db.Column(db.String(255))
+    is_active = db.Column(db.Boolean, default=True)
+    sort_order = db.Column(db.Integer, default=0)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    def __repr__(self):
+        return f'<SubscriptionPlan {self.name}>'
+
 # Default site API key - this will be created when the app starts
 SITE_DEFAULT_API_KEY = "ffmpeg_site_default_key_" + "".join(secrets.choice(string.ascii_letters + string.digits) for _ in range(24))
