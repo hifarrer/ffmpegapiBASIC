@@ -3,6 +3,8 @@ import logging
 import subprocess
 import uuid
 import tempfile
+import threading
+import json
 from datetime import datetime, timedelta
 from functools import wraps
 from flask import Flask, render_template, request, jsonify, send_from_directory, url_for, flash, redirect
@@ -13,7 +15,7 @@ from werkzeug.exceptions import RequestEntityTooLarge
 from werkzeug.middleware.proxy_fix import ProxyFix
 import mimetypes
 
-from models import db, User, ApiKey, SubscriptionPlan, StripeSettings, UserSubscription, SiteSettings, SITE_DEFAULT_API_KEY
+from models import db, User, ApiKey, SubscriptionPlan, StripeSettings, UserSubscription, SiteSettings, Job, SITE_DEFAULT_API_KEY
 from forms import RegistrationForm, LoginForm, ApiKeyForm
 from auth_routes import auth
 from stripe_routes import stripe_bp
@@ -577,8 +579,43 @@ def api_docs():
 @app.route('/api/merge_image_audio', methods=['POST'])
 @require_api_key
 def merge_image_audio():
-    """API endpoint to merge image and audio into video - supports both file uploads and URLs"""
+    """API endpoint to merge image and audio into video - supports both file uploads and URLs (sync/async)"""
     try:
+        # Check if async processing is requested
+        async_processing = False
+        if request.is_json:
+            data = request.get_json()
+            async_processing = data.get('async', False)
+        
+        # If async processing is requested, create job and return immediately
+        if async_processing:
+            # Get user from API key
+            api_key = request.headers.get('X-API-Key') or request.args.get('api_key')
+            key_record = ApiKey.query.filter_by(key=api_key, is_active=True).first()
+            
+            # Create job record
+            job = Job()
+            job.user_id = key_record.user_id
+            job.job_type = 'merge_image_audio'
+            job.status = 'pending'
+            job.set_input_data(data)
+            
+            db.session.add(job)
+            db.session.commit()
+            
+            # Start background processing
+            thread = threading.Thread(target=process_job_async, args=(job.job_id,))
+            thread.daemon = True
+            thread.start()
+            
+            return jsonify({
+                'success': True,
+                'job_id': job.job_id,
+                'status': 'pending',
+                'message': 'Job submitted for async processing. Use /api/job/{job_id}/status to check progress.',
+                'status_url': url_for('get_job_status', job_id=job.job_id, _external=True)
+            }), 202
+        # If not async, process synchronously (existing logic)
         # Generate unique filename for this request
         request_id = str(uuid.uuid4())
         image_path = ""
@@ -748,9 +785,44 @@ def merge_image_audio():
 @app.route('/api/merge_videos', methods=['POST'])
 @require_api_key
 def merge_videos():
-    """API endpoint to merge multiple videos from URLs"""
+    """API endpoint to merge multiple videos from URLs (sync/async)"""
     try:
+        # Check if async processing is requested
         data = request.get_json()
+        async_processing = data.get('async', False) if data else False
+        
+        # If async processing is requested, create job and return immediately
+        if async_processing:
+            # Get user from API key
+            api_key = request.headers.get('X-API-Key') or request.args.get('api_key')
+            key_record = ApiKey.query.filter_by(key=api_key, is_active=True).first()
+            
+            # Create job record
+            job = Job()
+            job.user_id = key_record.user_id
+            job.job_type = 'merge_videos'
+            job.status = 'pending'
+            job.set_input_data(data)
+            
+            db.session.add(job)
+            db.session.commit()
+            
+            # Start background processing
+            thread = threading.Thread(target=process_job_async, args=(job.job_id,))
+            thread.daemon = True
+            thread.start()
+            
+            return jsonify({
+                'success': True,
+                'job_id': job.job_id,
+                'status': 'pending',
+                'message': 'Job submitted for async processing. Use /api/job/{job_id}/status to check progress.',
+                'status_url': url_for('get_job_status', job_id=job.job_id, _external=True)
+            }), 202
+        
+        # If not async, process synchronously (existing logic)
+        if not data:
+            data = request.get_json()
         
         if not data or 'video_urls' not in data:
             return jsonify({
@@ -865,9 +937,44 @@ def merge_videos():
 @app.route('/api/picture_in_picture', methods=['POST'])
 @require_api_key
 def picture_in_picture():
-    """API endpoint to create picture-in-picture video"""
+    """API endpoint to create picture-in-picture video (sync/async)"""
     try:
+        # Check if async processing is requested
         data = request.get_json()
+        async_processing = data.get('async', False) if data else False
+        
+        # If async processing is requested, create job and return immediately
+        if async_processing:
+            # Get user from API key
+            api_key = request.headers.get('X-API-Key') or request.args.get('api_key')
+            key_record = ApiKey.query.filter_by(key=api_key, is_active=True).first()
+            
+            # Create job record
+            job = Job()
+            job.user_id = key_record.user_id
+            job.job_type = 'picture_in_picture'
+            job.status = 'pending'
+            job.set_input_data(data)
+            
+            db.session.add(job)
+            db.session.commit()
+            
+            # Start background processing
+            thread = threading.Thread(target=process_job_async, args=(job.job_id,))
+            thread.daemon = True
+            thread.start()
+            
+            return jsonify({
+                'success': True,
+                'job_id': job.job_id,
+                'status': 'pending',
+                'message': 'Job submitted for async processing. Use /api/job/{job_id}/status to check progress.',
+                'status_url': url_for('get_job_status', job_id=job.job_id, _external=True)
+            }), 202
+        
+        # If not async, process synchronously (existing logic)
+        if not data:
+            data = request.get_json()
         
         if not data or 'main_video_url' not in data or 'pip_video_url' not in data:
             return jsonify({
@@ -1128,6 +1235,271 @@ def delete_account():
         db.session.rollback()
         flash('Error deleting account', 'error')
         return redirect(url_for('profile'))
+
+# Background job processing functions
+def process_job_async(job_id):
+    """Process a job asynchronously in background thread"""
+    with app.app_context():
+        job = Job.query.filter_by(job_id=job_id).first()
+        if not job:
+            logging.error(f"Job {job_id} not found")
+            return
+        
+        try:
+            job.update_status('processing')
+            input_data = job.get_input_data()
+            
+            if job.job_type == 'merge_image_audio':
+                result = process_merge_image_audio_job(job, input_data)
+            elif job.job_type == 'merge_videos':
+                result = process_merge_videos_job(job, input_data)
+            elif job.job_type == 'picture_in_picture':
+                result = process_picture_in_picture_job(job, input_data)
+            else:
+                job.update_status('failed', f'Unknown job type: {job.job_type}')
+                return
+            
+            if result['success']:
+                job.set_result_data(result)
+                job.update_status('completed')
+            else:
+                job.update_status('failed', result.get('error', 'Unknown error'))
+                
+        except Exception as e:
+            logging.error(f"Error processing job {job_id}: {str(e)}")
+            job.update_status('failed', str(e))
+
+def process_merge_image_audio_job(job, input_data):
+    """Process merge_image_audio job"""
+    try:
+        request_id = str(uuid.uuid4())
+        image_path = ""
+        audio_path = ""
+        
+        # Handle URL-based inputs
+        if 'image_url' in input_data and 'audio_url' in input_data:
+            image_url = input_data['image_url']
+            audio_url = input_data['audio_url']
+            
+            # Generate file paths
+            image_ext = image_url.split('.')[-1].lower() if '.' in image_url else 'jpg'
+            audio_ext = audio_url.split('.')[-1].lower() if '.' in audio_url else 'mp3'
+            
+            image_filename = f"{request_id}_image.{image_ext}"
+            audio_filename = f"{request_id}_audio.{audio_ext}"
+            
+            image_path = os.path.join(UPLOAD_FOLDER, image_filename)
+            audio_path = os.path.join(UPLOAD_FOLDER, audio_filename)
+            
+            # Download files
+            success, message = download_file_from_url(image_url, image_path, "image")
+            if not success:
+                return {'success': False, 'error': message}
+            
+            success, message = download_file_from_url(audio_url, audio_path, "audio")
+            if not success:
+                cleanup_file(image_path)
+                return {'success': False, 'error': message}
+        
+        # Generate output filename
+        output_filename = f"{request_id}_merged_output.mp4"
+        output_path = os.path.join(OUTPUT_FOLDER, output_filename)
+        
+        # Create video using FFMPEG
+        success, message = create_video_with_ffmpeg(image_path, audio_path, output_path)
+        
+        # Cleanup input files
+        cleanup_file(image_path)
+        cleanup_file(audio_path)
+        
+        if success:
+            download_url = url_for('download_file', filename=output_filename, _external=True)
+            return {
+                'success': True,
+                'message': message,
+                'download_url': download_url,
+                'filename': output_filename
+            }
+        else:
+            return {'success': False, 'error': message}
+            
+    except Exception as e:
+        logging.error(f"Error in process_merge_image_audio_job: {str(e)}")
+        return {'success': False, 'error': f'Server error: {str(e)}'}
+
+def process_merge_videos_job(job, input_data):
+    """Process merge_videos job"""
+    try:
+        request_id = str(uuid.uuid4())
+        video_urls = input_data['video_urls']
+        audio_url = input_data.get('audio_url')
+        
+        downloaded_videos = []
+        audio_path = None
+        
+        # Download all videos
+        for i, url in enumerate(video_urls):
+            video_filename = f"{request_id}_video_{i}.mp4"
+            video_path = os.path.join(UPLOAD_FOLDER, video_filename)
+            
+            success, message = download_video_from_url(url, video_path)
+            if not success:
+                for path in downloaded_videos:
+                    cleanup_file(path)
+                return {'success': False, 'error': f'Failed to download video {i+1}: {message}'}
+            
+            downloaded_videos.append(video_path)
+        
+        # Download audio if provided
+        if audio_url:
+            audio_filename = f"{request_id}_audio.mp3"
+            audio_path = os.path.join(UPLOAD_FOLDER, audio_filename)
+            
+            success, message = download_video_from_url(audio_url, audio_path)
+            if not success:
+                for path in downloaded_videos:
+                    cleanup_file(path)
+                return {'success': False, 'error': f'Failed to download audio: {message}'}
+        
+        # Check video compatibility
+        success, message = check_video_compatibility(downloaded_videos)
+        if not success:
+            for path in downloaded_videos:
+                cleanup_file(path)
+            if audio_path:
+                cleanup_file(audio_path)
+            return {'success': False, 'error': message}
+        
+        # Generate output filename
+        output_filename = f"{request_id}_merged_output.mp4"
+        output_path = os.path.join(OUTPUT_FOLDER, output_filename)
+        
+        # Merge videos using FFMPEG
+        success, message = merge_videos_with_ffmpeg(downloaded_videos, output_path, audio_path)
+        
+        # Cleanup input files
+        for path in downloaded_videos:
+            cleanup_file(path)
+        if audio_path:
+            cleanup_file(audio_path)
+        
+        if success:
+            download_url = url_for('download_file', filename=output_filename, _external=True)
+            return {
+                'success': True,
+                'message': message,
+                'download_url': download_url,
+                'filename': output_filename
+            }
+        else:
+            return {'success': False, 'error': message}
+            
+    except Exception as e:
+        logging.error(f"Error in process_merge_videos_job: {str(e)}")
+        return {'success': False, 'error': f'Server error: {str(e)}'}
+
+def process_picture_in_picture_job(job, input_data):
+    """Process picture_in_picture job"""
+    try:
+        request_id = str(uuid.uuid4())
+        main_video_url = input_data['main_video_url']
+        pip_video_url = input_data['pip_video_url']
+        position = input_data.get('position', 'bottom-right')
+        scale = input_data.get('scale', 'iw/4:ih/4')
+        audio_option = input_data.get('audio_option', 'video1')
+        
+        # Download main video
+        main_video_filename = f"{request_id}_main_video.mp4"
+        main_video_path = os.path.join(UPLOAD_FOLDER, main_video_filename)
+        
+        success, message = download_video_from_url(main_video_url, main_video_path)
+        if not success:
+            return {'success': False, 'error': f'Failed to download main video: {message}'}
+        
+        # Download PiP video
+        pip_video_filename = f"{request_id}_pip_video.mp4"
+        pip_video_path = os.path.join(UPLOAD_FOLDER, pip_video_filename)
+        
+        success, message = download_video_from_url(pip_video_url, pip_video_path)
+        if not success:
+            cleanup_file(main_video_path)
+            return {'success': False, 'error': f'Failed to download PiP video: {message}'}
+        
+        # Generate output filename
+        output_filename = f"{request_id}_pip_output.mp4"
+        output_path = os.path.join(OUTPUT_FOLDER, output_filename)
+        
+        # Create picture-in-picture video using FFMPEG
+        success, message = create_picture_in_picture_with_ffmpeg(
+            main_video_path, pip_video_path, output_path, position, scale, audio_option
+        )
+        
+        # Cleanup input files
+        cleanup_file(main_video_path)
+        cleanup_file(pip_video_path)
+        
+        if success:
+            download_url = url_for('download_file', filename=output_filename, _external=True)
+            return {
+                'success': True,
+                'message': message,
+                'download_url': download_url,
+                'filename': output_filename
+            }
+        else:
+            return {'success': False, 'error': message}
+            
+    except Exception as e:
+        logging.error(f"Error in process_picture_in_picture_job: {str(e)}")
+        return {'success': False, 'error': f'Server error: {str(e)}'}
+
+# Job status endpoint
+@app.route('/api/job/<job_id>/status', methods=['GET'])
+@require_api_key
+def get_job_status(job_id):
+    """Get the status of an async job"""
+    try:
+        job = Job.query.filter_by(job_id=job_id).first()
+        if not job:
+            return jsonify({
+                'success': False,
+                'error': 'Job not found'
+            }), 404
+        
+        # Check if the job belongs to the current user
+        api_key = request.headers.get('X-API-Key') or request.args.get('api_key')
+        key_record = ApiKey.query.filter_by(key=api_key, is_active=True).first()
+        
+        if job.user_id != key_record.user_id:
+            return jsonify({
+                'success': False,
+                'error': 'Access denied'
+            }), 403
+        
+        response_data = {
+            'success': True,
+            'job_id': job.job_id,
+            'job_type': job.job_type,
+            'status': job.status,
+            'created_at': job.created_at.isoformat(),
+            'updated_at': job.updated_at.isoformat()
+        }
+        
+        if job.status == 'completed':
+            result_data = job.get_result_data()
+            if result_data:
+                response_data.update(result_data)
+        elif job.status == 'failed':
+            response_data['error'] = job.error_message
+        
+        return jsonify(response_data)
+        
+    except Exception as e:
+        logging.error(f"Error getting job status: {str(e)}")
+        return jsonify({
+            'success': False,
+            'error': f'Server error: {str(e)}'
+        }), 500
 
 if __name__ == '__main__':
     app.run(host="0.0.0.0", port=5000, debug=True)

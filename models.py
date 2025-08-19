@@ -4,6 +4,8 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from datetime import datetime
 import secrets
 import string
+import json
+import uuid
 
 db = SQLAlchemy()
 
@@ -195,6 +197,57 @@ class SiteSettings(db.Model):
     
     def __repr__(self):
         return f'<SiteSettings {self.site_name}>'
+
+class Job(db.Model):
+    __tablename__ = 'jobs'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    job_id = db.Column(db.String(36), unique=True, nullable=False, default=lambda: str(uuid.uuid4()))
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    job_type = db.Column(db.String(50), nullable=False)  # merge_image_audio, merge_videos, picture_in_picture
+    status = db.Column(db.String(20), default='pending')  # pending, processing, completed, failed
+    input_data = db.Column(db.Text)  # JSON string of input parameters
+    result_data = db.Column(db.Text)  # JSON string of result data
+    error_message = db.Column(db.Text)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    # Relationships
+    user = db.relationship('User', backref='jobs')
+    
+    def set_input_data(self, data):
+        """Set input data as JSON string"""
+        self.input_data = json.dumps(data)
+        db.session.commit()
+    
+    def get_input_data(self):
+        """Get input data as Python object"""
+        if self.input_data:
+            return json.loads(self.input_data)
+        return None
+    
+    def set_result_data(self, data):
+        """Set result data as JSON string"""
+        self.result_data = json.dumps(data)
+        self.updated_at = datetime.utcnow()
+        db.session.commit()
+    
+    def get_result_data(self):
+        """Get result data as Python object"""
+        if self.result_data:
+            return json.loads(self.result_data)
+        return None
+    
+    def update_status(self, status, error_message=None):
+        """Update job status"""
+        self.status = status
+        if error_message:
+            self.error_message = error_message
+        self.updated_at = datetime.utcnow()
+        db.session.commit()
+    
+    def __repr__(self):
+        return f'<Job {self.job_id} - {self.job_type} - {self.status}>'
 
 # Default site API key - this will be created when the app starts
 SITE_DEFAULT_API_KEY = "ffmpeg_site_default_key_" + "".join(secrets.choice(string.ascii_letters + string.digits) for _ in range(24))
