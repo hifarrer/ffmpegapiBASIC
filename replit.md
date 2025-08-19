@@ -2,13 +2,15 @@
 
 ## Overview
 
-This is a comprehensive web-based video processing tool that provides three main functionalities using FFMPEG:
+This is a comprehensive web-based video processing tool that provides three main functionalities using FFMPEG with a secure authentication system:
 
 1. **Image & Audio Merger** (`/api/merge_image_audio`): Creates videos by combining an image file with an audio file
-2. **Video Merger** (`/api/merge_videos`): Concatenates multiple videos from URLs into a single video, with optional audio replacement
+2. **Video Merger** (`/api/merge_videos`): Concatenates multiple videos from URLs into a single video, with optional audio replacement  
 3. **Picture-in-Picture** (`/api/picture_in_picture`): Creates picture-in-picture videos by overlaying one video on top of another with customizable position and scale
 
-The application features a tabbed interface for easy access to all three tools, built with Flask for the backend and vanilla JavaScript for the frontend, using Bootstrap's dark theme for a professional appearance.
+**Authentication & API Keys**: All API endpoints now require authentication via API keys. Users can register for accounts and generate multiple API keys through a dashboard. The site provides a default API key for guest usage on the landing page.
+
+The application features an accordion interface for easy access to all three tools, built with Flask for the backend and vanilla JavaScript for the frontend, using Bootstrap's dark theme for a professional appearance.
 
 ## User Preferences
 
@@ -24,11 +26,14 @@ Preferred communication style: Simple, everyday language.
 - Uses Font Awesome icons for enhanced UI/UX
 
 **Backend Architecture**
-- Flask-based web server with RESTful API design
+- Flask-based web server with RESTful API design and authentication system
+- User authentication using Flask-Login with PostgreSQL database storage
+- API key-based access control for all video processing endpoints
 - File upload handling with security measures (file type validation, size limits)
 - FFMPEG integration for video processing (server-side command execution)
 - Temporary file management system for uploaded and generated content
 - Error handling and logging throughout the application flow
+- Database models: User (authentication), ApiKey (access control)
 
 **File Processing Pipeline**
 - **Image & Audio Processing**: Client-side file validation, server-side MIME type validation, FFMPEG video creation with image loop and audio sync

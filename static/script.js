@@ -171,6 +171,11 @@ class VideoMerger {
             return;
         }
 
+        // Add API key to form data
+        if (window.API_KEY) {
+            formData.append('api_key', window.API_KEY);
+        }
+
         this.setImageAudioLoadingState(true);
         this.hideImageAudioAlert();
         this.hideImageAudioResult();
@@ -178,6 +183,9 @@ class VideoMerger {
         try {
             const response = await fetch('/api/merge_image_audio', {
                 method: 'POST',
+                headers: {
+                    'X-API-Key': window.API_KEY || ''
+                },
                 body: formData
             });
 
@@ -207,17 +215,16 @@ class VideoMerger {
             return;
         }
 
-        const formData = new FormData();
+        const requestData = {
+            video_urls: videoUrls
+        };
         
-        // Add video URLs to form data
-        videoUrls.forEach((url, index) => {
-            formData.append(`video_url_${index}`, url);
-        });
-        
-        // Add optional audio file
+        // Add optional audio file URL (if it's a URL input)
         const audioFile = document.getElementById('videosAudioFile').files[0];
         if (audioFile) {
-            formData.append('audio', audioFile);
+            // For now, we'll skip audio file uploads and only support URL-based audio
+            this.showVideosAlert('warning', 'Audio file uploads are not supported yet. Please provide audio URLs in the video merger.');
+            return;
         }
 
         this.setVideosLoadingState(true);
@@ -227,7 +234,11 @@ class VideoMerger {
         try {
             const response = await fetch('/api/merge_videos', {
                 method: 'POST',
-                body: formData
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-API-Key': window.API_KEY || ''
+                },
+                body: JSON.stringify(requestData)
             });
 
             const result = await response.json();
@@ -506,11 +517,12 @@ class VideoMerger {
             return;
         }
 
-        const formData = new FormData();
-        formData.append('main_video_url', mainVideoUrl);
-        formData.append('pip_video_url', pipVideoUrl);
-        formData.append('position', document.getElementById('pipPosition').value);
-        formData.append('scale', document.getElementById('pipScale').value);
+        const requestData = {
+            main_video_url: mainVideoUrl,
+            pip_video_url: pipVideoUrl,
+            position: document.getElementById('pipPosition').value,
+            scale: document.getElementById('pipScale').value
+        };
 
         this.setPipLoadingState(true);
         this.hidePipAlert();
@@ -519,7 +531,11 @@ class VideoMerger {
         try {
             const response = await fetch('/api/picture_in_picture', {
                 method: 'POST',
-                body: formData
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-API-Key': window.API_KEY || ''
+                },
+                body: JSON.stringify(requestData)
             });
 
             const result = await response.json();
