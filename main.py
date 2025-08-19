@@ -56,6 +56,10 @@ def load_user(user_id):
 # Register blueprints
 app.register_blueprint(auth, url_prefix='/auth')
 
+# Import and register admin blueprint
+from admin_routes import admin_bp
+app.register_blueprint(admin_bp)
+
 # Create tables and default data
 with app.app_context():
     db.create_all()
