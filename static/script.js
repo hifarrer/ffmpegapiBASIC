@@ -521,7 +521,8 @@ class VideoMerger {
             main_video_url: mainVideoUrl,
             pip_video_url: pipVideoUrl,
             position: document.getElementById('pipPosition').value,
-            scale: document.getElementById('pipScale').value
+            scale: document.getElementById('pipScale').value,
+            audio_option: document.getElementById('pipAudio').value
         };
 
         this.setPipLoadingState(true);

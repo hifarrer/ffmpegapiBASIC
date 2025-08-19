@@ -382,6 +382,12 @@
                                                 <td>No</td>
                                                 <td>Scale of overlay video. Options: iw/4:ih/4 (quarter), iw/3:ih/3 (third), iw/2:ih/2 (half). Default: iw/4:ih/4</td>
                                             </tr>
+                                            <tr>
+                                                <td><code>audio_option</code></td>
+                                                <td>String</td>
+                                                <td>No</td>
+                                                <td>Audio source for final video. Options: video1 (main video audio), video2 (overlay video audio), mute (no audio). Default: video1</td>
+                                            </tr>
                                         </tbody>
                                     </table>
                                 </div>
@@ -392,7 +398,8 @@
   "main_video_url": "https://example.com/main-video.mp4",
   "pip_video_url": "https://example.com/overlay-video.mp4",
   "position": "top-right",
-  "scale": "iw/3:ih/3"
+  "scale": "iw/3:ih/3",
+  "audio_option": "video2"
 }</code></pre>
                                 </div>
 
@@ -670,7 +677,8 @@ if (result.success) {
     main_video_url: 'https://example.com/main.mp4',
     pip_video_url: 'https://example.com/overlay.mp4',
     position: 'top-right',
-    scale: 'iw/4:ih/4'
+    scale: 'iw/4:ih/4',
+    audio_option: 'video1'  // Options: 'video1', 'video2', 'mute'
 };
 
 const response = await fetch('{{ request.url_root }}api/picture_in_picture', {

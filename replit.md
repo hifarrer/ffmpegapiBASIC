@@ -6,7 +6,7 @@ This is a comprehensive web-based video processing tool that provides three main
 
 1. **Image & Audio Merger** (`/api/merge_image_audio`): Creates videos by combining an image file with an audio file
 2. **Video Merger** (`/api/merge_videos`): Concatenates multiple videos from URLs into a single video, with optional audio replacement  
-3. **Picture-in-Picture** (`/api/picture_in_picture`): Creates picture-in-picture videos by overlaying one video on top of another with customizable position and scale
+3. **Picture-in-Picture** (`/api/picture_in_picture`): Creates picture-in-picture videos by overlaying one video on top of another with customizable position, scale, and audio options (mute, use video 1 audio, or use video 2 audio)
 
 **Authentication & API Keys**: All API endpoints now require authentication via API keys. Users can register for accounts and generate multiple API keys through a dashboard. The site provides a default API key for guest usage on the landing page.
 

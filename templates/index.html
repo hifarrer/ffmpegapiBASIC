@@ -287,7 +287,7 @@
                                     </div>
 
                                     <div class="row">
-                                        <div class="col-md-6 mb-4">
+                                        <div class="col-md-4 mb-4">
                                             <label for="pipPosition" class="form-label">
                                                 <i class="fas fa-arrows-alt me-2"></i>
                                                 Position
@@ -305,7 +305,7 @@
                                             </select>
                                             <div class="form-text">Where to place the overlay video</div>
                                         </div>
-                                        <div class="col-md-6 mb-4">
+                                        <div class="col-md-4 mb-4">
                                             <label for="pipScale" class="form-label">
                                                 <i class="fas fa-expand-alt me-2"></i>
                                                 Scale
@@ -318,6 +318,18 @@
                                                 <option value="iw/2:ih/2">Extra Large (1/2)</option>
                                             </select>
                                             <div class="form-text">Size of the overlay video</div>
+                                        </div>
+                                        <div class="col-md-4 mb-4">
+                                            <label for="pipAudio" class="form-label">
+                                                <i class="fas fa-volume-up me-2"></i>
+                                                Audio Source
+                                            </label>
+                                            <select class="form-select" id="pipAudio" name="audio_option">
+                                                <option value="video1" selected>Use Main Video Audio</option>
+                                                <option value="video2">Use Overlay Video Audio</option>
+                                                <option value="mute">Mute Final Video</option>
+                                            </select>
+                                            <div class="form-text">Choose audio source for the final video</div>
                                         </div>
                                     </div>
 

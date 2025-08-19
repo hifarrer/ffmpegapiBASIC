@@ -415,7 +415,7 @@ def merge_videos_filter_complex(video_paths, output_path, audio_path=None):
         logging.error(f"Video merge with filter_complex error: {str(e)}")
         return False, f"Video merge error: {str(e)}"
 
-def create_picture_in_picture_with_ffmpeg(main_video_path, pip_video_path, output_path, position='bottom-right', scale='iw/4:ih/4'):
+def create_picture_in_picture_with_ffmpeg(main_video_path, pip_video_path, output_path, position='bottom-right', scale='iw/4:ih/4', audio_option='video1'):
     """Create picture-in-picture video using FFMPEG"""
     try:
         # Position mappings
@@ -433,18 +433,36 @@ def create_picture_in_picture_with_ffmpeg(main_video_path, pip_video_path, outpu
         
         overlay_position = position_overlays.get(position, position_overlays['bottom-right'])
         
-        # Build FFMPEG command for picture-in-picture
+        # Build FFMPEG command for picture-in-picture with audio options
         cmd = [
             'ffmpeg',
-            '-i', main_video_path,
-            '-i', pip_video_path,
+            '-i', main_video_path,   # Input 0: main video
+            '-i', pip_video_path,    # Input 1: pip video
             '-filter_complex', f'[1]scale={scale}[pip];[0][pip]overlay={overlay_position}',
             '-c:v', 'libx264',
-            '-c:a', 'aac',
             '-preset', 'fast',
-            '-y',
-            output_path
+            '-y'
         ]
+        
+        # Handle different audio options
+        if audio_option == 'mute':
+            # No audio output
+            cmd.extend(['-an'])
+            logging.info("PiP: Muting final video (no audio)")
+        elif audio_option == 'video1':
+            # Use audio from main video (input 0)
+            cmd.extend(['-c:a', 'aac', '-map', '0:a'])
+            logging.info("PiP: Using audio from main video")
+        elif audio_option == 'video2':
+            # Use audio from pip video (input 1)
+            cmd.extend(['-c:a', 'aac', '-map', '1:a'])
+            logging.info("PiP: Using audio from pip video")
+        else:
+            # Default to main video audio
+            cmd.extend(['-c:a', 'aac'])
+            logging.info("PiP: Using default audio handling")
+        
+        cmd.append(output_path)
         
         logging.info(f"Running FFMPEG PiP command: {' '.join(cmd)}")
         result = subprocess.run(cmd, capture_output=True, text=True, timeout=600)
@@ -717,6 +735,7 @@ def picture_in_picture():
         pip_video_url = data['pip_video_url']
         position = data.get('position', 'bottom-right')
         scale = data.get('scale', 'iw/4:ih/4')
+        audio_option = data.get('audio_option', 'video1')
         
         # Generate unique ID for this request
         request_id = str(uuid.uuid4())
@@ -750,7 +769,7 @@ def picture_in_picture():
         
         # Create picture-in-picture video using FFMPEG
         success, message = create_picture_in_picture_with_ffmpeg(
-            main_video_path, pip_video_path, output_path, position, scale
+            main_video_path, pip_video_path, output_path, position, scale, audio_option
         )
         
         # Cleanup downloaded files
