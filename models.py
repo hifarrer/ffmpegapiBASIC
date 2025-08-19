@@ -159,5 +159,42 @@ class UserSubscription(db.Model):
     def __repr__(self):
         return f'<UserSubscription {self.user.username} - {self.plan.name}>'
 
+class SiteSettings(db.Model):
+    __tablename__ = 'site_settings'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    site_name = db.Column(db.String(100), default='FFMPEG Video Merger')
+    site_description = db.Column(db.Text, default='Professional video processing API with FFMPEG')
+    max_file_size = db.Column(db.String(20), default='100MB')
+    allowed_extensions = db.Column(db.String(200), default='mp4,avi,mov,mkv,jpg,jpeg,png,mp3,wav,m4a')
+    maintenance_mode = db.Column(db.Boolean, default=False)
+    support_email = db.Column(db.String(100), default='support@example.com')
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    @classmethod
+    def get_settings(cls):
+        """Get the current site settings (create default if none exist)"""
+        settings = cls.query.first()
+        if not settings:
+            settings = cls()
+            db.session.add(settings)
+            db.session.commit()
+        return settings
+    
+    @classmethod
+    def update_settings(cls, **kwargs):
+        """Update site settings"""
+        settings = cls.get_settings()
+        for key, value in kwargs.items():
+            if hasattr(settings, key):
+                setattr(settings, key, value)
+        settings.updated_at = datetime.utcnow()
+        db.session.commit()
+        return settings
+    
+    def __repr__(self):
+        return f'<SiteSettings {self.site_name}>'
+
 # Default site API key - this will be created when the app starts
 SITE_DEFAULT_API_KEY = "ffmpeg_site_default_key_" + "".join(secrets.choice(string.ascii_letters + string.digits) for _ in range(24))

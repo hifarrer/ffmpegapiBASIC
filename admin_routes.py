@@ -4,7 +4,7 @@ from werkzeug.security import check_password_hash, generate_password_hash
 from functools import wraps
 import logging
 from datetime import datetime, timedelta
-from models import User, ApiKey, SubscriptionPlan, StripeSettings, UserSubscription, db
+from models import User, ApiKey, SubscriptionPlan, StripeSettings, UserSubscription, SiteSettings, db
 import os
 
 admin_bp = Blueprint('admin', __name__, url_prefix='/admin')
@@ -216,21 +216,37 @@ def site_settings():
     """Site settings management"""
     if request.method == 'POST':
         try:
-            # Handle settings updates here
-            # For now, just show success message
+            # Get form data
+            site_name = request.form.get('site_name', '').strip()
+            site_description = request.form.get('site_description', '').strip()
+            max_file_size = request.form.get('max_file_size', '').strip()
+            allowed_extensions = request.form.get('allowed_extensions', '').strip()
+            support_email = request.form.get('support_email', '').strip()
+            maintenance_mode = request.form.get('maintenance_mode') == 'on'
+            
+            # Validate required fields
+            if not site_name:
+                flash('Site name is required', 'danger')
+                return redirect(url_for('admin.site_settings'))
+            
+            # Update settings
+            SiteSettings.update_settings(
+                site_name=site_name,
+                site_description=site_description,
+                max_file_size=max_file_size,
+                allowed_extensions=allowed_extensions,
+                support_email=support_email,
+                maintenance_mode=maintenance_mode
+            )
+            
             flash('Settings updated successfully', 'success')
             
         except Exception as e:
             logging.error(f"Error updating settings: {str(e)}")
             flash('Error updating settings', 'danger')
     
-    # Load current settings
-    settings = {
-        'site_name': 'FFMPEG Video Merger',
-        'max_file_size': '100MB',
-        'allowed_extensions': 'mp4, avi, mov, mkv, jpg, jpeg, png, mp3, wav',
-        'maintenance_mode': False
-    }
+    # Load current settings from database
+    settings = SiteSettings.get_settings()
     
     return render_template('admin/settings.html', settings=settings)
 

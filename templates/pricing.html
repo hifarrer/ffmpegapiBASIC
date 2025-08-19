@@ -17,7 +17,7 @@
         <div class="container">
             <a class="navbar-brand" href="{{ url_for('index') }}">
                 <i class="fas fa-video me-2"></i>
-                FFMPEG API
+                {{ site_settings.site_name if site_settings else 'FFMPEG API' }}
             </a>
             
             <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">

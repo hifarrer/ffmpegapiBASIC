@@ -13,7 +13,7 @@ from werkzeug.exceptions import RequestEntityTooLarge
 from werkzeug.middleware.proxy_fix import ProxyFix
 import mimetypes
 
-from models import db, User, ApiKey, SubscriptionPlan, StripeSettings, UserSubscription, SITE_DEFAULT_API_KEY
+from models import db, User, ApiKey, SubscriptionPlan, StripeSettings, UserSubscription, SiteSettings, SITE_DEFAULT_API_KEY
 from forms import RegistrationForm, LoginForm, ApiKeyForm
 from auth_routes import auth
 from stripe_routes import stripe_bp
@@ -54,6 +54,16 @@ login_manager.login_message = 'Please log in to access this page.'
 @login_manager.user_loader
 def load_user(user_id):
     return User.query.get(int(user_id))
+
+@app.context_processor
+def inject_site_settings():
+    """Inject site settings into all templates"""
+    try:
+        settings = SiteSettings.get_settings()
+        return {'site_settings': settings}
+    except Exception as e:
+        logging.error(f"Error loading site settings: {str(e)}")
+        return {'site_settings': None}
 
 # Register blueprints
 app.register_blueprint(auth, url_prefix='/auth')
