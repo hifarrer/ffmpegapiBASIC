@@ -30,10 +30,10 @@
                         <a class="nav-link" href="{{ url_for('index') }}">Home</a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" href="{{ url_for('docs') }}">Docs</a>
+                        <a class="nav-link" href="{{ url_for('api_docs') }}">Docs</a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link active" href="{{ url_for('pricing') }}">Pricing</a>
+                        <a class="nav-link active" href="{{ url_for('pricing') }}">Plans</a>
                     </li>
                     {% if current_user.is_authenticated %}
                         <li class="nav-item">
@@ -58,7 +58,9 @@
     <div class="container mt-5">
         <!-- Header -->
         <div class="text-center mb-5">
-            <h1 class="display-4 mb-3">Choose Your Plan</h1>
+            <h1 class="display-4 mb-3">
+                <i class="fas fa-credit-card me-3"></i>Choose Your Plan
+            </h1>
             <p class="lead">Select the perfect plan for your video processing needs</p>
             
             <!-- Billing Toggle -->
@@ -193,9 +195,15 @@
                                     </div>
                                 {% endif %}
                             {% else %}
-                                <a href="{{ url_for('auth.register') }}" class="btn {% if plan.name == 'Premium' %}btn-primary{% else %}btn-outline-primary{% endif %} w-100">
-                                    <i class="fas fa-user-plus me-2"></i>Sign Up to Subscribe
-                                </a>
+                                {% if plan.name == 'Free' %}
+                                    <a href="{{ url_for('auth.register') }}" class="btn btn-outline-primary w-100">
+                                        <i class="fas fa-user-plus me-2"></i>Sign Up for Free
+                                    </a>
+                                {% else %}
+                                    <a href="{{ url_for('auth.login') }}" class="btn {% if plan.name == 'Premium' %}btn-primary{% else %}btn-outline-primary{% endif %} w-100">
+                                        <i class="fas fa-sign-in-alt me-2"></i>Login to Subscribe
+                                    </a>
+                                {% endif %}
                             {% endif %}
                         </div>
                     </div>
@@ -204,9 +212,15 @@
             {% endfor %}
         </div>
         {% else %}
-        <div class="text-center">
-            <h3>No pricing plans available</h3>
-            <p class="text-muted">Please check back later for pricing information.</p>
+        <div class="card">
+            <div class="card-body text-center py-5">
+                <i class="fas fa-credit-card fa-3x text-muted mb-3"></i>
+                <h4 class="text-muted">No Plans Available</h4>
+                <p class="text-muted mb-4">Subscription plans are currently being configured. Please check back later.</p>
+                <a href="{{ url_for('index') }}" class="btn btn-primary">
+                    <i class="fas fa-home me-2"></i>Back to Home
+                </a>
+            </div>
         </div>
         {% endif %}
 

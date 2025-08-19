@@ -3,6 +3,7 @@ import logging
 import subprocess
 import uuid
 import tempfile
+from datetime import datetime, timedelta
 from functools import wraps
 from flask import Flask, render_template, request, jsonify, send_from_directory, url_for, flash, redirect
 from flask_sqlalchemy import SQLAlchemy
@@ -824,12 +825,17 @@ def pricing():
     plans = SubscriptionPlan.query.filter_by(is_active=True).order_by(SubscriptionPlan.sort_order).all()
     return render_template('pricing.html', plans=plans)
 
+@app.route('/plans')
+def plans():
+    """Plans page - alias for pricing"""
+    return redirect(url_for('pricing'))
+
 @app.route('/subscribe-free', methods=['POST'])
 @login_required
 def subscribe_free():
     """Subscribe to free plan"""
     try:
-        from datetime import timedelta
+
         
         # Find the free plan
         free_plan = SubscriptionPlan.query.filter_by(name='Free', is_active=True).first()
@@ -848,8 +854,8 @@ def subscribe_free():
             existing_subscription.api_calls_used = 0
             existing_subscription.stripe_subscription_id = None
             existing_subscription.stripe_customer_id = None
-            existing_subscription.current_period_start = datetime.now()
-            existing_subscription.current_period_end = datetime.now() + timedelta(days=30)
+            existing_subscription.current_period_start = datetime.utcnow()
+            existing_subscription.current_period_end = datetime.utcnow() + timedelta(days=30)
         else:
             # Create new free subscription
             subscription = UserSubscription()
@@ -858,8 +864,8 @@ def subscribe_free():
             subscription.status = 'active'
             subscription.billing_cycle = 'monthly'
             subscription.api_calls_used = 0
-            subscription.current_period_start = datetime.now()
-            subscription.current_period_end = datetime.now() + timedelta(days=30)
+            subscription.current_period_start = datetime.utcnow()
+            subscription.current_period_end = datetime.utcnow() + timedelta(days=30)
             db.session.add(subscription)
         
         db.session.commit()
