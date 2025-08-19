@@ -878,5 +878,121 @@ def subscribe_free():
     
     return redirect(url_for('dashboard'))
 
+@app.route('/profile')
+@login_required
+def profile():
+    """User profile page"""
+    return render_template('profile.html')
+
+@app.route('/update-profile', methods=['POST'])
+@login_required
+def update_profile():
+    """Update user profile information"""
+    try:
+        username = request.form.get('username')
+        email = request.form.get('email')
+        
+        if not username or not email:
+            flash('Username and email are required', 'error')
+            return redirect(url_for('profile'))
+        
+        # Check if username is already taken by another user
+        existing_user = User.query.filter_by(username=username).first()
+        if existing_user and existing_user.id != current_user.id:
+            flash('Username already taken', 'error')
+            return redirect(url_for('profile'))
+        
+        # Check if email is already taken by another user
+        existing_email = User.query.filter_by(email=email).first()
+        if existing_email and existing_email.id != current_user.id:
+            flash('Email already registered', 'error')
+            return redirect(url_for('profile'))
+        
+        # Update user information
+        current_user.username = username
+        current_user.email = email
+        db.session.commit()
+        
+        flash('Profile updated successfully', 'success')
+        
+    except Exception as e:
+        logging.error(f"Error updating profile: {str(e)}")
+        db.session.rollback()
+        flash('Error updating profile', 'error')
+    
+    return redirect(url_for('profile'))
+
+@app.route('/change-password', methods=['POST'])
+@login_required
+def change_password():
+    """Change user password"""
+    try:
+        current_password = request.form.get('current_password')
+        new_password = request.form.get('new_password')
+        confirm_password = request.form.get('confirm_password')
+        
+        if not all([current_password, new_password, confirm_password]):
+            flash('All password fields are required', 'error')
+            return redirect(url_for('profile'))
+        
+        # Verify current password
+        if not current_user.check_password(current_password):
+            flash('Current password is incorrect', 'error')
+            return redirect(url_for('profile'))
+        
+        # Check if new passwords match
+        if new_password != confirm_password:
+            flash('New passwords do not match', 'error')
+            return redirect(url_for('profile'))
+        
+        # Check password length
+        if len(new_password) < 6:
+            flash('Password must be at least 6 characters long', 'error')
+            return redirect(url_for('profile'))
+        
+        # Update password
+        current_user.set_password(new_password)
+        db.session.commit()
+        
+        flash('Password changed successfully', 'success')
+        
+    except Exception as e:
+        logging.error(f"Error changing password: {str(e)}")
+        db.session.rollback()
+        flash('Error changing password', 'error')
+    
+    return redirect(url_for('profile'))
+
+@app.route('/delete-account', methods=['POST'])
+@login_required
+def delete_account():
+    """Delete user account"""
+    try:
+        user_id = current_user.id
+        
+        # Cancel any active Stripe subscriptions
+        if current_user.subscription and current_user.subscription.stripe_subscription_id:
+            try:
+                settings = StripeSettings.get_settings()
+                if settings and settings.secret_key:
+                    import stripe
+                    stripe.api_key = settings.secret_key
+                    stripe.Subscription.delete(current_user.subscription.stripe_subscription_id)
+            except Exception as e:
+                logging.error(f"Error cancelling Stripe subscription: {str(e)}")
+        
+        # Delete user and all associated data (cascade deletes)
+        db.session.delete(current_user)
+        db.session.commit()
+        
+        flash('Account deleted successfully', 'info')
+        return redirect(url_for('index'))
+        
+    except Exception as e:
+        logging.error(f"Error deleting account: {str(e)}")
+        db.session.rollback()
+        flash('Error deleting account', 'error')
+        return redirect(url_for('profile'))
+
 if __name__ == '__main__':
     app.run(host="0.0.0.0", port=5000, debug=True)

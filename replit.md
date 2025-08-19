@@ -10,6 +10,8 @@ This is a comprehensive web-based video processing tool that provides three main
 
 **Authentication & API Keys**: All API endpoints now require authentication via API keys. Users can register for accounts and generate multiple API keys through a dashboard. The site provides a default API key for guest usage on the landing page.
 
+**User Profile Management**: Comprehensive user account management with profile editing (username/email), secure password changes, subscription plan viewing with usage tracking, plan upgrade/downgrade options, and secure account deletion with Stripe subscription cancellation.
+
 **API Documentation**: Comprehensive documentation page (`/docs`) available without login, featuring interactive examples, code samples in multiple languages (cURL, Python, JavaScript), and detailed endpoint specifications.
 
 **Admin Panel**: Complete administrative interface (`/admin`) with user management, API key oversight, subscription plan management, Stripe payment integration settings, user subscription monitoring, usage analytics, and system settings. Default credentials: admin/password123.
