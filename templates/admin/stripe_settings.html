@@ -1,0 +1,236 @@
+{% extends "admin/base.html" %}
+
+{% block title %}Stripe Settings{% endblock %}
+
+{% block content %}
+<div class="admin-header">
+    <h1><i class="fab fa-stripe me-2"></i>Stripe Settings</h1>
+    <p class="mb-0">Configure Stripe payment integration and webhooks</p>
+</div>
+
+<div class="row">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-cog me-2"></i>API Configuration
+                </h5>
+            </div>
+            <div class="card-body">
+                <form method="POST">
+                    <div class="mb-4">
+                        <div class="form-check form-switch">
+                            <input class="form-check-input" type="checkbox" id="is_live_mode" name="is_live_mode"
+                                   {% if settings and settings.is_live_mode %}checked{% endif %}>
+                            <label class="form-check-label" for="is_live_mode">
+                                <strong>Live Mode</strong>
+                            </label>
+                            <div class="form-text">
+                                Toggle between test mode and live mode. 
+                                <span class="text-warning">⚠️ Live mode will process real payments!</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-4">
+                        <label for="publishable_key" class="form-label">
+                            <i class="fas fa-eye me-2"></i>Publishable Key
+                        </label>
+                        <input type="text" class="form-control" id="publishable_key" name="publishable_key" 
+                               value="{{ settings.publishable_key if settings else '' }}"
+                               placeholder="pk_test_... or pk_live_...">
+                        <div class="form-text">
+                            Your Stripe publishable key (safe to expose in frontend code)
+                        </div>
+                    </div>
+                    
+                    <div class="mb-4">
+                        <label for="secret_key" class="form-label">
+                            <i class="fas fa-key me-2"></i>Secret Key
+                        </label>
+                        <input type="password" class="form-control" id="secret_key" name="secret_key" 
+                               value="{{ settings.secret_key if settings else '' }}"
+                               placeholder="sk_test_... or sk_live_...">
+                        <div class="form-text">
+                            Your Stripe secret key (keep this secure and never expose in frontend)
+                        </div>
+                    </div>
+                    
+                    <div class="mb-4">
+                        <label for="webhook_secret" class="form-label">
+                            <i class="fas fa-webhook me-2"></i>Webhook Endpoint Secret
+                        </label>
+                        <input type="password" class="form-control" id="webhook_secret" name="webhook_secret" 
+                               value="{{ settings.webhook_secret if settings else '' }}"
+                               placeholder="whsec_...">
+                        <div class="form-text">
+                            Webhook signing secret for secure webhook verification
+                        </div>
+                    </div>
+                    
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle me-2"></i>
+                        <strong>Webhook Setup:</strong> Configure your Stripe webhook to point to 
+                        <code>/api/stripe/webhook</code> with events: 
+                        <code>customer.subscription.created</code>, 
+                        <code>customer.subscription.updated</code>, 
+                        <code>customer.subscription.deleted</code>, 
+                        <code>invoice.payment_succeeded</code>, 
+                        <code>invoice.payment_failed</code>
+                    </div>
+                    
+                    <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-save me-2"></i>Save Settings
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-4">
+        <!-- Current Status -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h6 class="card-title mb-0">
+                    <i class="fas fa-info-circle me-2"></i>Current Status
+                </h6>
+            </div>
+            <div class="card-body">
+                <div class="mb-3">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <span>Mode:</span>
+                        {% if settings and settings.is_live_mode %}
+                            <span class="badge bg-danger">Live Mode</span>
+                        {% else %}
+                            <span class="badge bg-success">Test Mode</span>
+                        {% endif %}
+                    </div>
+                </div>
+                
+                <div class="mb-3">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <span>Publishable Key:</span>
+                        {% if settings and settings.publishable_key %}
+                            <span class="badge bg-success">Configured</span>
+                        {% else %}
+                            <span class="badge bg-secondary">Not Set</span>
+                        {% endif %}
+                    </div>
+                </div>
+                
+                <div class="mb-3">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <span>Secret Key:</span>
+                        {% if settings and settings.secret_key %}
+                            <span class="badge bg-success">Configured</span>
+                        {% else %}
+                            <span class="badge bg-secondary">Not Set</span>
+                        {% endif %}
+                    </div>
+                </div>
+                
+                <div class="mb-3">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <span>Webhook Secret:</span>
+                        {% if settings and settings.webhook_secret %}
+                            <span class="badge bg-success">Configured</span>
+                        {% else %}
+                            <span class="badge bg-secondary">Not Set</span>
+                        {% endif %}
+                    </div>
+                </div>
+                
+                {% if settings %}
+                <div class="text-center mt-3">
+                    <small class="text-muted">
+                        Last updated: {{ settings.updated_at.strftime('%m/%d/%Y %H:%M') if settings.updated_at else 'Never' }}
+                    </small>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+        
+        <!-- Setup Guide -->
+        <div class="card">
+            <div class="card-header">
+                <h6 class="card-title mb-0">
+                    <i class="fas fa-question-circle me-2"></i>Setup Guide
+                </h6>
+            </div>
+            <div class="card-body">
+                <ol class="list-unstyled">
+                    <li class="mb-2">
+                        <strong>1. Create Stripe Account</strong>
+                        <br>
+                        <small class="text-muted">Sign up at <a href="https://stripe.com" target="_blank">stripe.com</a></small>
+                    </li>
+                    <li class="mb-2">
+                        <strong>2. Get API Keys</strong>
+                        <br>
+                        <small class="text-muted">Find them in your Stripe Dashboard → Developers → API Keys</small>
+                    </li>
+                    <li class="mb-2">
+                        <strong>3. Create Products & Prices</strong>
+                        <br>
+                        <small class="text-muted">Set up your subscription plans in Stripe Dashboard</small>
+                    </li>
+                    <li class="mb-2">
+                        <strong>4. Configure Webhooks</strong>
+                        <br>
+                        <small class="text-muted">Add webhook endpoint for subscription events</small>
+                    </li>
+                    <li>
+                        <strong>5. Test Integration</strong>
+                        <br>
+                        <small class="text-muted">Use test cards to verify everything works</small>
+                    </li>
+                </ol>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Show/hide key values
+document.addEventListener('DOMContentLoaded', function() {
+    const secretKey = document.getElementById('secret_key');
+    const webhookSecret = document.getElementById('webhook_secret');
+    
+    // Add toggle buttons for password fields
+    [secretKey, webhookSecret].forEach(field => {
+        if (field && field.value) {
+            const wrapper = field.closest('.mb-4');
+            const toggleBtn = document.createElement('button');
+            toggleBtn.type = 'button';
+            toggleBtn.className = 'btn btn-outline-secondary btn-sm mt-2';
+            toggleBtn.innerHTML = '<i class="fas fa-eye"></i> Show';
+            
+            toggleBtn.addEventListener('click', function() {
+                if (field.type === 'password') {
+                    field.type = 'text';
+                    this.innerHTML = '<i class="fas fa-eye-slash"></i> Hide';
+                } else {
+                    field.type = 'password';
+                    this.innerHTML = '<i class="fas fa-eye"></i> Show';
+                }
+            });
+            
+            wrapper.appendChild(toggleBtn);
+        }
+    });
+});
+
+// Live mode warning
+document.getElementById('is_live_mode').addEventListener('change', function() {
+    if (this.checked) {
+        if (!confirm('Are you sure you want to enable live mode? This will process real payments!')) {
+            this.checked = false;
+        }
+    }
+});
+</script>
+{% endblock %}

@@ -17,4 +17,5 @@ dependencies = [
     "wtforms>=3.2.1",
     "bcrypt>=4.3.0",
     "flask-wtf>=1.2.2",
+    "stripe>=12.4.0",
 ]

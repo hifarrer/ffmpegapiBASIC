@@ -4,7 +4,7 @@ from werkzeug.security import check_password_hash, generate_password_hash
 from functools import wraps
 import logging
 from datetime import datetime, timedelta
-from models import User, ApiKey, SubscriptionPlan, db
+from models import User, ApiKey, SubscriptionPlan, StripeSettings, UserSubscription, db
 import os
 
 admin_bp = Blueprint('admin', __name__, url_prefix='/admin')
@@ -448,3 +448,63 @@ def initialize_default_plans():
         flash('Error creating default plans', 'danger')
         
     return redirect(url_for('admin.plans_management'))
+
+@admin_bp.route('/stripe-settings', methods=['GET', 'POST'])
+@admin_required
+def stripe_settings():
+    """Stripe configuration management"""
+    settings = StripeSettings.get_settings()
+    
+    if request.method == 'POST':
+        try:
+            publishable_key = request.form.get('publishable_key')
+            secret_key = request.form.get('secret_key')
+            webhook_secret = request.form.get('webhook_secret')
+            is_live_mode = request.form.get('is_live_mode') == 'on'
+            
+            StripeSettings.update_settings(
+                publishable_key=publishable_key,
+                secret_key=secret_key,
+                webhook_secret=webhook_secret,
+                is_live_mode=is_live_mode
+            )
+            
+            flash('Stripe settings updated successfully', 'success')
+            return redirect(url_for('admin.stripe_settings'))
+            
+        except Exception as e:
+            logging.error(f"Error updating Stripe settings: {str(e)}")
+            flash('Error updating Stripe settings', 'danger')
+    
+    return render_template('admin/stripe_settings.html', settings=settings)
+
+@admin_bp.route('/subscriptions')
+@admin_required
+def subscriptions_management():
+    """User subscriptions management"""
+    try:
+        page = request.args.get('page', 1, type=int)
+        per_page = 20
+        
+        subscriptions = UserSubscription.query.join(User).join(SubscriptionPlan)\
+            .order_by(UserSubscription.created_at.desc())\
+            .paginate(page=page, per_page=per_page, error_out=False)
+        
+        # Get subscription statistics
+        stats = {
+            'total_subscriptions': UserSubscription.query.count(),
+            'active_subscriptions': UserSubscription.query.filter_by(status='active').count(),
+            'monthly_subscriptions': UserSubscription.query.filter_by(billing_cycle='monthly').count(),
+            'yearly_subscriptions': UserSubscription.query.filter_by(billing_cycle='yearly').count(),
+        }
+        
+        return render_template('admin/subscriptions.html', 
+                             subscriptions=subscriptions, 
+                             stats=stats)
+        
+    except Exception as e:
+        logging.error(f"Error loading subscriptions: {str(e)}")
+        flash('Error loading subscription data', 'danger')
+        return render_template('admin/subscriptions.html', 
+                             subscriptions=None, 
+                             stats={})

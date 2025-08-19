@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pricing - FFMPEG API</title>
+    
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.replit.com/agent/bootstrap-agent-dark-theme.min.css" rel="stylesheet">
+    
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+        <div class="container">
+            <a class="navbar-brand" href="{{ url_for('index') }}">
+                <i class="fas fa-video me-2"></i>
+                FFMPEG API
+            </a>
+            
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav ms-auto">
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('index') }}">Home</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('docs') }}">Docs</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link active" href="{{ url_for('pricing') }}">Pricing</a>
+                    </li>
+                    {% if current_user.is_authenticated %}
+                        <li class="nav-item">
+                            <a class="nav-link" href="{{ url_for('dashboard') }}">Dashboard</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="{{ url_for('auth.logout') }}">Logout</a>
+                        </li>
+                    {% else %}
+                        <li class="nav-item">
+                            <a class="nav-link" href="{{ url_for('auth.login') }}">Login</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="{{ url_for('auth.register') }}">Sign Up</a>
+                        </li>
+                    {% endif %}
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container mt-5">
+        <!-- Header -->
+        <div class="text-center mb-5">
+            <h1 class="display-4 mb-3">Choose Your Plan</h1>
+            <p class="lead">Select the perfect plan for your video processing needs</p>
+            
+            <!-- Billing Toggle -->
+            <div class="d-flex justify-content-center align-items-center mb-4">
+                <span class="me-3">Monthly</span>
+                <div class="form-check form-switch">
+                    <input class="form-check-input" type="checkbox" id="billingToggle">
+                    <label class="form-check-label" for="billingToggle"></label>
+                </div>
+                <span class="ms-3">Yearly <span class="badge bg-success">Save up to 17%</span></span>
+            </div>
+        </div>
+
+        <!-- Pricing Cards -->
+        {% if plans %}
+        <div class="row justify-content-center">
+            {% for plan in plans %}
+            <div class="col-lg-4 col-md-6 mb-4">
+                <div class="card h-100 {% if plan.name == 'Premium' %}border-primary{% endif %} position-relative">
+                    {% if plan.name == 'Premium' %}
+                        <div class="badge bg-primary position-absolute top-0 start-50 translate-middle px-3 py-2">
+                            Most Popular
+                        </div>
+                    {% endif %}
+                    
+                    <div class="card-header text-center {% if plan.name == 'Premium' %}bg-primary text-white{% endif %}">
+                        <h3 class="card-title">{{ plan.name }}</h3>
+                        <div class="pricing-amount">
+                            <span class="h2 monthly-price" data-monthly="{{ '%.2f'|format(plan.monthly_price) }}">
+                                ${{ '%.0f'|format(plan.monthly_price) if plan.monthly_price == plan.monthly_price|int else '%.2f'|format(plan.monthly_price) }}
+                            </span>
+                            <span class="h2 yearly-price d-none" data-yearly="{{ '%.2f'|format(plan.yearly_price) }}">
+                                ${{ '%.0f'|format(plan.yearly_price/12) if (plan.yearly_price/12) == (plan.yearly_price/12)|int else '%.2f'|format(plan.yearly_price/12) }}
+                            </span>
+                            <span class="text-muted">
+                                /<span class="billing-period">month</span>
+                            </span>
+                        </div>
+                        {% if plan.yearly_price > 0 and plan.monthly_price > 0 %}
+                        <div class="yearly-savings d-none">
+                            <small class="text-success">
+                                Save ${{ '%.0f'|format((plan.monthly_price * 12) - plan.yearly_price) }} per year
+                            </small>
+                        </div>
+                        {% endif %}
+                    </div>
+                    
+                    <div class="card-body d-flex flex-column">
+                        <p class="text-muted text-center mb-4">{{ plan.description or 'Perfect for your video processing needs' }}</p>
+                        
+                        <!-- Features -->
+                        <ul class="list-unstyled mb-4">
+                            <li class="mb-2">
+                                <i class="fas fa-check text-success me-2"></i>
+                                <strong>{{ plan.api_calls_per_month }}</strong> API calls per month
+                            </li>
+                            <li class="mb-2">
+                                <i class="fas fa-check text-success me-2"></i>
+                                Image + Audio merging
+                            </li>
+                            <li class="mb-2">
+                                <i class="fas fa-check text-success me-2"></i>
+                                Video concatenation
+                            </li>
+                            <li class="mb-2">
+                                <i class="fas fa-check text-success me-2"></i>
+                                Picture-in-picture editing
+                            </li>
+                            {% if plan.name != 'Free' %}
+                            <li class="mb-2">
+                                <i class="fas fa-check text-success me-2"></i>
+                                Priority processing
+                            </li>
+                            <li class="mb-2">
+                                <i class="fas fa-check text-success me-2"></i>
+                                Email support
+                            </li>
+                            {% endif %}
+                            {% if plan.name == 'Ultra' %}
+                            <li class="mb-2">
+                                <i class="fas fa-check text-success me-2"></i>
+                                Dedicated support
+                            </li>
+                            <li class="mb-2">
+                                <i class="fas fa-check text-success me-2"></i>
+                                Custom integrations
+                            </li>
+                            {% endif %}
+                        </ul>
+                        
+                        <!-- CTA Button -->
+                        <div class="mt-auto">
+                            {% if current_user.is_authenticated %}
+                                {% if current_user.subscription and current_user.subscription.plan.id == plan.id and current_user.subscription.status == 'active' %}
+                                    <button class="btn btn-success w-100" disabled>
+                                        <i class="fas fa-check me-2"></i>Current Plan
+                                    </button>
+                                {% elif plan.name == 'Free' %}
+                                    {% if not current_user.subscription or current_user.subscription.status != 'active' %}
+                                    <form method="POST" action="{{ url_for('subscribe_free') }}">
+                                        <button type="submit" class="btn btn-outline-primary w-100">
+                                            <i class="fas fa-rocket me-2"></i>Get Started Free
+                                        </button>
+                                    </form>
+                                    {% else %}
+                                    <button class="btn btn-outline-secondary w-100" disabled>
+                                        Downgrade to Free
+                                    </button>
+                                    {% endif %}
+                                {% else %}
+                                    <!-- Paid Plans -->
+                                    <div class="d-grid gap-2">
+                                        {% if plan.stripe_monthly_price_id %}
+                                        <form method="POST" action="{{ url_for('stripe.create_checkout_session') }}" class="monthly-form">
+                                            <input type="hidden" name="plan_id" value="{{ plan.id }}">
+                                            <input type="hidden" name="billing_cycle" value="monthly">
+                                            <button type="submit" class="btn {% if plan.name == 'Premium' %}btn-primary{% else %}btn-outline-primary{% endif %} w-100">
+                                                <i class="fas fa-credit-card me-2"></i>Subscribe Monthly
+                                            </button>
+                                        </form>
+                                        {% endif %}
+                                        
+                                        {% if plan.stripe_yearly_price_id %}
+                                        <form method="POST" action="{{ url_for('stripe.create_checkout_session') }}" class="yearly-form d-none">
+                                            <input type="hidden" name="plan_id" value="{{ plan.id }}">
+                                            <input type="hidden" name="billing_cycle" value="yearly">
+                                            <button type="submit" class="btn {% if plan.name == 'Premium' %}btn-primary{% else %}btn-outline-primary{% endif %} w-100">
+                                                <i class="fas fa-credit-card me-2"></i>Subscribe Yearly
+                                            </button>
+                                        </form>
+                                        {% endif %}
+                                    </div>
+                                {% endif %}
+                            {% else %}
+                                <a href="{{ url_for('auth.register') }}" class="btn {% if plan.name == 'Premium' %}btn-primary{% else %}btn-outline-primary{% endif %} w-100">
+                                    <i class="fas fa-user-plus me-2"></i>Sign Up to Subscribe
+                                </a>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="text-center">
+            <h3>No pricing plans available</h3>
+            <p class="text-muted">Please check back later for pricing information.</p>
+        </div>
+        {% endif %}
+
+        <!-- FAQ Section -->
+        <div class="row mt-5">
+            <div class="col-12">
+                <h2 class="text-center mb-4">Frequently Asked Questions</h2>
+                
+                <div class="accordion" id="faqAccordion">
+                    <div class="accordion-item">
+                        <h2 class="accordion-header">
+                            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#faq1">
+                                What happens if I exceed my API call limit?
+                            </button>
+                        </h2>
+                        <div id="faq1" class="accordion-collapse collapse" data-bs-parent="#faqAccordion">
+                            <div class="accordion-body">
+                                When you reach your monthly API call limit, additional requests will be temporarily blocked until your limit resets at the beginning of the next billing cycle. You can upgrade your plan at any time to get more API calls.
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="accordion-item">
+                        <h2 class="accordion-header">
+                            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#faq2">
+                                Can I change my plan anytime?
+                            </button>
+                        </h2>
+                        <div id="faq2" class="accordion-collapse collapse" data-bs-parent="#faqAccordion">
+                            <div class="accordion-body">
+                                Yes! You can upgrade or downgrade your plan at any time. Changes take effect immediately for upgrades, and at the end of your current billing cycle for downgrades.
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="accordion-item">
+                        <h2 class="accordion-header">
+                            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#faq3">
+                                Is there a free trial?
+                            </button>
+                        </h2>
+                        <div id="faq3" class="accordion-collapse collapse" data-bs-parent="#faqAccordion">
+                            <div class="accordion-body">
+                                Yes! Our Free plan gives you 10 API calls per month with no credit card required. It's perfect for testing our service and small projects.
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="accordion-item">
+                        <h2 class="accordion-header">
+                            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#faq4">
+                                How secure is my data?
+                            </button>
+                        </h2>
+                        <div id="faq4" class="accordion-collapse collapse" data-bs-parent="#faqAccordion">
+                            <div class="accordion-body">
+                                We take security seriously. All uploads are processed securely and temporary files are automatically deleted after processing. We use industry-standard encryption and security practices.
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    
+    <script>
+    // Billing toggle functionality
+    document.getElementById('billingToggle').addEventListener('change', function() {
+        const isYearly = this.checked;
+        const monthlyPrices = document.querySelectorAll('.monthly-price');
+        const yearlyPrices = document.querySelectorAll('.yearly-price');
+        const billingPeriods = document.querySelectorAll('.billing-period');
+        const yearlySavings = document.querySelectorAll('.yearly-savings');
+        const monthlyForms = document.querySelectorAll('.monthly-form');
+        const yearlyForms = document.querySelectorAll('.yearly-form');
+        
+        if (isYearly) {
+            monthlyPrices.forEach(el => el.classList.add('d-none'));
+            yearlyPrices.forEach(el => el.classList.remove('d-none'));
+            billingPeriods.forEach(el => el.textContent = 'month');
+            yearlySavings.forEach(el => el.classList.remove('d-none'));
+            monthlyForms.forEach(el => el.classList.add('d-none'));
+            yearlyForms.forEach(el => el.classList.remove('d-none'));
+        } else {
+            monthlyPrices.forEach(el => el.classList.remove('d-none'));
+            yearlyPrices.forEach(el => el.classList.add('d-none'));
+            billingPeriods.forEach(el => el.textContent = 'month');
+            yearlySavings.forEach(el => el.classList.add('d-none'));
+            monthlyForms.forEach(el => el.classList.remove('d-none'));
+            yearlyForms.forEach(el => el.classList.add('d-none'));
+        }
+    });
+    </script>
+</body>
+</html>

@@ -79,5 +79,85 @@ class SubscriptionPlan(db.Model):
     def __repr__(self):
         return f'<SubscriptionPlan {self.name}>'
 
+class StripeSettings(db.Model):
+    __tablename__ = 'stripe_settings'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    publishable_key = db.Column(db.Text)
+    secret_key = db.Column(db.Text)
+    webhook_secret = db.Column(db.Text)
+    is_live_mode = db.Column(db.Boolean, default=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    @classmethod
+    def get_settings(cls):
+        """Get the current Stripe settings"""
+        return cls.query.first()
+    
+    @classmethod
+    def update_settings(cls, publishable_key=None, secret_key=None, webhook_secret=None, is_live_mode=False):
+        """Update or create Stripe settings"""
+        settings = cls.get_settings()
+        if not settings:
+            settings = cls()
+            db.session.add(settings)
+        
+        if publishable_key is not None:
+            settings.publishable_key = publishable_key
+        if secret_key is not None:
+            settings.secret_key = secret_key
+        if webhook_secret is not None:
+            settings.webhook_secret = webhook_secret
+        settings.is_live_mode = is_live_mode
+        settings.updated_at = datetime.utcnow()
+        
+        db.session.commit()
+        return settings
+    
+    def __repr__(self):
+        return f'<StripeSettings {"Live" if self.is_live_mode else "Test"}>'
+
+class UserSubscription(db.Model):
+    __tablename__ = 'user_subscriptions'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    plan_id = db.Column(db.Integer, db.ForeignKey('subscription_plans.id'), nullable=False)
+    stripe_subscription_id = db.Column(db.String(255), unique=True)
+    stripe_customer_id = db.Column(db.String(255))
+    status = db.Column(db.String(50), default='active')  # active, canceled, past_due, etc.
+    billing_cycle = db.Column(db.String(20))  # monthly, yearly
+    current_period_start = db.Column(db.DateTime)
+    current_period_end = db.Column(db.DateTime)
+    api_calls_used = db.Column(db.Integer, default=0)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    # Relationships
+    user = db.relationship('User', backref=db.backref('subscription', uselist=False))
+    plan = db.relationship('SubscriptionPlan', backref='subscriptions')
+    
+    def reset_monthly_usage(self):
+        """Reset API call usage for the month"""
+        self.api_calls_used = 0
+        self.updated_at = datetime.utcnow()
+        db.session.commit()
+    
+    def can_make_api_call(self):
+        """Check if user can make an API call based on their plan"""
+        if self.status != 'active':
+            return False
+        return self.api_calls_used < self.plan.api_calls_per_month
+    
+    def increment_api_usage(self):
+        """Increment API call usage"""
+        self.api_calls_used += 1
+        self.updated_at = datetime.utcnow()
+        db.session.commit()
+    
+    def __repr__(self):
+        return f'<UserSubscription {self.user.username} - {self.plan.name}>'
+
 # Default site API key - this will be created when the app starts
 SITE_DEFAULT_API_KEY = "ffmpeg_site_default_key_" + "".join(secrets.choice(string.ascii_letters + string.digits) for _ in range(24))

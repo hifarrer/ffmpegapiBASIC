@@ -12,9 +12,10 @@ from werkzeug.exceptions import RequestEntityTooLarge
 from werkzeug.middleware.proxy_fix import ProxyFix
 import mimetypes
 
-from models import db, User, ApiKey, SubscriptionPlan, SITE_DEFAULT_API_KEY
+from models import db, User, ApiKey, SubscriptionPlan, StripeSettings, UserSubscription, SITE_DEFAULT_API_KEY
 from forms import RegistrationForm, LoginForm, ApiKeyForm
 from auth_routes import auth
+from stripe_routes import stripe_bp
 
 # Configure logging
 logging.basicConfig(level=logging.DEBUG)
@@ -59,6 +60,9 @@ app.register_blueprint(auth, url_prefix='/auth')
 # Import and register admin blueprint
 from admin_routes import admin_bp
 app.register_blueprint(admin_bp)
+
+# Register Stripe blueprint
+app.register_blueprint(stripe_bp)
 
 # Create tables and default data
 with app.app_context():
@@ -813,6 +817,60 @@ def download_file(filename):
             'success': False,
             'error': 'File not found or expired'
         }), 404
+
+@app.route('/pricing')
+def pricing():
+    """Pricing page"""
+    plans = SubscriptionPlan.query.filter_by(is_active=True).order_by(SubscriptionPlan.sort_order).all()
+    return render_template('pricing.html', plans=plans)
+
+@app.route('/subscribe-free', methods=['POST'])
+@login_required
+def subscribe_free():
+    """Subscribe to free plan"""
+    try:
+        from datetime import timedelta
+        
+        # Find the free plan
+        free_plan = SubscriptionPlan.query.filter_by(name='Free', is_active=True).first()
+        if not free_plan:
+            flash('Free plan not available', 'error')
+            return redirect(url_for('pricing'))
+        
+        # Check if user already has a subscription
+        existing_subscription = UserSubscription.query.filter_by(user_id=current_user.id).first()
+        
+        if existing_subscription:
+            # Update existing subscription to free plan
+            existing_subscription.plan_id = free_plan.id
+            existing_subscription.status = 'active'
+            existing_subscription.billing_cycle = 'monthly'
+            existing_subscription.api_calls_used = 0
+            existing_subscription.stripe_subscription_id = None
+            existing_subscription.stripe_customer_id = None
+            existing_subscription.current_period_start = datetime.now()
+            existing_subscription.current_period_end = datetime.now() + timedelta(days=30)
+        else:
+            # Create new free subscription
+            subscription = UserSubscription()
+            subscription.user_id = current_user.id
+            subscription.plan_id = free_plan.id
+            subscription.status = 'active'
+            subscription.billing_cycle = 'monthly'
+            subscription.api_calls_used = 0
+            subscription.current_period_start = datetime.now()
+            subscription.current_period_end = datetime.now() + timedelta(days=30)
+            db.session.add(subscription)
+        
+        db.session.commit()
+        flash('Successfully subscribed to the Free plan!', 'success')
+        
+    except Exception as e:
+        logging.error(f"Error subscribing to free plan: {str(e)}")
+        db.session.rollback()
+        flash('Error subscribing to free plan. Please try again.', 'error')
+    
+    return redirect(url_for('dashboard'))
 
 if __name__ == '__main__':
     app.run(host="0.0.0.0", port=5000, debug=True)
