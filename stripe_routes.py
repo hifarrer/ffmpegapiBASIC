@@ -41,15 +41,19 @@ def create_checkout_session():
             flash('This plan is not available for the selected billing cycle.', 'error')
             return redirect(url_for('dashboard'))
         
-        # Check if user already has an active subscription
+        # Check if user already has an active paid subscription
         existing_subscription = UserSubscription.query.filter_by(
             user_id=current_user.id,
             status='active'
         ).first()
         
+        # Allow upgrades from free plan to paid plans
         if existing_subscription:
-            flash('You already have an active subscription. Please cancel it first to change plans.', 'warning')
-            return redirect(url_for('dashboard'))
+            existing_plan = SubscriptionPlan.query.get(existing_subscription.plan_id)
+            # Only block if they have a paid plan, allow upgrades from free
+            if existing_plan and existing_plan.name != 'Free' and existing_plan.stripe_monthly_price_id:
+                flash('You already have an active paid subscription. Please cancel it first to change plans.', 'warning')
+                return redirect(url_for('pricing'))
         
         # Get or create Stripe customer
         stripe_customer_id = None
@@ -136,6 +140,11 @@ def subscription_success():
                     user_subscription = UserSubscription()
                     user_subscription.user_id = current_user.id
                     db.session.add(user_subscription)
+                else:
+                    # If upgrading from free plan, reset usage
+                    existing_plan = SubscriptionPlan.query.get(user_subscription.plan_id) if user_subscription.plan_id else None
+                    if existing_plan and existing_plan.name == 'Free':
+                        user_subscription.api_calls_used = 0
                 
                 metadata = checkout_session.metadata or {}
                 user_subscription.plan_id = int(metadata.get('plan_id', 0))
