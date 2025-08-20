@@ -103,6 +103,8 @@ def create_checkout_session():
         
     except Exception as e:
         logging.error(f"Error creating checkout session: {str(e)}")
+        logging.error(f"Using price_id: {price_id}")
+        logging.error(f"Live mode enabled: {settings.is_live_mode}")
         flash('Error creating checkout session. Please try again.', 'error')
         return redirect(url_for('dashboard'))
 
