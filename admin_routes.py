@@ -102,7 +102,10 @@ def user_management():
             page=page, per_page=per_page, error_out=False
         )
         
-        return render_template('admin/users.html', users=users)
+        # Get all subscription plans for the dropdown
+        plans = SubscriptionPlan.query.filter_by(is_active=True).order_by(SubscriptionPlan.sort_order).all()
+        
+        return render_template('admin/users.html', users=users, plans=plans)
         
     except Exception as e:
         logging.error(f"Error loading user management: {str(e)}")
@@ -149,6 +152,59 @@ def delete_user(user_id):
         db.session.rollback()
         flash('Error deleting user', 'danger')
         
+    return redirect(url_for('admin.user_management'))
+
+@admin_bp.route('/users/<int:user_id>/change-plan', methods=['POST'])
+@admin_required
+def change_user_plan(user_id):
+    """Change a user's subscription plan"""
+    try:
+        user = User.query.get_or_404(user_id)
+        plan_id = request.form.get('plan_id', type=int)
+        
+        if not plan_id:
+            flash('Please select a valid plan', 'danger')
+            return redirect(url_for('admin.user_management'))
+        
+        plan = SubscriptionPlan.query.get_or_404(plan_id)
+        
+        # Get or create user subscription
+        user_subscription = UserSubscription.query.filter_by(user_id=user.id).first()
+        
+        if not user_subscription:
+            # Create new subscription
+            user_subscription = UserSubscription()
+            user_subscription.user_id = user.id
+            user_subscription.status = 'active'
+            db.session.add(user_subscription)
+        
+        # Update subscription details
+        old_plan_name = None
+        if user_subscription.plan_id:
+            old_plan = SubscriptionPlan.query.get(user_subscription.plan_id)
+            old_plan_name = old_plan.name if old_plan else None
+        
+        user_subscription.plan_id = plan.id
+        user_subscription.api_calls_used = 0  # Reset usage when changing plans
+        user_subscription.updated_at = datetime.utcnow()
+        
+        # If changing from/to free plan, update status accordingly
+        if plan.name == 'Free':
+            user_subscription.stripe_subscription_id = None
+            user_subscription.stripe_customer_id = None
+        
+        db.session.commit()
+        
+        if old_plan_name:
+            flash(f'Successfully changed {user.username} from {old_plan_name} to {plan.name} plan', 'success')
+        else:
+            flash(f'Successfully assigned {user.username} to {plan.name} plan', 'success')
+        
+    except Exception as e:
+        logging.error(f"Error changing user plan: {str(e)}")
+        db.session.rollback()
+        flash('Error changing user plan', 'danger')
+    
     return redirect(url_for('admin.user_management'))
 
 @admin_bp.route('/api-keys')
