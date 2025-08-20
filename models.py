@@ -171,6 +171,8 @@ class SiteSettings(db.Model):
     allowed_extensions = db.Column(db.String(200), default='mp4,avi,mov,mkv,jpg,jpeg,png,mp3,wav,m4a')
     maintenance_mode = db.Column(db.Boolean, default=False)
     support_email = db.Column(db.String(100), default='support@example.com')
+    admin_username = db.Column(db.String(50), default='admin')
+    admin_password_hash = db.Column(db.String(256))
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     
@@ -180,7 +182,13 @@ class SiteSettings(db.Model):
         settings = cls.query.first()
         if not settings:
             settings = cls()
+            # Set default admin password hash
+            settings.admin_password_hash = generate_password_hash('password123')
             db.session.add(settings)
+            db.session.commit()
+        elif not settings.admin_password_hash:
+            # Migrate existing settings to include admin password
+            settings.admin_password_hash = generate_password_hash('password123')
             db.session.commit()
         return settings
     
@@ -194,6 +202,21 @@ class SiteSettings(db.Model):
         settings.updated_at = datetime.utcnow()
         db.session.commit()
         return settings
+    
+    @classmethod
+    def update_admin_password(cls, new_password):
+        """Update admin password"""
+        settings = cls.get_settings()
+        settings.admin_password_hash = generate_password_hash(new_password)
+        settings.updated_at = datetime.utcnow()
+        db.session.commit()
+        return settings
+    
+    @classmethod
+    def get_admin_credentials(cls):
+        """Get admin username and password hash"""
+        settings = cls.get_settings()
+        return settings.admin_username, settings.admin_password_hash
     
     def __repr__(self):
         return f'<SiteSettings {self.site_name}>'

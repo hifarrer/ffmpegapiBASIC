@@ -9,10 +9,6 @@ import os
 
 admin_bp = Blueprint('admin', __name__, url_prefix='/admin')
 
-# Admin credentials
-ADMIN_USERNAME = 'admin'
-ADMIN_PASSWORD_HASH = generate_password_hash('password123')
-
 def admin_required(f):
     """Decorator to require admin authentication"""
     @wraps(f)
@@ -29,7 +25,10 @@ def admin_login():
         username = request.form.get('username')
         password = request.form.get('password')
         
-        if username == ADMIN_USERNAME and password and check_password_hash(ADMIN_PASSWORD_HASH, password):
+        # Get admin credentials from database
+        admin_username, admin_password_hash = SiteSettings.get_admin_credentials()
+        
+        if username == admin_username and password and check_password_hash(admin_password_hash, password):
             session['admin_authenticated'] = True
             session['admin_username'] = username
             flash('Successfully logged in as administrator', 'success')
@@ -259,15 +258,18 @@ def change_password():
         new_password = request.form.get('new_password')
         confirm_password = request.form.get('confirm_password')
         
-        if not current_password or not check_password_hash(ADMIN_PASSWORD_HASH, current_password):
+        # Get current admin password hash from database
+        _, admin_password_hash = SiteSettings.get_admin_credentials()
+        
+        if not current_password or not check_password_hash(admin_password_hash, current_password):
             flash('Current password is incorrect', 'danger')
         elif new_password != confirm_password:
             flash('New passwords do not match', 'danger')
         elif not new_password or len(new_password) < 6:
             flash('New password must be at least 6 characters', 'danger')
         else:
-            # In a real application, you'd update the password in a database
-            # For now, just show success
+            # Update the admin password in the database
+            SiteSettings.update_admin_password(new_password)
             flash('Password changed successfully. Please log in again.', 'success')
             return redirect(url_for('admin.admin_logout'))
     
