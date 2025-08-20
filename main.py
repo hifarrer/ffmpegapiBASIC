@@ -579,7 +579,7 @@ def api_docs():
 @app.route('/api/merge_image_audio', methods=['POST'])
 @require_api_key
 def merge_image_audio():
-    """API endpoint to merge image and audio into video - supports both file uploads and URLs (sync/async)"""
+    """API endpoint to merge image and audio into video from URLs (sync/async)"""
     try:
         # Check if async processing is requested
         async_processing = False
@@ -615,114 +615,77 @@ def merge_image_audio():
                 'message': 'Job submitted for async processing. Use /api/job/{job_id}/status to check progress.',
                 'status_url': url_for('get_job_status', job_id=job.job_id, _external=True)
             }), 202
-        # If not async, process synchronously (existing logic)
+        # If not async, process synchronously
+        # Require JSON data
+        if not request.is_json:
+            return jsonify({
+                'success': False,
+                'error': 'Content-Type must be application/json'
+            }), 400
+            
+        data = request.get_json()
+        
+        if not data or 'image' not in data or 'audio' not in data:
+            return jsonify({
+                'success': False,
+                'error': 'Both image and audio URLs are required'
+            }), 400
+        
         # Generate unique filename for this request
         request_id = str(uuid.uuid4())
         image_path = ""
         audio_path = ""
         
-        # Check if JSON data is provided (URL method)
-        if request.is_json:
-            data = request.get_json()
+        image_url = data['image']
+        audio_url = data['audio']
             
-            if not data or 'image_url' not in data or 'audio_url' not in data:
-                return jsonify({
-                    'success': False,
-                    'error': 'Both image_url and audio_url are required when using JSON format'
-                }), 400
+        # Validate URLs
+        if not image_url or not audio_url:
+            return jsonify({
+                'success': False,
+                'error': 'Both image and audio must be valid URLs'
+            }), 400
             
-            image_url = data['image_url']
-            audio_url = data['audio_url']
-            
-            # Validate URLs
-            if not image_url or not audio_url:
-                return jsonify({
-                    'success': False,
-                    'error': 'Both image_url and audio_url must be valid URLs'
-                }), 400
-            
-            # Generate file paths for downloaded content
-            image_ext = image_url.split('.')[-1].lower() if '.' in image_url else 'jpg'
-            audio_ext = audio_url.split('.')[-1].lower() if '.' in audio_url else 'mp3'
-            
-            # Validate extensions
-            if image_ext not in ALLOWED_IMAGE_EXTENSIONS:
-                return jsonify({
-                    'success': False,
-                    'error': f'Invalid image format in URL. Allowed formats: {", ".join(ALLOWED_IMAGE_EXTENSIONS)}'
-                }), 400
-            
-            if audio_ext not in ALLOWED_AUDIO_EXTENSIONS:
-                return jsonify({
-                    'success': False,
-                    'error': f'Invalid audio format in URL. Allowed formats: {", ".join(ALLOWED_AUDIO_EXTENSIONS)}'
-                }), 400
-            
-            image_filename = f"{request_id}_image.{image_ext}"
-            audio_filename = f"{request_id}_audio.{audio_ext}"
-            
-            image_path = os.path.join(UPLOAD_FOLDER, image_filename)
-            audio_path = os.path.join(UPLOAD_FOLDER, audio_filename)
-            
-            # Download files from URLs
-            success, message = download_file_from_url(image_url, image_path, "image")
-            if not success:
-                return jsonify({
-                    'success': False,
-                    'error': message
-                }), 400
-            
-            success, message = download_file_from_url(audio_url, audio_path, "audio")
-            if not success:
-                cleanup_file(image_path)
-                return jsonify({
-                    'success': False,
-                    'error': message
-                }), 400
+        # Generate file paths for downloaded content
+        image_ext = image_url.split('.')[-1].lower() if '.' in image_url else 'jpg'
+        audio_ext = audio_url.split('.')[-1].lower() if '.' in audio_url else 'mp3'
         
-        else:
-            # File upload method
-            # Check if files are present
-            if 'image' not in request.files or 'audio' not in request.files:
-                return jsonify({
-                    'success': False,
-                    'error': 'Both image and audio files are required when using multipart upload'
-                }), 400
-
-            image_file = request.files['image']
-            audio_file = request.files['audio']
-
-            # Check if files are selected
-            if image_file.filename == '' or audio_file.filename == '':
-                return jsonify({
-                    'success': False,
-                    'error': 'Please select both image and audio files'
-                }), 400
-
-            # Validate file extensions
-            if not allowed_file(image_file.filename, ALLOWED_IMAGE_EXTENSIONS):
-                return jsonify({
-                    'success': False,
-                    'error': f'Invalid image format. Allowed formats: {", ".join(ALLOWED_IMAGE_EXTENSIONS)}'
-                }), 400
-
-            if not allowed_file(audio_file.filename, ALLOWED_AUDIO_EXTENSIONS):
-                return jsonify({
-                    'success': False,
-                    'error': f'Invalid audio format. Allowed formats: {", ".join(ALLOWED_AUDIO_EXTENSIONS)}'
-                }), 400
+        # Validate extensions
+        if image_ext not in ALLOWED_IMAGE_EXTENSIONS:
+            return jsonify({
+                'success': False,
+                'error': f'Invalid image format in URL. Allowed formats: {", ".join(ALLOWED_IMAGE_EXTENSIONS)}'
+            }), 400
         
-            # Save uploaded files
-            image_filename = secure_filename(f"{request_id}_image_{image_file.filename}")
-            audio_filename = secure_filename(f"{request_id}_audio_{audio_file.filename}")
-            
-            image_path = os.path.join(UPLOAD_FOLDER, image_filename)
-            audio_path = os.path.join(UPLOAD_FOLDER, audio_filename)
-            
-            image_file.save(image_path)
-            audio_file.save(audio_path)
+        if audio_ext not in ALLOWED_AUDIO_EXTENSIONS:
+            return jsonify({
+                'success': False,
+                'error': f'Invalid audio format in URL. Allowed formats: {", ".join(ALLOWED_AUDIO_EXTENSIONS)}'
+            }), 400
+        
+        image_filename = f"{request_id}_image.{image_ext}"
+        audio_filename = f"{request_id}_audio.{audio_ext}"
+        
+        image_path = os.path.join(UPLOAD_FOLDER, image_filename)
+        audio_path = os.path.join(UPLOAD_FOLDER, audio_filename)
+        
+        # Download files from URLs
+        success, message = download_file_from_url(image_url, image_path, "image")
+        if not success:
+            return jsonify({
+                'success': False,
+                'error': message
+            }), 400
+        
+        success, message = download_file_from_url(audio_url, audio_path, "audio")
+        if not success:
+            cleanup_file(image_path)
+            return jsonify({
+                'success': False,
+                'error': message
+            }), 400
 
-        # Additional validation using mimetypes for both methods
+        # Additional validation using mimetypes
         if not validate_file_type(image_path, 'image'):
             cleanup_file(image_path)
             cleanup_file(audio_path)
@@ -1277,9 +1240,9 @@ def process_merge_image_audio_job(job, input_data):
         audio_path = ""
         
         # Handle URL-based inputs
-        if 'image_url' in input_data and 'audio_url' in input_data:
-            image_url = input_data['image_url']
-            audio_url = input_data['audio_url']
+        if 'image' in input_data and 'audio' in input_data:
+            image_url = input_data['image']
+            audio_url = input_data['audio']
             
             # Generate file paths
             image_ext = image_url.split('.')[-1].lower() if '.' in image_url else 'jpg'
