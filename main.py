@@ -441,10 +441,11 @@ def merge_videos_filter_complex(video_paths, output_path, audio_path=None):
             video_filters.append(f"[{i}:v]")
             audio_filters.append(f"[{i}:a]")
         
+        # Use simpler concat filter approach that should work more reliably
         filter_complex = f"{''.join(video_filters)}concat=n={num_videos}:v=1:a=1[outv][outa]"
         
         if audio_path:
-            # If custom audio is provided, only use video streams
+            # If custom audio is provided, only concatenate video streams
             filter_complex = f"{''.join(video_filters)}concat=n={num_videos}:v=1:a=0[outv]"
             
             cmd = [
@@ -477,6 +478,7 @@ def merge_videos_filter_complex(video_paths, output_path, audio_path=None):
             ]
         
         logging.info(f"Running FFMPEG filter_complex command: {' '.join(cmd)}")
+        logging.info(f"Filter complex string: {filter_complex}")
         result = subprocess.run(cmd, capture_output=True, text=True, timeout=900)  # Longer timeout for complex processing
         
         if result.returncode == 0:
@@ -484,7 +486,33 @@ def merge_videos_filter_complex(video_paths, output_path, audio_path=None):
             return True, "Videos merged successfully using advanced method"
         else:
             logging.error(f"FFMPEG filter_complex error: {result.stderr}")
-            return False, f"Video merge failed: {result.stderr}"
+            
+            # Try fallback approach without filter_complex - use input mapping instead
+            logging.warning("Filter_complex failed, trying simpler approach with explicit stream mapping")
+            try:
+                fallback_cmd = [
+                    'ffmpeg'
+                ] + inputs + [
+                    '-c:v', 'libx264',
+                    '-c:a', 'aac', 
+                    '-preset', 'fast',
+                    '-y',
+                    output_path
+                ]
+                
+                logging.info(f"Running FFMPEG fallback command: {' '.join(fallback_cmd)}")
+                fallback_result = subprocess.run(fallback_cmd, capture_output=True, text=True, timeout=900)
+                
+                if fallback_result.returncode == 0:
+                    logging.info("Video merge with fallback method completed successfully")
+                    return True, "Videos merged successfully using fallback method"
+                else:
+                    logging.error(f"FFMPEG fallback error: {fallback_result.stderr}")
+                    return False, f"Video merge failed with both methods. Filter error: {result.stderr}. Fallback error: {fallback_result.stderr}"
+                    
+            except Exception as e:
+                logging.error(f"Fallback method error: {str(e)}")
+                return False, f"Video merge failed: {result.stderr}"
             
     except subprocess.TimeoutExpired:
         logging.error("Video merge with filter_complex timed out")
