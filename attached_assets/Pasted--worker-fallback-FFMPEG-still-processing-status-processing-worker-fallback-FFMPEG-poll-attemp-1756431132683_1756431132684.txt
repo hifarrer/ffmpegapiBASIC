@@ -1,0 +1,56 @@
+[worker:fallback] FFMPEG still processing (status: processing)
+[worker:fallback] FFMPEG poll attempt 5/60
+[worker:fallback] FFMPEG status response: {
+  created_at: '2025-08-29T01:20:58.631977',
+  job_id: 'b0d48495-8391-49f0-864f-039b93ea5f67',
+  job_type: 'merge_videos',
+  status: 'processing',
+  success: true,
+  updated_at: '2025-08-29T01:20:59.086730'
+}
+[worker:fallback] FFMPEG still processing (status: processing)
+[worker:fallback] FFMPEG poll attempt 6/60
+[worker:fallback] FFMPEG status response: {
+  created_at: '2025-08-29T01:20:58.631977',
+  job_id: 'b0d48495-8391-49f0-864f-039b93ea5f67',
+  job_type: 'merge_videos',
+  status: 'processing',
+  success: true,
+  updated_at: '2025-08-29T01:20:59.086730'
+}
+[worker:fallback] FFMPEG still processing (status: processing)
+[worker:fallback] FFMPEG poll attempt 7/60
+[worker:fallback] FFMPEG status response: {
+  created_at: '2025-08-29T01:20:58.631977',
+  job_id: 'b0d48495-8391-49f0-864f-039b93ea5f67',
+  job_type: 'merge_videos',
+  status: 'processing',
+  success: true,
+  updated_at: '2025-08-29T01:20:59.086730'
+}
+[worker:fallback] FFMPEG still processing (status: processing)
+[worker:fallback] FFMPEG poll attempt 8/60
+[worker:fallback] FFMPEG status response: {
+  created_at: '2025-08-29T01:20:58.631977',
+  error: "Server error: Unable to build URLs outside an active request without 'SERVER_NAME' configured. Also configure 'APPLICATION_ROOT' and 'PREFERRED_URL_SCHEME' as needed.",
+  job_id: 'b0d48495-8391-49f0-864f-039b93ea5f67',
+  job_type: 'merge_videos',
+  status: 'failed',
+  success: true,
+  updated_at: '2025-08-29T01:22:04.885081'
+}
+[worker:fallback] FFMPEG merge failed: {
+  created_at: '2025-08-29T01:20:58.631977',
+  error: "Server error: Unable to build URLs outside an active request without 'SERVER_NAME' configured. Also configure 'APPLICATION_ROOT' and 'PREFERRED_URL_SCHEME' as needed.",
+  job_id: 'b0d48495-8391-49f0-864f-039b93ea5f67',
+  job_type: 'merge_videos',
+  status: 'failed',
+  success: true,
+  updated_at: '2025-08-29T01:22:04.885081'
+}
+[worker:fallback] FFMPEG merge timed out or failed
+[worker:fallback] ===== VIDEO GENERATION CHECK END =====
+[worker:fallback] Updating episode with final data - status: PUBLISHED
+[worker:fallback] Episode cmew558df004v2lfjms2usvov completed with 2 parts
+[worker:fallback] Updating episode with final data - status: PUBLISHED
+[worker:fallback] Episode cmew558df004v2lfjms2usvov completed with 2 parts
