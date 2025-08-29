@@ -1,0 +1,43 @@
+"Input #1, mov,mp4,m4a,3gp,3g2,mj2, from 'uploads/d3112701-ed30-4b08-aad8-0d940b0653de_video_1.mp4':\n" +
+    '  Metadata:\n' +
+    '    major_brand     : isom\n' +
+    '    minor_version   : 512\n' +
+    '    compatible_brands: isomiso2avc1mp41\n' +
+    '    encoder         : Lavf61.1.100\n' +
+    '  Duration: 00:00:38.36, start: 0.000000, bitrate: 1147 kb/s\n' +
+    '  Stream #1:0[0x1](und): Video: h264 (High) (avc1 / 0x31637661), yuv420p(tv, bt709, progressive), 848x464, 1069 kb/s, 25 fps, 25 tbr, 12800 tbn (default)\n' +
+    '      Metadata:\n' +
+    '        handler_name    : VideoHandler\n' +
+    '        vendor_id       : [0][0][0][0]\n' +
+    '        encoder         : Lavc61.3.100 libx264\n' +
+    '  Stream #1:1[0x2](und): Audio: aac (LC) (mp4a / 0x6134706D), 44100 Hz, mono, fltp, 71 kb/s (default)\n' +
+    '      Metadata:\n' +
+    '        handler_name    : SoundHandler\n' +
+    '        vendor_id       : [0][0][0][0]\n' +
+    "[fc#0 @ 0x8423840] Stream specifier ':v' in filtergraph description [0:v][1:v]concat=n=2:v=1:a=1[outv][outa] matches no streams.\n" +
+    'Error binding filtergraph inputs/outputs: Invalid argument\n' +
+    '. Fallback error: ffmpeg version 7.1.1 Copyright (c) 2000-2025 the FFmpeg developers\n' +
+    '  built with gcc 14.2.1 (GCC) 20250322\n' +
+    '  configuration: --disable-static --prefix=/nix/store/eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee-ffmpeg-7.1.1 --target_os=linux --arch=x86_64 --pkg-config=pkg-config --enable-gpl --enable-version3 --disable-nonfree --disable-static --enable-shared --enable-pic --disable-thumb --disable-small --enable-runtime-cpudetect --disable-gray --enable-swscale-alpha --enable-hardcoded-tables --enable-safe-bitstream-reader --enable-pthreads --disable-w32threads --disable-os2threads --enable-network --enable-pixelutils --datadir=/nix/store/16zmy175ji519qm4zm718fl5asc5sbqh-ffmpeg-7.1.1-data/share/ffmpeg --enable-ffmpeg --enable-ffplay --enable-ffprobe --bindir=/nix/store/eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee-ffmpeg-7.1.1-bin/bin --enable-avcodec --enable-avdevice --enable-avfilter --enable-avformat --enable-avutil --enable-postproc --enable-swresample --enable-swscale --libdir=/nix/store/eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee-ffmpeg-7.1.1-lib/lib --incdir=/nix/store/eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee-ffmpeg-7.1.1-dev/include --enable-doc --enable-htmlpages --enable-manpages --mandir=/nix/store/eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee-ffmpeg-7.1.1-man/share/man --enable-podpages --enable-txtpages --docdir=/nix/store/eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee-ffmpeg-7.1.1-doc/share/doc/ffmpeg --enable-alsa --enable-amf --enable-libaom --disable-libaribb24 --disable-libaribcaption --enable-libass --disable-avisynth --enable-libbluray --disable-libbs2b --enable-bzlib --disable-libcaca --disable-libcdio --disable-libcelt --disable-chromaprint --disable-libcodec2 --disable-cuda --enable-cuda-llvm --disable-cuda-nvcc --enable-cuvid --enable-libdav1d --disable-libdc1394 --enable-libdrm --disable-libdvdnav --disable-libdvdread --disable-libfdk-aac --enable-ffnvcodec --disable-libflite --enable-fontconfig --enable-libfontconfig --enable-libfreetype --disable-frei0r --enable-libfribidi --disable-libgme --enable-gnutls --disable-libgsm --enable-libharfbuzz --enable-iconv --disable-libilbc --disable-libjack --disable-libjxl --disable-libkvazaar --disable-ladspa --disable-liblc3 --disable-liblcevc-dec --disable-lcms2 --enable-lzma --disable-metal --disable-libmfx --disable-libmodplug --enable-libmp3lame --disable-libmysofa --disable-libnpp --enable-nvdec --enable-nvenc --disable-openal --enable-opencl --disable-libopencore-amrnb --disable-libopencore-amrwb --disable-opengl --disable-libopenh264 --enable-libopenjpeg --enable-libopenmpt --enable-libopus --disable-libplacebo --enable-libpulse --disable-libqrencode --disable-libquirc --disable-librav1e --enable-librist --disable-librtmp --disable-librubberband --disable-libsmbclient --enable-sdl2 --disable-libshaderc --disable-libshine --disable-libsnappy --enable-libsoxr --enable-libspeex --enable-libsrt --enable-libssh --disable-librsvg --enable-libsvtav1 --disable-libtensorflow --enable-libtheora --disable-libtwolame --enable-libv4l2 --enable-v4l2-m2m --enable-vaapi --enable-vdpau --disable-libvpl --enable-libvidstab --disable-libvmaf --disable-libvo-amrwbenc --enable-libvorbis --enable-libvpx --enable-vulkan --disable-libvvenc --enable-libwebp --enable-libx264 --enable-libx265 --disable-libxavs --disable-libxcb --disable-libxcb-shape --disable-libxcb-shm --disable-libxcb-xfixes --disable-libxevd --disable-libxeve --disable-xlib --enable-libxml2 --enable-libxvid --enable-libzimg --enable-zlib --disable-libzmq --enable-libzvbi --disable-debug --enable-optimizations --disable-extra-warnings --disable-stripping\n' +
+    '  libavutil      59. 39.100 / 59. 39.100\n' +
+    '  libavcodec     61. 19.101 / 61. 19.101\n' +
+    '  libavformat    61.  7.100 / 61.  7.100\n' +
+    '  libavdevice    61.  3.100 / 61.  3.100\n' +
+    '  libavfilter    10.  4.100 / 10.  4.100\n' +
+    '  libswscale      8.  3.100 /  8.  3.100\n' +
+    '  libswresample   5.  3.100 /  5.  3.100\n' +
+    '  libpostproc    58.  3.100 / 58.  3.100\n' +
+    "[concat @ 0xbe9fac0] Impossible to open 'outputs/uploads/d3112701-ed30-4b08-aad8-0d940b0653de_video_0.mp4'\n" +
+    '[in#0 @ 0xbe9f800] Error opening input: No such file or directory\n' +
+    'Error opening input file outputs/d3112701-ed30-4b08-aad8-0d940b0653de_merged_output.mp4_fallback.txt.\n' +
+    'Error opening input files: No such file or directory\n',
+  job_id: 'b14e72a2-c2cf-4c02-a33f-1d15e3cce839',
+  job_type: 'merge_videos',
+  status: 'failed',
+  success: true,
+  updated_at: '2025-08-29T02:05:15.972716'
+}
+[worker:fallback] FFMPEG merge timed out or failed
+[worker:fallback] ===== VIDEO GENERATION CHECK END =====
+[worker:fallback] Updating episode with final data - status: PUBLISHED
+[worker:fallback] Episode cmew6p1lb00ej2lfjjfbjliil completed with 2 parts
