@@ -450,6 +450,12 @@ def merge_videos_filter_complex(video_paths, output_path, audio_path=None):
         # Use simpler concat filter approach that should work more reliably
         filter_complex = f"{''.join(video_filters)}concat=n={num_videos}:v=1:a=1[outv][outa]"
         
+        # Debug: Log the video paths and filter construction
+        logging.info(f"Video paths input: {video_paths}")
+        logging.info(f"Number of videos: {num_videos}")
+        logging.info(f"Video filters: {video_filters}")
+        logging.info(f"Audio filters: {audio_filters}")
+        
         if audio_path:
             # If custom audio is provided, only concatenate video streams
             filter_complex = f"{''.join(video_filters)}concat=n={num_videos}:v=1:a=0[outv]"
@@ -500,15 +506,22 @@ def merge_videos_filter_complex(video_paths, output_path, audio_path=None):
                 temp_list_path = f"{output_path}_fallback.txt"
                 
                 # Extract video paths from inputs (every other element starting from index 1)
-                video_paths = []
+                video_paths_extracted = []
                 for i in range(1, len(inputs), 2):  # inputs are ['-i', 'path1', '-i', 'path2', ...]
-                    video_paths.append(inputs[i])
+                    video_paths_extracted.append(inputs[i])
+                
+                logging.info(f"Extracted video paths for concat: {video_paths_extracted}")
                 
                 with open(temp_list_path, 'w') as f:
-                    for video_path in video_paths:
+                    for video_path in video_paths_extracted:
                         # Escape single quotes in file paths for FFMPEG
                         escaped_path = video_path.replace("'", "'\"'\"'")
                         f.write(f"file '{escaped_path}'\n")
+                        
+                # Log the content of the concat file for debugging
+                with open(temp_list_path, 'r') as f:
+                    concat_content = f.read()
+                    logging.info(f"Concat file content:\n{concat_content}")
                 
                 fallback_cmd = [
                     'ffmpeg',
