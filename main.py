@@ -447,14 +447,24 @@ def merge_videos_filter_complex(video_paths, output_path, audio_path=None):
             video_filters.append(f"[{i}:v]")
             audio_filters.append(f"[{i}:a]")
         
-        # Use simpler concat filter approach that should work more reliably
-        filter_complex = f"{''.join(video_filters)}concat=n={num_videos}:v=1:a=1[outv][outa]"
+        # First try a safer approach - check if all videos have both video and audio streams
+        # Build a more robust filter that handles stream mapping better
+        filter_parts = []
+        for i in range(num_videos):
+            filter_parts.append(f"[{i}:v:0]")  # Explicitly specify video stream 0
+            filter_parts.append(f"[{i}:a:0]")  # Explicitly specify audio stream 0
+        
+        # Create the concat filter with explicit stream specifications
+        video_concat = ''.join([f"[{i}:v:0]" for i in range(num_videos)])
+        audio_concat = ''.join([f"[{i}:a:0]" for i in range(num_videos)])
+        filter_complex = f"{video_concat}concat=n={num_videos}:v=1:a=0[outv];{audio_concat}concat=n={num_videos}:v=0:a=1[outa]"
         
         # Debug: Log the video paths and filter construction
         logging.info(f"Video paths input: {video_paths}")
         logging.info(f"Number of videos: {num_videos}")
         logging.info(f"Video filters: {video_filters}")
         logging.info(f"Audio filters: {audio_filters}")
+        logging.info(f"New filter complex: {filter_complex}")
         
         if audio_path:
             # If custom audio is provided, only concatenate video streams
@@ -514,8 +524,11 @@ def merge_videos_filter_complex(video_paths, output_path, audio_path=None):
                 
                 with open(temp_list_path, 'w') as f:
                     for video_path in video_paths_extracted:
+                        # Convert to absolute path to avoid relative path issues
+                        import os
+                        absolute_path = os.path.abspath(video_path)
                         # Escape single quotes in file paths for FFMPEG
-                        escaped_path = video_path.replace("'", "'\"'\"'")
+                        escaped_path = absolute_path.replace("'", "'\"'\"'")
                         f.write(f"file '{escaped_path}'\n")
                         
                 # Log the content of the concat file for debugging
