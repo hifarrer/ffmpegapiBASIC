@@ -493,27 +493,47 @@ def merge_videos_filter_complex(video_paths, output_path, audio_path=None):
         else:
             logging.error(f"FFMPEG filter_complex error: {result.stderr}")
             
-            # Try fallback approach without filter_complex - use input mapping instead
-            logging.warning("Filter_complex failed, trying simpler approach with explicit stream mapping")
+            # Try fallback approach using the original concat demuxer method
+            logging.warning("Filter_complex failed, trying concat demuxer fallback")
             try:
+                # Create temporary file list for concat demuxer
+                temp_list_path = f"{output_path}_fallback.txt"
+                
+                # Extract video paths from inputs (every other element starting from index 1)
+                video_paths = []
+                for i in range(1, len(inputs), 2):  # inputs are ['-i', 'path1', '-i', 'path2', ...]
+                    video_paths.append(inputs[i])
+                
+                with open(temp_list_path, 'w') as f:
+                    for video_path in video_paths:
+                        # Escape single quotes in file paths for FFMPEG
+                        escaped_path = video_path.replace("'", "'\"'\"'")
+                        f.write(f"file '{escaped_path}'\n")
+                
                 fallback_cmd = [
-                    'ffmpeg'
-                ] + inputs + [
+                    'ffmpeg',
+                    '-f', 'concat',
+                    '-safe', '0',
+                    '-i', temp_list_path,
                     '-c:v', 'libx264',
-                    '-c:a', 'aac', 
+                    '-c:a', 'aac',
                     '-preset', 'fast',
                     '-y',
                     output_path
                 ]
                 
-                logging.info(f"Running FFMPEG fallback command: {' '.join(fallback_cmd)}")
+                logging.info(f"Running FFMPEG concat demuxer fallback command: {' '.join(fallback_cmd)}")
                 fallback_result = subprocess.run(fallback_cmd, capture_output=True, text=True, timeout=900)
                 
+                # Cleanup temp file
+                if os.path.exists(temp_list_path):
+                    os.remove(temp_list_path)
+                
                 if fallback_result.returncode == 0:
-                    logging.info("Video merge with fallback method completed successfully")
-                    return True, "Videos merged successfully using fallback method"
+                    logging.info("Video merge with concat demuxer fallback completed successfully")
+                    return True, "Videos merged successfully using concat demuxer fallback"
                 else:
-                    logging.error(f"FFMPEG fallback error: {fallback_result.stderr}")
+                    logging.error(f"FFMPEG concat demuxer fallback error: {fallback_result.stderr}")
                     return False, f"Video merge failed with both methods. Filter error: {result.stderr}. Fallback error: {fallback_result.stderr}"
                     
             except Exception as e:
