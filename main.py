@@ -37,6 +37,12 @@ app.config["SQLALCHEMY_ENGINE_OPTIONS"] = {
     "pool_recycle": 300,
 }
 
+# URL building configuration for async jobs
+# Use localhost for development, production domain for production
+app.config['SERVER_NAME'] = os.environ.get('SERVER_NAME', 'localhost:5000')
+app.config['PREFERRED_URL_SCHEME'] = os.environ.get('PREFERRED_URL_SCHEME', 'http')
+app.config['APPLICATION_ROOT'] = '/'
+
 UPLOAD_FOLDER = 'uploads'
 OUTPUT_FOLDER = 'outputs'
 ALLOWED_IMAGE_EXTENSIONS = {'png', 'jpg', 'jpeg'}
