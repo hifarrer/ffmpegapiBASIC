@@ -639,6 +639,83 @@ def create_picture_in_picture_with_ffmpeg(main_video_path, pip_video_path, outpu
         logging.error(f"Picture-in-picture processing error: {str(e)}")
         return False, f"Picture-in-picture error: {str(e)}"
 
+def split_audio_with_ffmpeg(audio_path, output_dir, num_parts):
+    """Split audio into equal parts using FFMPEG"""
+    try:
+        import math
+        
+        # First, get the duration of the audio file
+        probe_cmd = [
+            'ffprobe',
+            '-v', 'quiet',
+            '-show_entries', 'format=duration',
+            '-of', 'csv=p=0',
+            audio_path
+        ]
+        
+        logging.info(f"Getting audio duration: {' '.join(probe_cmd)}")
+        probe_result = subprocess.run(probe_cmd, capture_output=True, text=True, timeout=30)
+        
+        if probe_result.returncode != 0:
+            logging.error(f"FFprobe error: {probe_result.stderr}")
+            return False, f"Unable to get audio duration: {probe_result.stderr}", []
+        
+        try:
+            total_duration = float(probe_result.stdout.strip())
+        except ValueError:
+            logging.error(f"Invalid duration value: {probe_result.stdout.strip()}")
+            return False, "Invalid audio file or unable to determine duration", []
+        
+        if total_duration <= 0:
+            return False, "Audio file appears to have zero duration", []
+        
+        # Calculate segment duration
+        segment_duration = total_duration / num_parts
+        output_files = []
+        
+        logging.info(f"Splitting {total_duration:.2f}s audio into {num_parts} parts of {segment_duration:.2f}s each")
+        
+        # Split audio into parts
+        for i in range(num_parts):
+            start_time = i * segment_duration
+            output_filename = f"split_part_{i+1:02d}.mp3"
+            output_path = os.path.join(output_dir, output_filename)
+            
+            # FFMPEG command to extract segment
+            cmd = [
+                'ffmpeg',
+                '-i', audio_path,
+                '-ss', str(start_time),
+                '-t', str(segment_duration),
+                '-c:a', 'mp3',
+                '-b:a', '192k',
+                '-y',
+                output_path
+            ]
+            
+            logging.info(f"Creating part {i+1}/{num_parts}: {' '.join(cmd)}")
+            result = subprocess.run(cmd, capture_output=True, text=True, timeout=300)
+            
+            if result.returncode == 0:
+                output_files.append(output_filename)
+                logging.info(f"Successfully created audio part {i+1}")
+            else:
+                logging.error(f"FFMPEG error for part {i+1}: {result.stderr}")
+                # Clean up already created files
+                for created_file in output_files:
+                    cleanup_file(os.path.join(output_dir, created_file))
+                return False, f"Failed to create audio part {i+1}: {result.stderr}", []
+        
+        logging.info(f"Successfully split audio into {len(output_files)} parts")
+        return True, f"Audio successfully split into {len(output_files)} parts", output_files
+        
+    except subprocess.TimeoutExpired:
+        logging.error("Audio splitting timed out")
+        return False, "Audio splitting processing timed out", []
+    except Exception as e:
+        logging.error(f"Audio splitting error: {str(e)}")
+        return False, f"Audio splitting error: {str(e)}", []
+
 # Routes
 @app.route('/')
 def index():
@@ -1092,11 +1169,34 @@ def picture_in_picture():
             'error': f'Server error: {str(e)}'
         }), 500
 
-@app.route('/download/<filename>')
+@app.route('/download/<path:filename>')
 def download_file(filename):
-    """Download processed video file"""
+    """Download processed video/audio file, supports subdirectories"""
     try:
-        return send_from_directory(OUTPUT_FOLDER, filename, as_attachment=True)
+        # Secure the filename to prevent path traversal attacks
+        secure_filename_path = secure_filename(filename)
+        
+        # For files in subdirectories (like request_id/part_01.mp3), handle the path properly
+        if '/' in filename:
+            # Split the path and secure each part
+            path_parts = filename.split('/')
+            secured_parts = [secure_filename(part) for part in path_parts]
+            secure_filename_path = '/'.join(secured_parts)
+        
+        full_path = os.path.join(OUTPUT_FOLDER, secure_filename_path)
+        
+        # Verify the file exists and is within the output folder (security check)
+        if not os.path.exists(full_path) or not full_path.startswith(os.path.abspath(OUTPUT_FOLDER)):
+            raise FileNotFoundError("File not found or access denied")
+        
+        # Get the directory and filename for send_from_directory
+        if '/' in secure_filename_path:
+            directory = os.path.dirname(full_path)
+            filename_only = os.path.basename(full_path)
+            return send_from_directory(directory, filename_only, as_attachment=True)
+        else:
+            return send_from_directory(OUTPUT_FOLDER, secure_filename_path, as_attachment=True)
+            
     except Exception as e:
         logging.error(f"Error downloading file {filename}: {str(e)}")
         return jsonify({
@@ -1298,6 +1398,8 @@ def process_job_async(job_id):
                 result = process_merge_videos_job(job, input_data)
             elif job.job_type == 'picture_in_picture':
                 result = process_picture_in_picture_job(job, input_data)
+            elif job.job_type == 'split_audio':
+                result = process_split_audio_job(job, input_data)
             else:
                 job.update_status('failed', f'Unknown job type: {job.job_type}')
                 return
@@ -1496,6 +1598,74 @@ def process_picture_in_picture_job(job, input_data):
         logging.error(f"Error in process_picture_in_picture_job: {str(e)}")
         return {'success': False, 'error': f'Server error: {str(e)}'}
 
+def process_split_audio_job(job, input_data):
+    """Process split_audio job"""
+    try:
+        request_id = str(uuid.uuid4())
+        audio_path = ""
+        
+        # Handle URL-based input
+        if 'audio_url' in input_data:
+            audio_url = input_data['audio_url']
+            num_parts = input_data.get('parts', 2)
+            
+            # Validate parts parameter
+            if not isinstance(num_parts, int) or num_parts < 2 or num_parts > 20:
+                return {'success': False, 'error': 'parts must be an integer between 2 and 20'}
+            
+            # Generate file paths
+            audio_ext = audio_url.split('.')[-1].lower() if '.' in audio_url else 'mp3'
+            audio_filename = f"{request_id}_audio.{audio_ext}"
+            audio_path = os.path.join(UPLOAD_FOLDER, audio_filename)
+            output_dir = os.path.join(OUTPUT_FOLDER, request_id)
+            
+            # Create output directory
+            os.makedirs(output_dir, exist_ok=True)
+            
+            # Download file
+            success, message = download_file_from_url(audio_url, audio_path, "audio")
+            if not success:
+                cleanup_file(audio_path)
+                return {'success': False, 'error': message}
+            
+            # Split audio using FFMPEG
+            success, message, output_files = split_audio_with_ffmpeg(audio_path, output_dir, num_parts)
+            
+            # Cleanup input file
+            cleanup_file(audio_path)
+            
+            if success:
+                # Generate download URLs for all parts
+                download_urls = []
+                for filename in output_files:
+                    download_url = url_for('download_file', filename=f"{request_id}/{filename}", _external=True)
+                    download_urls.append({
+                        'part': filename,
+                        'download_url': download_url
+                    })
+                
+                return {
+                    'success': True,
+                    'message': message,
+                    'parts': len(output_files),
+                    'audio_parts': download_urls
+                }
+            else:
+                # Cleanup output directory on failure
+                import shutil
+                if os.path.exists(output_dir):
+                    shutil.rmtree(output_dir)
+                return {'success': False, 'error': message}
+        else:
+            return {'success': False, 'error': 'audio_url is required'}
+            
+    except Exception as e:
+        logging.error(f"Error in process_split_audio_job: {str(e)}")
+        # Cleanup files on error
+        if audio_path and os.path.exists(audio_path):
+            cleanup_file(audio_path)
+        return {'success': False, 'error': f'Server error: {str(e)}'}
+
 # Job status endpoint
 @app.route('/api/job/<job_id>/status', methods=['GET'])
 @require_api_key
@@ -1539,6 +1709,136 @@ def get_job_status(job_id):
         
     except Exception as e:
         logging.error(f"Error getting job status: {str(e)}")
+        return jsonify({
+            'success': False,
+            'error': f'Server error: {str(e)}'
+        }), 500
+
+@app.route('/api/split_audio', methods=['POST'])
+@require_api_key
+def split_audio():
+    """API endpoint to split audio into equal parts (sync/async)"""
+    try:
+        # Check if async processing is requested
+        data = request.get_json()
+        async_processing = data.get('async', False) if data else False
+        
+        # If async processing is requested, create job and return immediately
+        if async_processing:
+            # Get user from API key
+            api_key = request.headers.get('X-API-Key') or request.args.get('api_key')
+            key_record = ApiKey.query.filter_by(key=api_key, is_active=True).first()
+            
+            # Create job record
+            job = Job()
+            job.user_id = key_record.user_id
+            job.job_type = 'split_audio'
+            job.status = 'pending'
+            job.set_input_data(data)
+            
+            db.session.add(job)
+            db.session.commit()
+            
+            # Start background processing
+            thread = threading.Thread(target=process_job_async, args=(job.job_id,))
+            thread.daemon = True
+            thread.start()
+            
+            return jsonify({
+                'success': True,
+                'job_id': job.job_id,
+                'status': 'pending',
+                'message': 'Job submitted for async processing. Use /api/job/{job_id}/status to check progress.',
+                'status_url': url_for('get_job_status', job_id=job.job_id, _external=True)
+            }), 202
+        
+        # If not async, process synchronously
+        if not data:
+            data = request.get_json()
+        
+        if not data or 'audio_url' not in data:
+            return jsonify({
+                'success': False,
+                'error': 'audio_url is required'
+            }), 400
+        
+        audio_url = data['audio_url']
+        num_parts = data.get('parts', 2)  # Default to 2 parts
+        
+        # Validate parts parameter
+        if not isinstance(num_parts, int) or num_parts < 2 or num_parts > 20:
+            return jsonify({
+                'success': False,
+                'error': 'parts must be an integer between 2 and 20'
+            }), 400
+        
+        # Generate unique ID for this request
+        request_id = str(uuid.uuid4())
+        audio_filename = f"{request_id}_audio.mp3"
+        audio_path = os.path.join(UPLOAD_FOLDER, audio_filename)
+        output_dir = os.path.join(OUTPUT_FOLDER, request_id)
+        
+        # Create output directory
+        os.makedirs(output_dir, exist_ok=True)
+        
+        try:
+            # Download audio file
+            success, message = download_file_from_url(audio_url, audio_path, "audio")
+            if not success:
+                cleanup_file(audio_path)
+                return jsonify({
+                    'success': False,
+                    'error': message
+                }), 400
+            
+            # Split audio using FFMPEG
+            success, message, output_files = split_audio_with_ffmpeg(audio_path, output_dir, num_parts)
+            
+            # Cleanup input file
+            cleanup_file(audio_path)
+            
+            if success:
+                # Generate download URLs for all parts
+                download_urls = []
+                for filename in output_files:
+                    download_url = url_for('download_file', filename=f"{request_id}/{filename}", _external=True)
+                    download_urls.append({
+                        'part': filename,
+                        'download_url': download_url
+                    })
+                
+                return jsonify({
+                    'success': True,
+                    'message': message,
+                    'parts': len(output_files),
+                    'audio_parts': download_urls
+                })
+            else:
+                # Cleanup output directory on failure
+                import shutil
+                if os.path.exists(output_dir):
+                    shutil.rmtree(output_dir)
+                
+                return jsonify({
+                    'success': False,
+                    'error': message
+                }), 500
+                
+        except Exception as e:
+            # Cleanup files on error
+            cleanup_file(audio_path)
+            import shutil
+            if os.path.exists(output_dir):
+                shutil.rmtree(output_dir)
+            
+            logging.error(f"Audio splitting error: {str(e)}")
+            return jsonify({
+                'success': False,
+                'error': f'Server error: {str(e)}'
+            }), 500
+            
+    except Exception as e:
+        logging.error(f"Split audio API error: {str(e)}")
         return jsonify({
             'success': False,
             'error': f'Server error: {str(e)}'
