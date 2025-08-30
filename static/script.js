@@ -508,6 +508,15 @@ class VideoMerger {
         return icons[type] || 'info-circle';
     }
 
+    isValidUrl(string) {
+        try {
+            const url = new URL(string);
+            return url.protocol === 'http:' || url.protocol === 'https:';
+        } catch (_) {
+            return false;
+        }
+    }
+
     // Picture-in-Picture methods
     async handlePipSubmit() {
         const mainVideoUrl = document.getElementById('mainVideoUrl').value.trim();
@@ -666,9 +675,12 @@ class VideoMerger {
             this.validateSplitAudioForm();
         });
 
-        document.getElementById('splitAudioDownloadAllBtn').addEventListener('click', () => {
-            this.downloadAllAudioParts();
-        });
+        const downloadAllBtn = document.getElementById('splitAudioDownloadAllBtn');
+        if (downloadAllBtn) {
+            downloadAllBtn.addEventListener('click', () => {
+                this.downloadAllAudioParts();
+            });
+        }
 
         this.splitAudioResetBtn.addEventListener('click', () => {
             this.resetSplitAudioForm();
