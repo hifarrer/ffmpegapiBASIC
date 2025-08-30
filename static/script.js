@@ -1,4 +1,4 @@
-// FFMPEG Video Merger - Frontend JavaScript with Tab Support
+// FFMPEG API - Frontend JavaScript with Tab Support
 
 class VideoMerger {
     constructor() {

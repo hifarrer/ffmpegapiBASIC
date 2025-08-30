@@ -165,7 +165,7 @@ class SiteSettings(db.Model):
     __tablename__ = 'site_settings'
     
     id = db.Column(db.Integer, primary_key=True)
-    site_name = db.Column(db.String(100), default='FFMPEG Video Merger')
+    site_name = db.Column(db.String(100), default='FFMPEG API')
     site_description = db.Column(db.Text, default='Professional video processing API with FFMPEG')
     max_file_size = db.Column(db.String(20), default='100MB')
     allowed_extensions = db.Column(db.String(200), default='mp4,avi,mov,mkv,jpg,jpeg,png,mp3,wav,m4a')
