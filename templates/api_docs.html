@@ -81,6 +81,7 @@
                                 <a class="toc-link ms-3" href="#merge-image-audio">Image & Audio Merge</a>
                                 <a class="toc-link ms-3" href="#merge-videos">Video Merge</a>
                                 <a class="toc-link ms-3" href="#picture-in-picture">Picture in Picture</a>
+                                <a class="toc-link ms-3" href="#split-audio">Split Audio</a>
                                 <a class="toc-link ms-3" href="#job-status">Job Status</a>
                                 <a class="toc-link" href="#errors">Error Handling</a>
                                 <a class="toc-link" href="#examples">Code Examples</a>
@@ -103,7 +104,7 @@
                 <!-- Overview -->
                 <section id="overview" class="mb-5">
                     <h2><i class="fas fa-info-circle me-2"></i>Overview</h2>
-                    <p>The FFMPEG Video Merger API provides three powerful video processing capabilities:</p>
+                    <p>The FFMPEG Video Merger API provides four powerful video processing capabilities:</p>
                     
                     <div class="row">
                         <div class="col-md-4 mb-3">
@@ -124,12 +125,21 @@
                                 </div>
                             </div>
                         </div>
-                        <div class="col-md-4 mb-3">
+                        <div class="col-md-3 mb-3">
                             <div class="card h-100">
                                 <div class="card-body text-center">
                                     <i class="fas fa-layer-group fa-2x text-primary mb-3"></i>
                                     <h5>Picture in Picture</h5>
                                     <p class="small">Overlay one video on top of another with customizable positioning</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-3 mb-3">
+                            <div class="card h-100">
+                                <div class="card-body text-center">
+                                    <i class="fas fa-scissors fa-2x text-primary mb-3"></i>
+                                    <h5>Split Audio</h5>
+                                    <p class="small">Split audio files into equal parts with customizable segments</p>
                                 </div>
                             </div>
                         </div>
@@ -521,6 +531,119 @@
                                 </div>
 
                                 <h6>Async Response</h6>
+                                <div class="code-block p-3">
+                                    <pre><code class="language-json">{
+  "success": true,
+  "job_id": "550e8400-e29b-41d4-a716-446655440000",
+  "status": "pending",
+  "message": "Job submitted for async processing. Use /api/job/{job_id}/status to check progress.",
+  "status_url": "https://ffmpegapi.net/api/job/550e8400-e29b-41d4-a716-446655440000/status"
+}</code></pre>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Split Audio -->
+                    <div id="split-audio" class="api-endpoint">
+                        <div class="card">
+                            <div class="card-header">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <h4 class="mb-0">Split Audio</h4>
+                                    <span class="method-badge method-post">POST</span>
+                                </div>
+                                <code class="text-muted">/api/split_audio</code>
+                            </div>
+                            <div class="card-body">
+                                <p>Split an audio file into equal parts. Perfect for creating audio segments, podcast chapters, or breaking large audio files into smaller chunks.</p>
+                                
+                                <h6>Request Format</h6>
+                                <p><strong>Content-Type:</strong> <code>application/json</code></p>
+                                
+                                <h6>Parameters</h6>
+                                <div class="table-responsive">
+                                    <table class="table table-sm">
+                                        <thead>
+                                            <tr>
+                                                <th>Parameter</th>
+                                                <th>Type</th>
+                                                <th>Required</th>
+                                                <th>Description</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <tr>
+                                                <td><code>audio_url</code></td>
+                                                <td>String</td>
+                                                <td>Yes</td>
+                                                <td>URL of the audio file to split (MP3, WAV, AAC, etc.)</td>
+                                            </tr>
+                                            <tr>
+                                                <td><code>parts</code></td>
+                                                <td>Integer</td>
+                                                <td>Yes</td>
+                                                <td>Number of equal parts to split into (2-20)</td>
+                                            </tr>
+                                            <tr>
+                                                <td><code>async</code></td>
+                                                <td>Boolean</td>
+                                                <td>No</td>
+                                                <td>Process asynchronously (default: false)</td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+
+                                <h6>Request Example</h6>
+                                <div class="code-block p-3">
+                                    <pre><code class="language-bash">curl -X POST "https://ffmpegapi.net/api/split_audio" \
+  -H "Content-Type: application/json" \
+  -H "X-API-Key: your_api_key_here" \
+  -d '{
+    "audio_url": "https://example.com/audio.mp3",
+    "parts": 4
+  }'</code></pre>
+                                </div>
+
+                                <h6>Response Example</h6>
+                                <div class="code-block p-3">
+                                    <pre><code class="language-json">{
+  "success": true,
+  "message": "Audio successfully split into 4 parts",
+  "parts": 4,
+  "audio_parts": [
+    {
+      "part": "split_part_01.mp3",
+      "download_url": "https://ffmpegapi.net/download/uuid/split_part_01.mp3"
+    },
+    {
+      "part": "split_part_02.mp3", 
+      "download_url": "https://ffmpegapi.net/download/uuid/split_part_02.mp3"
+    },
+    {
+      "part": "split_part_03.mp3",
+      "download_url": "https://ffmpegapi.net/download/uuid/split_part_03.mp3"
+    },
+    {
+      "part": "split_part_04.mp3",
+      "download_url": "https://ffmpegapi.net/download/uuid/split_part_04.mp3"
+    }
+  ]
+}</code></pre>
+                                </div>
+
+                                <h6>Async Processing Example</h6>
+                                <div class="code-block p-3">
+                                    <pre><code class="language-bash">curl -X POST "https://ffmpegapi.net/api/split_audio" \
+  -H "Content-Type: application/json" \
+  -H "X-API-Key: your_api_key_here" \
+  -d '{
+    "audio_url": "https://example.com/long_audio.mp3",
+    "parts": 8,
+    "async": true
+  }'</code></pre>
+                                </div>
+
                                 <div class="code-block p-3">
                                     <pre><code class="language-json">{
   "success": true,

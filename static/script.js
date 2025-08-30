@@ -5,6 +5,7 @@ class VideoMerger {
         this.initializeImageAudioTab();
         this.initializeVideosTab();
         this.initializePipTab();
+        this.initializeSplitAudioTab();
     }
 
     initializeImageAudioTab() {
@@ -640,6 +641,159 @@ class VideoMerger {
 
     hidePipResult() {
         this.pipResultContainer.style.display = 'none';
+    }
+
+    initializeSplitAudioTab() {
+        this.splitAudioForm = document.getElementById('splitAudioForm');
+        this.splitAudioSubmitBtn = document.getElementById('splitAudioSubmitBtn');
+        this.splitAudioProgressContainer = document.getElementById('splitAudioProgressContainer');
+        this.splitAudioAlertContainer = document.getElementById('splitAudioAlertContainer');
+        this.splitAudioResultContainer = document.getElementById('splitAudioResultContainer');
+        this.splitAudioResetBtn = document.getElementById('splitAudioResetBtn');
+        this.splitAudioParts = [];
+
+        // Event listeners for Split Audio tab
+        this.splitAudioForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            this.handleSplitAudioSubmit();
+        });
+
+        document.getElementById('audioUrl').addEventListener('input', () => {
+            this.validateSplitAudioForm();
+        });
+
+        document.getElementById('audioParts').addEventListener('input', () => {
+            this.validateSplitAudioForm();
+        });
+
+        document.getElementById('splitAudioDownloadAllBtn').addEventListener('click', () => {
+            this.downloadAllAudioParts();
+        });
+
+        this.splitAudioResetBtn.addEventListener('click', () => {
+            this.resetSplitAudioForm();
+        });
+
+        // Initial validation
+        this.validateSplitAudioForm();
+    }
+
+    validateSplitAudioForm() {
+        const audioUrl = document.getElementById('audioUrl').value;
+        const audioParts = document.getElementById('audioParts').value;
+        
+        const isValidUrl = this.isValidUrl(audioUrl);
+        const isValidParts = audioParts >= 2 && audioParts <= 20;
+        
+        this.splitAudioSubmitBtn.disabled = !isValidUrl || !isValidParts;
+    }
+
+    async handleSplitAudioSubmit() {
+        this.showSplitAudioProgress();
+        this.hideSplitAudioAlert();
+        this.hideSplitAudioResult();
+
+        const formData = new FormData(this.splitAudioForm);
+        const data = {
+            audio_url: formData.get('audio_url'),
+            parts: parseInt(formData.get('parts'))
+        };
+
+        try {
+            const response = await fetch('/api/split_audio', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-API-Key': window.API_KEY
+                },
+                body: JSON.stringify(data)
+            });
+
+            const result = await response.json();
+            this.hideSplitAudioProgress();
+
+            if (result.success) {
+                this.splitAudioParts = result.audio_parts;
+                document.getElementById('splitPartsCount').textContent = result.parts;
+                this.displaySplitAudioParts(result.audio_parts);
+                this.showSplitAudioResult();
+                this.showSplitAudioAlert('success', `Audio successfully split into ${result.parts} parts!`);
+            } else {
+                this.showSplitAudioAlert('danger', `Error: ${result.error}`);
+            }
+        } catch (error) {
+            this.hideSplitAudioProgress();
+            this.showSplitAudioAlert('danger', `Network error: ${error.message}`);
+        }
+    }
+
+    displaySplitAudioParts(parts) {
+        const container = document.getElementById('splitAudioParts');
+        container.innerHTML = parts.map((part, index) => `
+            <div class="d-flex align-items-center justify-content-between border rounded p-2 mb-2">
+                <div>
+                    <strong>Part ${index + 1}:</strong> ${part.part}
+                </div>
+                <a href="${part.download_url}" class="btn btn-sm btn-outline-success" download>
+                    <i class="fas fa-download me-1"></i>Download
+                </a>
+            </div>
+        `).join('');
+    }
+
+    downloadAllAudioParts() {
+        this.splitAudioParts.forEach((part, index) => {
+            setTimeout(() => {
+                const link = document.createElement('a');
+                link.href = part.download_url;
+                link.download = part.part;
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+            }, index * 500); // Delay to avoid overwhelming the browser
+        });
+    }
+
+    resetSplitAudioForm() {
+        this.splitAudioForm.reset();
+        document.getElementById('audioParts').value = 4; // Reset to default
+        this.hideSplitAudioProgress();
+        this.hideSplitAudioAlert();
+        this.hideSplitAudioResult();
+        this.splitAudioParts = [];
+        this.validateSplitAudioForm();
+    }
+
+    showSplitAudioProgress() {
+        this.splitAudioProgressContainer.style.display = 'block';
+        this.splitAudioSubmitBtn.disabled = true;
+    }
+
+    hideSplitAudioProgress() {
+        this.splitAudioProgressContainer.style.display = 'none';
+        this.splitAudioSubmitBtn.disabled = false;
+    }
+
+    showSplitAudioAlert(type, message) {
+        this.splitAudioAlertContainer.innerHTML = `
+            <div class="alert alert-${type} alert-dismissible fade show" role="alert">
+                <i class="fas fa-${this.getAlertIcon(type)} me-2"></i>
+                ${message}
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+        `;
+    }
+
+    hideSplitAudioAlert() {
+        this.splitAudioAlertContainer.innerHTML = '';
+    }
+
+    showSplitAudioResult() {
+        this.splitAudioResultContainer.style.display = 'block';
+    }
+
+    hideSplitAudioResult() {
+        this.splitAudioResultContainer.style.display = 'none';
     }
 }
 
