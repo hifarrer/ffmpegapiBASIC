@@ -745,111 +745,147 @@ def api_docs():
 @app.route('/api/merge_image_audio', methods=['POST'])
 @require_api_key
 def merge_image_audio():
-    """API endpoint to merge image and audio into video from URLs (sync/async)"""
+    """API endpoint to merge image and audio into video from URLs or files (sync/async)"""
     try:
-        # Check if async processing is requested
-        async_processing = False
-        if request.is_json:
-            data = request.get_json()
-            async_processing = data.get('async', False)
-        
-        # If async processing is requested, create job and return immediately
-        if async_processing:
-            # Get user from API key
-            api_key = request.headers.get('X-API-Key') or request.args.get('api_key')
-            key_record = ApiKey.query.filter_by(key=api_key, is_active=True).first()
-            
-            # Create job record
-            job = Job()
-            job.user_id = key_record.user_id
-            job.job_type = 'merge_image_audio'
-            job.status = 'pending'
-            job.set_input_data(data)
-            
-            db.session.add(job)
-            db.session.commit()
-            
-            # Start background processing
-            thread = threading.Thread(target=process_job_async, args=(job.job_id,))
-            thread.daemon = True
-            thread.start()
-            
-            return jsonify({
-                'success': True,
-                'job_id': job.job_id,
-                'status': 'pending',
-                'message': 'Job submitted for async processing. Use /api/job/{job_id}/status to check progress.',
-                'status_url': url_for('get_job_status', job_id=job.job_id, _external=True)
-            }), 202
-        # If not async, process synchronously
-        # Require JSON data
-        if not request.is_json:
-            return jsonify({
-                'success': False,
-                'error': 'Content-Type must be application/json'
-            }), 400
-            
-        data = request.get_json()
-        
-        if not data or 'image' not in data or 'audio' not in data:
-            return jsonify({
-                'success': False,
-                'error': 'Both image and audio URLs are required'
-            }), 400
-        
-        # Generate unique filename for this request
-        request_id = str(uuid.uuid4())
+        # Initialize variables at function level
         image_path = ""
         audio_path = ""
         
-        image_url = data['image']
-        audio_url = data['audio']
+        # Check if this is a file upload request (FormData) or JSON request (URLs)
+        is_file_upload = bool(request.files)
+        async_processing = False
+        
+        if is_file_upload:
+            # Handle file uploads from the UI
+            if 'image' not in request.files or 'audio' not in request.files:
+                return jsonify({
+                    'success': False,
+                    'error': 'Both image and audio files are required'
+                }), 400
             
-        # Validate URLs
-        if not image_url or not audio_url:
-            return jsonify({
-                'success': False,
-                'error': 'Both image and audio must be valid URLs'
-            }), 400
+            image_file = request.files['image']
+            audio_file = request.files['audio']
             
-        # Generate file paths for downloaded content
-        image_ext = image_url.split('.')[-1].lower() if '.' in image_url else 'jpg'
-        audio_ext = audio_url.split('.')[-1].lower() if '.' in audio_url else 'mp3'
-        
-        # Validate extensions
-        if image_ext not in ALLOWED_IMAGE_EXTENSIONS:
-            return jsonify({
-                'success': False,
-                'error': f'Invalid image format in URL. Allowed formats: {", ".join(ALLOWED_IMAGE_EXTENSIONS)}'
-            }), 400
-        
-        if audio_ext not in ALLOWED_AUDIO_EXTENSIONS:
-            return jsonify({
-                'success': False,
-                'error': f'Invalid audio format in URL. Allowed formats: {", ".join(ALLOWED_AUDIO_EXTENSIONS)}'
-            }), 400
-        
-        image_filename = f"{request_id}_image.{image_ext}"
-        audio_filename = f"{request_id}_audio.{audio_ext}"
-        
-        image_path = os.path.join(UPLOAD_FOLDER, image_filename)
-        audio_path = os.path.join(UPLOAD_FOLDER, audio_filename)
-        
-        # Download files from URLs
-        success, message = download_file_from_url(image_url, image_path, "image")
-        if not success:
-            return jsonify({
-                'success': False,
-                'error': message
-            }), 400
-        
-        success, message = download_file_from_url(audio_url, audio_path, "audio")
-        if not success:
-            cleanup_file(image_path)
-            return jsonify({
-                'success': False,
-                'error': message
-            }), 400
+            if not image_file.filename or not audio_file.filename:
+                return jsonify({
+                    'success': False,
+                    'error': 'Both image and audio files must be selected'
+                }), 400
+            
+            # Save uploaded files
+            request_id = str(uuid.uuid4())
+            os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+            
+            image_filename = f"{request_id}_image.{image_file.filename.split('.')[-1]}"
+            audio_filename = f"{request_id}_audio.{audio_file.filename.split('.')[-1]}"
+            
+            image_path = os.path.join(UPLOAD_FOLDER, image_filename)
+            audio_path = os.path.join(UPLOAD_FOLDER, audio_filename)
+            
+            image_file.save(image_path)
+            audio_file.save(audio_path)
+            
+        else:
+            # Handle JSON request with URLs
+            if request.is_json:
+                data = request.get_json()
+                async_processing = data.get('async', False)
+            
+            # If async processing is requested, create job and return immediately
+            if async_processing:
+                # Get user from API key
+                api_key = request.headers.get('X-API-Key') or request.args.get('api_key')
+                key_record = ApiKey.query.filter_by(key=api_key, is_active=True).first()
+                
+                # Create job record
+                job = Job()
+                job.user_id = key_record.user_id
+                job.job_type = 'merge_image_audio'
+                job.status = 'pending'
+                job.set_input_data(data)
+                
+                db.session.add(job)
+                db.session.commit()
+                
+                # Start background processing
+                thread = threading.Thread(target=process_job_async, args=(job.job_id,))
+                thread.daemon = True
+                thread.start()
+                
+                return jsonify({
+                    'success': True,
+                    'job_id': job.job_id,
+                    'status': 'pending',
+                    'message': 'Job submitted for async processing. Use /api/job/{job_id}/status to check progress.',
+                    'status_url': url_for('get_job_status', job_id=job.job_id, _external=True)
+                }), 202
+            
+            # Require JSON data for URL-based processing
+            if not request.is_json:
+                return jsonify({
+                    'success': False,
+                    'error': 'Content-Type must be application/json for URL-based processing'
+                }), 400
+                
+            data = request.get_json()
+            
+            if not data or 'image' not in data or 'audio' not in data:
+                return jsonify({
+                    'success': False,
+                    'error': 'Both image and audio URLs are required'
+                }), 400
+            
+            # Generate unique filename for this request
+            request_id = str(uuid.uuid4())
+            
+            image_url = data['image']
+            audio_url = data['audio']
+                
+            # Validate URLs
+            if not image_url or not audio_url:
+                return jsonify({
+                    'success': False,
+                    'error': 'Both image and audio must be valid URLs'
+                }), 400
+                
+            # Generate file paths for downloaded content
+            image_ext = image_url.split('.')[-1].lower() if '.' in image_url else 'jpg'
+            audio_ext = audio_url.split('.')[-1].lower() if '.' in audio_url else 'mp3'
+            
+            # Validate extensions
+            if image_ext not in ALLOWED_IMAGE_EXTENSIONS:
+                return jsonify({
+                    'success': False,
+                    'error': f'Invalid image format in URL. Allowed formats: {", ".join(ALLOWED_IMAGE_EXTENSIONS)}'
+                }), 400
+            
+            if audio_ext not in ALLOWED_AUDIO_EXTENSIONS:
+                return jsonify({
+                    'success': False,
+                    'error': f'Invalid audio format in URL. Allowed formats: {", ".join(ALLOWED_AUDIO_EXTENSIONS)}'
+                }), 400
+            
+            image_filename = f"{request_id}_image.{image_ext}"
+            audio_filename = f"{request_id}_audio.{audio_ext}"
+            
+            image_path = os.path.join(UPLOAD_FOLDER, image_filename)
+            audio_path = os.path.join(UPLOAD_FOLDER, audio_filename)
+            
+            # Download files from URLs
+            success, message = download_file_from_url(image_url, image_path, "image")
+            if not success:
+                return jsonify({
+                    'success': False,
+                    'error': message
+                }), 400
+            
+            success, message = download_file_from_url(audio_url, audio_path, "audio")
+            if not success:
+                cleanup_file(image_path)
+                return jsonify({
+                    'success': False,
+                    'error': message
+                }), 400
 
         # Additional validation using mimetypes
         if not validate_file_type(image_path, 'image'):
