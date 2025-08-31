@@ -720,7 +720,16 @@ def split_audio_with_ffmpeg(audio_path, output_dir, num_parts):
 @app.route('/')
 def index():
     """Main page with upload form and default API key for site use"""
-    return render_template('index.html', default_api_key=SITE_DEFAULT_API_KEY)
+    # Use user's API key if logged in, otherwise use site default
+    api_key_to_use = SITE_DEFAULT_API_KEY
+    
+    if current_user.is_authenticated:
+        # Get user's first active API key
+        user_api_keys = [key for key in current_user.api_keys if key.is_active]
+        if user_api_keys:
+            api_key_to_use = user_api_keys[0].key
+    
+    return render_template('index.html', default_api_key=api_key_to_use)
 
 @app.route('/dashboard')
 @login_required
