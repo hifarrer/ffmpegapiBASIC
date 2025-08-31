@@ -1,0 +1,72 @@
+
+
+We are going to make the following changes.
+Instead of generating 4 scenes, we now are going to generate 8 scenes.
+An then instead of generating 4 videos with wavespeed-ai/multitalk model, we are going to generate the other 4 with another model called wavespeed-ai/multitalk
+This is the request example for this new model:
+
+curl --location --request POST 'https://api.wavespeed.ai/api/v3/bytedance/seedance-v1-lite-i2v-480p' \
+--header "Content-Type: application/json" \
+--header "Authorization: Bearer ${WAVESPEED_API_KEY}" \
+--data-raw '{
+  "camera_fixed": false,
+  "duration": 10,
+  "image": "{image_url}",
+  "prompt": "{prompt}",
+  "seed": -1
+}'
+
+You will check the results the same way you check wavespeed.ai api calls.
+
+So we are now going to have 4 videos generated with wavespeed-ai/multitalk  endpoint and 4 videos generated with seedance-v1-lite-i2v-480p
+
+We are also going to intercalate the videos this way.
+Scene 1a will use model wavespeed-ai/multitalk model
+Scene 1b will use model seedance-v1-lite-i2v-480p
+Scene 2a will use model wavespeed-ai/multitalk model
+Scene 2b will use model seedance-v1-lite-i2v-480p
+and so on until 4b.
+You should rename the parts like part_1a.mp4, part_1b.mp4 ...
+
+In the end we should have 8 different video parts.
+part_1a.mp4, part_1b.mp4, part_2a.mp4, part_2b.mp4...
+
+So now BEFORE we merge all of them we are going to use FFMPEG API to do a Picture in Picture first, basically we  are going to put part_1b.mp4 on top of part_1a.mp4 generating an output of just 1 video.
+
+This is the api endpoint:
+https://ffmpegapi.net/api/picture_in_picture
+
+Headers:
+  -H "Content-Type: application/json" \
+  -H "X-API-Key: ffmpeg_KfTAf98EY9OCuriwBtLT34ZtWZLJtnXX" \
+Request:
+{
+  "main_video_url": "https://example.com/part_1a.mp4",
+  "pip_video_url": "https://example.com/part_1b.mp4",
+  "position": "middle",
+  "scale": "iw:ih",
+  "audio_option": "video1"
+}
+
+So now we will have 4 video parts again (instead of 8).
+
+Now we can merge them all the same way we were already merging the 4 videos with FFMPEG API 
+
+https://ffmpegapi.net/api/merge_videos
+API_KEY: ffmpeg_KfTAf98EY9OCuriwBtLT34ZtWZLJtnXX
+
+Headers:
+  -H "Content-Type: application/json" \
+  -H "X-API-Key: ffmpeg_KfTAf98EY9OCuriwBtLT34ZtWZLJtnXX" \
+Request:
+{
+  "video_urls": [
+    "https://example.com/video1.mp4",
+    "https://example.com/video2.mp4",
+    "https://example.com/video3.mp4",
+"https://example.com/video4.mp4"
+  ],
+  "async": false
+}
+
+
