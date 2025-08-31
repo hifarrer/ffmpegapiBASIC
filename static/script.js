@@ -188,6 +188,9 @@ class VideoMerger {
         this.hideImageAudioResult();
 
         try {
+            console.log('Making API request to /api/merge_image_audio');
+            console.log('API Key:', window.API_KEY);
+            
             const response = await fetch('/api/merge_image_audio', {
                 method: 'POST',
                 headers: {
@@ -196,7 +199,11 @@ class VideoMerger {
                 body: formData
             });
 
+            console.log('Response status:', response.status);
+            console.log('Response ok:', response.ok);
+            
             const result = await response.json();
+            console.log('Response JSON:', result);
 
             if (result.success) {
                 this.handleImageAudioSuccess(result);
