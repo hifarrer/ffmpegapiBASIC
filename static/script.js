@@ -33,11 +33,6 @@ class VideoMerger {
             this.validateImageAudioFiles();
         });
 
-        this.imageAudioDownloadBtn.addEventListener('click', (e) => {
-            console.log('Download button clicked');
-            console.log('Download button href:', this.imageAudioDownloadBtn.href);
-            console.log('Download button download attr:', this.imageAudioDownloadBtn.download);
-        });
 
         this.imageAudioCleanupBtn.addEventListener('click', () => {
             this.handleImageAudioCleanup();
@@ -188,9 +183,6 @@ class VideoMerger {
         this.hideImageAudioResult();
 
         try {
-            console.log('Making API request to /api/merge_image_audio');
-            console.log('API Key:', window.API_KEY);
-            
             const response = await fetch('/api/merge_image_audio', {
                 method: 'POST',
                 headers: {
@@ -199,11 +191,7 @@ class VideoMerger {
                 body: formData
             });
 
-            console.log('Response status:', response.status);
-            console.log('Response ok:', response.ok);
-            
             const result = await response.json();
-            console.log('Response JSON:', result);
 
             if (result.success) {
                 this.handleImageAudioSuccess(result);
@@ -353,8 +341,6 @@ class VideoMerger {
     }
 
     handleImageAudioSuccess(result) {
-        console.log('Success result:', result);
-        console.log('Download URL:', result.download_url);
         this.imageAudioCurrentFilename = result.filename;
         this.imageAudioDownloadBtn.href = result.download_url;
         this.imageAudioDownloadBtn.download = result.filename;

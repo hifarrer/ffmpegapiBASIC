@@ -39,8 +39,14 @@ app.config["SQLALCHEMY_ENGINE_OPTIONS"] = {
 
 # URL building configuration for async jobs
 # Use localhost for development, production domain for production
-app.config['SERVER_NAME'] = os.environ.get('SERVER_NAME', 'ffmpegapi.net')
-app.config['PREFERRED_URL_SCHEME'] = os.environ.get('PREFERRED_URL_SCHEME', 'https')
+if app.debug or os.environ.get('ENVIRONMENT') == 'development':
+    # Development environment - use localhost
+    app.config['SERVER_NAME'] = 'localhost:5000'
+    app.config['PREFERRED_URL_SCHEME'] = 'http'
+else:
+    # Production environment
+    app.config['SERVER_NAME'] = os.environ.get('SERVER_NAME', 'ffmpegapi.net')
+    app.config['PREFERRED_URL_SCHEME'] = os.environ.get('PREFERRED_URL_SCHEME', 'https')
 app.config['APPLICATION_ROOT'] = '/'
 
 UPLOAD_FOLDER = 'uploads'
