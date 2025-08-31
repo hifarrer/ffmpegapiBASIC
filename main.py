@@ -907,9 +907,23 @@ def merge_image_audio():
         # Generate output filename
         output_filename = f"{request_id}_merged_video.mp4"
         output_path = os.path.join(OUTPUT_FOLDER, output_filename)
+        
+        # Ensure output directory exists
+        os.makedirs(OUTPUT_FOLDER, exist_ok=True)
+        logging.info(f"Output path: {output_path}")
 
         # Create video using FFMPEG
         success, message = create_video_with_ffmpeg(image_path, audio_path, output_path)
+        
+        # Log file creation status
+        if success:
+            if os.path.exists(output_path):
+                file_size = os.path.getsize(output_path)
+                logging.info(f"Output file created successfully: {output_path} ({file_size} bytes)")
+            else:
+                logging.error(f"FFMPEG reported success but output file doesn't exist: {output_path}")
+                success = False
+                message = "Video processing completed but output file was not created"
 
         # Cleanup uploaded files
         cleanup_file(image_path)
@@ -1230,9 +1244,21 @@ def download_file(filename):
         
         full_path = os.path.join(OUTPUT_FOLDER, secure_filename_path)
         
+        # Log debugging information
+        logging.info(f"Download request for: {filename}")
+        logging.info(f"Secured path: {secure_filename_path}")
+        logging.info(f"Full path: {full_path}")
+        logging.info(f"Output folder: {os.path.abspath(OUTPUT_FOLDER)}")
+        logging.info(f"File exists: {os.path.exists(full_path)}")
+        
         # Verify the file exists and is within the output folder (security check)
-        if not os.path.exists(full_path) or not full_path.startswith(os.path.abspath(OUTPUT_FOLDER)):
-            raise FileNotFoundError("File not found or access denied")
+        if not os.path.exists(full_path):
+            logging.error(f"File not found: {full_path}")
+            raise FileNotFoundError(f"File not found: {filename}")
+        
+        if not full_path.startswith(os.path.abspath(OUTPUT_FOLDER)):
+            logging.error(f"Access denied to file outside output folder: {full_path}")
+            raise FileNotFoundError("File access denied")
         
         # Get the directory and filename for send_from_directory
         if '/' in secure_filename_path:
