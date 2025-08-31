@@ -33,6 +33,12 @@ class VideoMerger {
             this.validateImageAudioFiles();
         });
 
+        this.imageAudioDownloadBtn.addEventListener('click', (e) => {
+            console.log('Download button clicked');
+            console.log('Download button href:', this.imageAudioDownloadBtn.href);
+            console.log('Download button download attr:', this.imageAudioDownloadBtn.download);
+        });
+
         this.imageAudioCleanupBtn.addEventListener('click', () => {
             this.handleImageAudioCleanup();
         });
@@ -340,6 +346,8 @@ class VideoMerger {
     }
 
     handleImageAudioSuccess(result) {
+        console.log('Success result:', result);
+        console.log('Download URL:', result.download_url);
         this.imageAudioCurrentFilename = result.filename;
         this.imageAudioDownloadBtn.href = result.download_url;
         this.imageAudioDownloadBtn.download = result.filename;
