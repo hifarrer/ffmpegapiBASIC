@@ -598,11 +598,12 @@ def create_picture_in_picture_with_ffmpeg(main_video_path, pip_video_path, outpu
         overlay_position = position_overlays.get(position, position_overlays['bottom-right'])
         
         # Build FFMPEG command for picture-in-picture with audio options
+        # Use overlay with eof_action=pass to continue main video when PiP ends
         cmd = [
             'ffmpeg',
             '-i', main_video_path,   # Input 0: main video
             '-i', pip_video_path,    # Input 1: pip video
-            '-filter_complex', f'[1]scale={scale}[pip];[0][pip]overlay={overlay_position}',
+            '-filter_complex', f'[1]scale={scale}[pip];[0][pip]overlay={overlay_position}:eof_action=pass',
             '-c:v', 'libx264',
             '-preset', 'fast',
             '-y'
