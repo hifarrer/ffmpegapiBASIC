@@ -1,0 +1,152 @@
+2025-08-31 13:16:47.03
+cce3fd85
+User
+response = self._open(req, data)
+2025-08-31 13:16:47.03
+cce3fd85
+User
+^^^^^^^^^^^^^^^^^^^^^
+2025-08-31 13:16:47.03
+cce3fd85
+User
+File "/nix/store/7d088dip86hlzri9sk0h78b63yfmx0a0-python3-3.11.13/lib/python3.11/urllib/request.py", line 536, in _open
+2025-08-31 13:16:47.03
+cce3fd85
+User
+result = self._call_chain(self.handle_open, protocol, protocol +
+2025-08-31 13:16:47.03
+cce3fd85
+User
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+2025-08-31 13:16:47.03
+cce3fd85
+User
+File "/nix/store/7d088dip86hlzri9sk0h78b63yfmx0a0-python3-3.11.13/lib/python3.11/urllib/request.py", line 496, in _call_chain
+2025-08-31 13:16:47.03
+cce3fd85
+User
+result = func(*args)
+2025-08-31 13:16:47.03
+cce3fd85
+User
+^^^^^^^^^^^
+2025-08-31 13:16:47.03
+cce3fd85
+User
+File "/nix/store/7d088dip86hlzri9sk0h78b63yfmx0a0-python3-3.11.13/lib/python3.11/urllib/request.py", line 1391, in https_open
+2025-08-31 13:16:47.03
+cce3fd85
+User
+return self.do_open(http.client.HTTPSConnection, req,
+2025-08-31 13:16:47.03
+cce3fd85
+User
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+2025-08-31 13:16:47.03
+cce3fd85
+User
+File "/nix/store/7d088dip86hlzri9sk0h78b63yfmx0a0-python3-3.11.13/lib/python3.11/urllib/request.py", line 1352, in do_open
+2025-08-31 13:16:47.03
+cce3fd85
+User
+r = h.getresponse()
+2025-08-31 13:16:47.03
+cce3fd85
+User
+^^^^^^^^^^^^^^^
+2025-08-31 13:16:47.03
+cce3fd85
+User
+File "/nix/store/7d088dip86hlzri9sk0h78b63yfmx0a0-python3-3.11.13/lib/python3.11/http/client.py", line 1395, in getresponse
+2025-08-31 13:16:47.03
+cce3fd85
+User
+response.begin()
+2025-08-31 13:16:47.03
+cce3fd85
+User
+File "/nix/store/7d088dip86hlzri9sk0h78b63yfmx0a0-python3-3.11.13/lib/python3.11/http/client.py", line 325, in begin
+2025-08-31 13:16:47.03
+cce3fd85
+User
+version, status, reason = self._read_status()
+2025-08-31 13:16:47.03
+cce3fd85
+User
+^^^^^^^^^^^^^^^^^^^
+2025-08-31 13:16:47.03
+cce3fd85
+User
+File "/nix/store/7d088dip86hlzri9sk0h78b63yfmx0a0-python3-3.11.13/lib/python3.11/http/client.py", line 286, in _read_status
+2025-08-31 13:16:47.03
+cce3fd85
+User
+line = str(self.fp.readline(_MAXLINE + 1), "iso-8859-1")
+2025-08-31 13:16:47.03
+cce3fd85
+User
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+2025-08-31 13:16:47.03
+cce3fd85
+User
+File "/nix/store/7d088dip86hlzri9sk0h78b63yfmx0a0-python3-3.11.13/lib/python3.11/socket.py", line 718, in readinto
+2025-08-31 13:16:47.03
+cce3fd85
+User
+return self._sock.recv_into(b)
+2025-08-31 13:16:47.03
+cce3fd85
+User
+^^^^^^^^^^^^^^^^^^^^^^^
+2025-08-31 13:16:47.03
+cce3fd85
+User
+File "/nix/store/7d088dip86hlzri9sk0h78b63yfmx0a0-python3-3.11.13/lib/python3.11/ssl.py", line 1314, in recv_into
+2025-08-31 13:16:47.03
+cce3fd85
+User
+return self.read(nbytes, buffer)
+2025-08-31 13:16:47.03
+cce3fd85
+User
+^^^^^^^^^^^^^^^^^^^^^^^^^
+2025-08-31 13:16:47.03
+cce3fd85
+User
+File "/nix/store/7d088dip86hlzri9sk0h78b63yfmx0a0-python3-3.11.13/lib/python3.11/ssl.py", line 1166, in read
+2025-08-31 13:16:47.03
+cce3fd85
+User
+return self._sslobj.read(len, buffer)
+2025-08-31 13:16:47.03
+cce3fd85
+User
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+2025-08-31 13:16:47.03
+cce3fd85
+User
+File "/home/runner/workspace/.pythonlibs/lib/python3.11/site-packages/gunicorn/workers/base.py", line 204, in handle_abort
+2025-08-31 13:16:47.03
+cce3fd85
+User
+sys.exit(1)
+2025-08-31 13:16:47.03
+cce3fd85
+User
+SystemExit: 1
+2025-08-31 13:16:47.03
+cce3fd85
+User
+[2025-08-31 18:16:47 +0000] [34] [INFO] Worker exiting (pid: 34)
+2025-08-31 13:16:47.59
+cce3fd85
+User
+[2025-08-31 18:16:47 +0000] [35] [INFO] Booting worker with pid: 35
+2025-08-31 13:16:50.41
+cce3fd85
+User
+ERROR:root:File not found: outputs/e0cde3f3-ecce-48b2-875e-709cbc3da806_pip_output.mp4
+2025-08-31 13:16:50.41
+cce3fd85
+User
+ERROR:root:Error downloading file e0cde3f3-ecce-48b2-875e-709cbc3da806_pip_output.mp4: File not found: e0cde3f3-ecce-48b2-875e-709cbc3da806_pip_output.mp4
