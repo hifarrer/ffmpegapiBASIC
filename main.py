@@ -1243,21 +1243,18 @@ def download_file(filename):
             secure_filename_path = '/'.join(secured_parts)
         
         full_path = os.path.join(OUTPUT_FOLDER, secure_filename_path)
+        # Convert to absolute path for security comparison
+        abs_full_path = os.path.abspath(full_path)
+        abs_output_folder = os.path.abspath(OUTPUT_FOLDER)
         
-        # Log debugging information
-        logging.info(f"Download request for: {filename}")
-        logging.info(f"Secured path: {secure_filename_path}")
-        logging.info(f"Full path: {full_path}")
-        logging.info(f"Output folder: {os.path.abspath(OUTPUT_FOLDER)}")
-        logging.info(f"File exists: {os.path.exists(full_path)}")
         
         # Verify the file exists and is within the output folder (security check)
         if not os.path.exists(full_path):
             logging.error(f"File not found: {full_path}")
             raise FileNotFoundError(f"File not found: {filename}")
         
-        if not full_path.startswith(os.path.abspath(OUTPUT_FOLDER)):
-            logging.error(f"Access denied to file outside output folder: {full_path}")
+        if not abs_full_path.startswith(abs_output_folder):
+            logging.error(f"Access denied to file outside output folder: {abs_full_path}")
             raise FileNotFoundError("File access denied")
         
         # Get the directory and filename for send_from_directory
