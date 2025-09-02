@@ -1,0 +1,40 @@
+2025-09-01 19:27:56.29
+cce3fd85
+User
+INFO:root:Downloading video from: https://storage.googleapis.com/replit-objstore-e575b29a-5b91-4cc8-9e7c-23ea3b54fe73/.private/videos/pip_segment_1_1756772835398.mp4?X-Goog-Algorithm=GOOG4-RSA-SHA256&X-Goog-Credential=heimdall-production%40replit-user-deployments.iam.gserviceaccount.com%2F20250902%2Fauto%2Fstorage%2Fgoog4_request&X-Goog-Date=20250902T002755Z&X-Goog-Expires=7199&X-Goog-Signature=4506bab2b290be2f7f16c3db8a6005ed1f31505bb468622e1c55c93073251a38d061709314e7c666db5d58fd607246a6770de6bf49649b2b6beb7a71fb67f36acf483be7209d1da0802570137de6a3f4528d05cc9a8bb46d1dbd253540786c3a242319d5319e3c68ce99fdc8293880cf808f49b6372221c80d7648e2b687f2c9d40f3bfd80101cd6423334641e8e8d2512f3b7fd77d9de26e9c76d81713c11f1e6845cf5b2cc4c96331b5cc7afce57df6c353953a8c6c6a85a8f109018943902bc62e3d504b99894a1e150c3d48a38b56121f9c2b272d200cb9b765e0aec4c6367ba73442b91fad06d0550683fa6c7d3dc3530bf9754bc778e589ced1aa16524&X-Goog-SignedHeaders=host
+2025-09-01 19:27:56.48
+cce3fd85
+User
+INFO:root:Downloading video from: https://storage.googleapis.com/replit-objstore-e575b29a-5b91-4cc8-9e7c-23ea3b54fe73/.private/videos/pip_segment_2_1756772847525.mp4?X-Goog-Algorithm=GOOG4-RSA-SHA256&X-Goog-Credential=heimdall-production%40replit-user-deployments.iam.gserviceaccount.com%2F20250902%2Fauto%2Fstorage%2Fgoog4_request&X-Goog-Date=20250902T002755Z&X-Goog-Expires=7199&X-Goog-Signature=4ac8b965984290ebe4f1134c31aad98456d50f11f35af884bc2c6236c85ce30596aee94669f1a4b5ce1f74e1a0fa0ebb3f9772507d5204680cc2e16539eb1bc0d6a5cee310127f3f00fc624162304b4de1a56c292f9834b5f103b61050180d8b020794c54c59aa18dd09346272026c188f2de6a6190ec5954da989de26441aad2674b461af2494c769413c60d63e6c05927a50ad17c33602093a0df79d7b5fde5c2442def1abf97b0df9bc519c29d36c4e4f9c3543bf37a6fd29f4d02505c7a732829876890f2bf31d466d4484a118d8c7e2e30a45a1fcc8009f86179ef9a699e426b9cc5c8a00ff678e9e90b069af92ea8e8ea07ccf7328b07189c0cba0c0be&X-Goog-SignedHeaders=host
+2025-09-01 19:27:56.71
+cce3fd85
+User
+INFO:root:Downloading video from: https://storage.googleapis.com/replit-objstore-e575b29a-5b91-4cc8-9e7c-23ea3b54fe73/.private/videos/pip_segment_3_1756772860169.mp4?X-Goog-Algorithm=GOOG4-RSA-SHA256&X-Goog-Credential=heimdall-production%40replit-user-deployments.iam.gserviceaccount.com%2F20250902%2Fauto%2Fstorage%2Fgoog4_request&X-Goog-Date=20250902T002755Z&X-Goog-Expires=7199&X-Goog-Signature=83b01218b0accd02f3ba85de34f97a0f05c189d7c5a15e2bfb835a531567a809d5a6e7ca2079656784c4999c68edbd4c1946a1ee3f0b368a7e606bad6005acc24e1b058c08677b6d928ceab955970d68cb9ebf970487551b54d58391b2619097d55f9ee717da0fb618a19fa05d345f450f29cba78cfe2801bd212714877eeaea0ff78f37d3a89a3507e169d06dbb8ede36f092d7750253c319bffaa200cf5d96f031f7cfbe27148b24fcb4f029478368618558cd237ad39c919f5b3116c098367df9a31a5470e7e1c09c9aee7b27572173b8e44f29a8b305f1cf4da127f8223db9f29dd819c4daff02b1ff168706f7f940cfa1f25901e9cc3d58f8b217cf333e&X-Goog-SignedHeaders=host
+2025-09-01 19:27:56.93
+cce3fd85
+User
+INFO:root:Downloading video from: https://storage.googleapis.com/replit-objstore-e575b29a-5b91-4cc8-9e7c-23ea3b54fe73/.private/videos/pip_segment_4_1756772872622.mp4?X-Goog-Algorithm=GOOG4-RSA-SHA256&X-Goog-Credential=heimdall-production%40replit-user-deployments.iam.gserviceaccount.com%2F20250902%2Fauto%2Fstorage%2Fgoog4_request&X-Goog-Date=20250902T002755Z&X-Goog-Expires=7199&X-Goog-Signature=80feebda337f1a17ec8818a594313b7d70dc8f3e227252028599e94ab4fbe7c602a0ec06fd420be88606030231753bdaba6e88dac796c71ed4d94827f9f9d18f069fbd47c79da281d464f5120ab59e04e3ec4bf3e79e26e877d8059651ddbcdfdb31d669114f8eed61dafa9f356b436e7a4f6250027b5e056f4b58cce4219a62569f23196d5dca8b782fb870f037f38a1325aa6220c423455ec62f59027bca45081f4bfd13c2107589c5452fc06f3ec911c487eac28916308cfc539591388bbf399e328bc60a9120d7c5ac47a88b835c466086453a252608b72859f85c16282e04e6f682fee420d2948366c5e192fed896f87eaa7a82045ee8cdd4d47ac2394b&X-Goog-SignedHeaders=host
+2025-09-01 19:27:57.16
+cce3fd85
+User
+INFO:root:Video 1 dimensions: 832x464
+2025-09-01 19:27:57.23
+cce3fd85
+User
+INFO:root:Video 2 dimensions: 832x464
+2025-09-01 19:27:57.30
+cce3fd85
+User
+INFO:root:Video 3 dimensions: 832x464
+2025-09-01 19:27:57.37
+cce3fd85
+User
+INFO:root:Video 4 dimensions: 832x464
+2025-09-01 19:27:57.37
+cce3fd85
+User
+INFO:root:Running FFMPEG concat command: ffmpeg -f concat -safe 0 -i outputs/cc6352a2-b1fd-46a7-a1d1-f4c543373849_merged_videos.mp4.txt -c:v libx264 -c:a aac -preset fast -y outputs/cc6352a2-b1fd-46a7-a1d1-f4c543373849_merged_videos.mp4
+2025-09-01 19:27:57.44
+cce3fd85
+User
+WARNING:root:Concat method failed, trying filter_complex approach
