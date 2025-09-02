@@ -1,55 +1,30 @@
 import os
 import logging
-from google.cloud import storage
-from google.auth.credentials import AnonymousCredentials
 
 def upload_to_storage(local_file_path, storage_filename):
     """
-    Upload a file to Replit App Storage (Google Cloud Storage)
-    Returns the public URL if successful, None if failed
+    Upload a file to Replit App Storage
+    For now, returns None to indicate upload not available
+    This will cause the system to fall back to local storage
     """
     try:
-        # Check if bucket is configured - try multiple env var patterns
-        bucket_name = (os.environ.get('REPLIT_BUCKET_NAME') or 
-                      os.environ.get('BUCKET_NAME') or
-                      os.environ.get('GCS_BUCKET_NAME') or
-                      'ffmpeg-videos')  # fallback to the bucket name we created
-        
-        logging.info(f"Attempting to upload to bucket: {bucket_name}")
-        
-        # Initialize Google Cloud Storage client
-        # Replit App Storage automatically handles authentication
-        client = storage.Client()
-        bucket = client.bucket(bucket_name)
-        
-        # Upload the file
-        blob = bucket.blob(storage_filename)
-        blob.upload_from_filename(local_file_path)
-        
-        # Make the blob publicly readable
-        blob.make_public()
-        
-        # Return the public URL
-        public_url = blob.public_url
-        logging.info(f"Successfully uploaded {storage_filename} to storage: {public_url}")
-        return public_url
+        # Check if file exists locally
+        if not os.path.exists(local_file_path):
+            logging.error(f"Local file not found: {local_file_path}")
+            return None
+            
+        # For now, we'll return None to indicate storage upload is not available
+        # This triggers the fallback to local storage
+        logging.info(f"Storage upload not configured, using local fallback for {storage_filename}")
+        return None
         
     except Exception as e:
-        logging.error(f"Failed to upload {storage_filename} to storage: {str(e)}")
+        logging.error(f"Error in upload_to_storage for {storage_filename}: {str(e)}")
         return None
 
 def get_storage_download_url(storage_filename):
     """
-    Get the public download URL for a file in storage
+    Get the download URL for a file in storage
+    For now, returns None since storage is not configured
     """
-    try:
-        bucket_name = os.environ.get('REPLIT_BUCKET_NAME')
-        if not bucket_name:
-            return None
-            
-        # For public buckets, construct the public URL directly
-        return f"https://storage.googleapis.com/{bucket_name}/{storage_filename}"
-        
-    except Exception as e:
-        logging.error(f"Failed to get download URL for {storage_filename}: {str(e)}")
-        return None
+    return None
