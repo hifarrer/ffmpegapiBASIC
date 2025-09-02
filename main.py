@@ -1098,6 +1098,7 @@ def merge_videos():
             if success:
                 # Return download URL
                 download_url = url_for('download_file', filename=output_filename, _external=True)
+                logging.info(f"Generated download URL: {download_url}")
                 return jsonify({
                     'success': True,
                     'message': message,
