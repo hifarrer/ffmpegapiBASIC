@@ -369,7 +369,7 @@ def merge_videos_with_ffmpeg(video_paths, output_path, audio_path=None):
             ]
             
             logging.info(f"Running FFMPEG concat command: {' '.join(temp_cmd)}")
-            result = subprocess.run(temp_cmd, capture_output=True, text=True, timeout=600)
+            result = subprocess.run(temp_cmd, capture_output=True, text=True, timeout=1800)  # 30 minutes
             
             if result.returncode != 0:
                 # If concat fails, try the filter_complex approach
@@ -412,7 +412,7 @@ def merge_videos_with_ffmpeg(video_paths, output_path, audio_path=None):
             ]
             
             logging.info(f"Running FFMPEG concat command: {' '.join(cmd)}")
-            result = subprocess.run(cmd, capture_output=True, text=True, timeout=600)
+            result = subprocess.run(cmd, capture_output=True, text=True, timeout=1800)  # 30 minutes
             
             if result.returncode != 0:
                 # If concat fails, try the filter_complex approach
