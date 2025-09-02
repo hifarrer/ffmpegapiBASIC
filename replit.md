@@ -18,6 +18,8 @@ This is a comprehensive web-based video processing tool that provides three main
 
 **Stripe Integration**: Full payment processing system with admin-configurable API keys stored in database, webhook handling for subscription events, subscription lifecycle management, and secure payment processing for monthly/yearly billing cycles.
 
+**Replit App Storage Integration**: Persistent cloud storage using Replit's App Storage (Google Cloud Storage backed) for all processed videos. Files are stored in the `ffmpeg-videos` bucket and served through the `/api/storage/` endpoint, ensuring downloads work reliably in production even with container restarts.
+
 The application features an accordion interface for easy access to all three tools, built with Flask for the backend and vanilla JavaScript for the frontend, using Bootstrap's dark theme for a professional appearance.
 
 ## User Preferences

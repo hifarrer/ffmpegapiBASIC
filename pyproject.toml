@@ -18,5 +18,5 @@ dependencies = [
     "bcrypt>=4.3.0",
     "flask-wtf>=1.2.2",
     "stripe>=12.4.0",
-    "google-cloud-storage>=3.3.1",
+    "replit-object-storage>=1.0.2",
 ]

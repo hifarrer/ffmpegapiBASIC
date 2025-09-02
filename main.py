@@ -7,7 +7,7 @@ import threading
 import json
 from datetime import datetime, timedelta
 from functools import wraps
-from flask import Flask, render_template, request, jsonify, send_from_directory, url_for, flash, redirect
+from flask import Flask, render_template, request, jsonify, send_from_directory, url_for, flash, redirect, Response, send_file
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager, login_required, current_user
 from werkzeug.utils import secure_filename
@@ -1328,6 +1328,37 @@ def picture_in_picture():
             'success': False,
             'error': f'Server error: {str(e)}'
         }), 500
+
+@app.route('/api/storage/<path:filename>')
+def serve_from_storage(filename):
+    """Serve a file from Replit App Storage"""
+    try:
+        from replit.object_storage import Client
+        client = Client()
+        
+        # Download the file from storage
+        file_data = client.download_as_bytes(filename)
+        
+        # Determine content type
+        import mimetypes
+        content_type = mimetypes.guess_type(filename)[0] or 'application/octet-stream'
+        
+        # Return the file
+        from flask import Response
+        return Response(
+            file_data,
+            mimetype=content_type,
+            headers={
+                'Content-Disposition': f'attachment; filename="{os.path.basename(filename)}"',
+                'Cache-Control': 'public, max-age=3600'
+            }
+        )
+    except Exception as e:
+        logging.error(f"Error serving file from storage {filename}: {str(e)}")
+        return jsonify({
+            'success': False,
+            'error': f'File not found or error accessing storage: {str(e)}'
+        }), 404
 
 @app.route('/download/<path:filename>')
 def download_file(filename):
