@@ -19,6 +19,7 @@ from models import db, User, ApiKey, SubscriptionPlan, StripeSettings, UserSubsc
 from forms import RegistrationForm, LoginForm, ApiKeyForm
 from auth_routes import auth
 from stripe_routes import stripe_bp
+from storage_utils import upload_to_storage, get_storage_download_url
 
 # Configure logging
 logging.basicConfig(level=logging.DEBUG)
@@ -943,14 +944,29 @@ def merge_image_audio():
         cleanup_file(audio_path)
 
         if success:
-            # Return download URL
-            download_url = url_for('download_file', filename=output_filename, _external=True)
-            return jsonify({
-                'success': True,
-                'message': message,
-                'download_url': download_url,
-                'filename': output_filename
-            })
+            # Upload to storage for persistence
+            storage_url = upload_to_storage(output_path, output_filename)
+            
+            if storage_url:
+                # Clean up local file after successful upload
+                cleanup_file(output_path)
+                
+                return jsonify({
+                    'success': True,
+                    'message': message,
+                    'download_url': storage_url,
+                    'filename': output_filename
+                })
+            else:
+                # Fallback to local download if storage upload fails
+                logging.warning("Storage upload failed, falling back to local download")
+                download_url = url_for('download_file', filename=output_filename, _external=True)
+                return jsonify({
+                    'success': True,
+                    'message': f"{message} (Note: Using temporary local storage - download soon)",
+                    'download_url': download_url,
+                    'filename': output_filename
+                })
         else:
             return jsonify({
                 'success': False,
@@ -1097,14 +1113,29 @@ def merge_videos():
                 cleanup_file(audio_path)
             
             if success:
-                # Return download URL
-                download_url = url_for('download_file', filename=output_filename, _external=True)
-                return jsonify({
-                    'success': True,
-                    'message': message,
-                    'download_url': download_url,
-                    'filename': output_filename
-                })
+                # Upload to storage for persistence
+                storage_url = upload_to_storage(output_path, output_filename)
+                
+                if storage_url:
+                    # Clean up local file after successful upload
+                    cleanup_file(output_path)
+                    
+                    return jsonify({
+                        'success': True,
+                        'message': message,
+                        'download_url': storage_url,
+                        'filename': output_filename
+                    })
+                else:
+                    # Fallback to local download if storage upload fails
+                    logging.warning("Storage upload failed, falling back to local download")
+                    download_url = url_for('download_file', filename=output_filename, _external=True)
+                    return jsonify({
+                        'success': True,
+                        'message': f"{message} (Note: Using temporary local storage - download soon)",
+                        'download_url': download_url,
+                        'filename': output_filename
+                    })
             else:
                 return jsonify({
                     'success': False,
@@ -1220,14 +1251,29 @@ def picture_in_picture():
         cleanup_file(pip_video_path)
         
         if success:
-            # Return download URL
-            download_url = url_for('download_file', filename=output_filename, _external=True)
-            return jsonify({
-                'success': True,
-                'message': message,
-                'download_url': download_url,
-                'filename': output_filename
-            })
+            # Upload to storage for persistence
+            storage_url = upload_to_storage(output_path, output_filename)
+            
+            if storage_url:
+                # Clean up local file after successful upload
+                cleanup_file(output_path)
+                
+                return jsonify({
+                    'success': True,
+                    'message': message,
+                    'download_url': storage_url,
+                    'filename': output_filename
+                })
+            else:
+                # Fallback to local download if storage upload fails
+                logging.warning("Storage upload failed, falling back to local download")
+                download_url = url_for('download_file', filename=output_filename, _external=True)
+                return jsonify({
+                    'success': True,
+                    'message': f"{message} (Note: Using temporary local storage - download soon)",
+                    'download_url': download_url,
+                    'filename': output_filename
+                })
         else:
             return jsonify({
                 'success': False,
