@@ -39,7 +39,8 @@ app.config["SQLALCHEMY_ENGINE_OPTIONS"] = {
 
 # URL building configuration for async jobs
 # Use localhost for development, production domain for production
-if app.debug or os.environ.get('ENVIRONMENT') == 'development':
+# Force localhost for Replit development environment
+if app.debug or os.environ.get('ENVIRONMENT') == 'development' or os.environ.get('REPLIT_DB_URL'):
     # Development environment - use localhost
     app.config['SERVER_NAME'] = 'localhost:5000'
     app.config['PREFERRED_URL_SCHEME'] = 'http'
@@ -1098,7 +1099,6 @@ def merge_videos():
             if success:
                 # Return download URL
                 download_url = url_for('download_file', filename=output_filename, _external=True)
-                logging.info(f"Generated download URL: {download_url}")
                 return jsonify({
                     'success': True,
                     'message': message,
