@@ -969,8 +969,9 @@ def merge_image_audio():
                 
                 # Fix for Replit: Generate proper URL based on environment
                 if os.environ.get('REPLIT_DEPLOYMENT'):
-                    # In production deployment
+                    # In production deployment - files are ephemeral!
                     download_url = f"https://ffmpegapi.net/download/{output_filename}"
+                    logging.warning(f"Production deployment - file may be lost on container restart: {output_filename}")
                 elif os.environ.get('REPLIT_DEV_DOMAIN'):
                     # In Replit development environment
                     download_url = f"https://{os.environ['REPLIT_DEV_DOMAIN']}/download/{output_filename}"
@@ -981,7 +982,7 @@ def merge_image_audio():
                 logging.info(f"Generated download URL: {download_url}")
                 return jsonify({
                     'success': True,
-                    'message': f"{message} (Note: Using temporary local storage - download soon)",
+                    'message': f"{message} (⚠️ Download immediately - files are temporary in production!)",
                     'download_url': download_url,
                     'filename': output_filename
                 })
@@ -1298,8 +1299,9 @@ def picture_in_picture():
                 
                 # Fix for Replit: Generate proper URL based on environment
                 if os.environ.get('REPLIT_DEPLOYMENT'):
-                    # In production deployment
+                    # In production deployment - files are ephemeral!
                     download_url = f"https://ffmpegapi.net/download/{output_filename}"
+                    logging.warning(f"Production deployment - file may be lost on container restart: {output_filename}")
                 elif os.environ.get('REPLIT_DEV_DOMAIN'):
                     # In Replit development environment
                     download_url = f"https://{os.environ['REPLIT_DEV_DOMAIN']}/download/{output_filename}"
@@ -1310,7 +1312,7 @@ def picture_in_picture():
                 logging.info(f"Generated download URL: {download_url}")
                 return jsonify({
                     'success': True,
-                    'message': f"{message} (Note: Using temporary local storage - download soon)",
+                    'message': f"{message} (⚠️ Download immediately - files are temporary in production!)",
                     'download_url': download_url,
                     'filename': output_filename
                 })
