@@ -51,8 +51,14 @@ else:
     app.config['PREFERRED_URL_SCHEME'] = os.environ.get('PREFERRED_URL_SCHEME', 'https')
 app.config['APPLICATION_ROOT'] = '/'
 
-UPLOAD_FOLDER = 'uploads'
-OUTPUT_FOLDER = 'outputs'
+# In production, use /tmp which is the only writable directory
+if os.environ.get('REPLIT_DEPLOYMENT'):
+    UPLOAD_FOLDER = '/tmp/uploads'
+    OUTPUT_FOLDER = '/tmp/outputs'
+else:
+    UPLOAD_FOLDER = 'uploads'
+    OUTPUT_FOLDER = 'outputs'
+
 ALLOWED_IMAGE_EXTENSIONS = {'png', 'jpg', 'jpeg'}
 ALLOWED_AUDIO_EXTENSIONS = {'mp3', 'wav', 'm4a'}
 
