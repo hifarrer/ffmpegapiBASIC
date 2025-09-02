@@ -348,6 +348,11 @@ def merge_videos_with_ffmpeg(video_paths, output_path, audio_path=None):
                 escaped_path = video_path.replace("'", "'\"'\"'")
                 f.write(f"file '{escaped_path}'\n")
         
+        # Debug: Log the concat list file content
+        with open(temp_list_path, 'r') as f:
+            concat_content = f.read()
+            logging.info(f"Concat list file content:\n{concat_content}")
+        
         # If audio is provided, we need a more complex command
         if audio_path:
             # First, merge videos without audio using re-encoding for compatibility
@@ -370,6 +375,7 @@ def merge_videos_with_ffmpeg(video_paths, output_path, audio_path=None):
             
             if result.returncode != 0:
                 # If concat fails, try the filter_complex approach
+                logging.error(f"Concat method failed with error: {result.stderr}")
                 logging.warning("Concat method failed, trying filter_complex approach")
                 return merge_videos_filter_complex(video_paths, output_path, audio_path)
             
@@ -412,6 +418,7 @@ def merge_videos_with_ffmpeg(video_paths, output_path, audio_path=None):
             
             if result.returncode != 0:
                 # If concat fails, try the filter_complex approach
+                logging.error(f"Concat method failed with error: {result.stderr}")
                 logging.warning("Concat method failed, trying filter_complex approach")
                 cleanup_file(temp_list_path)
                 return merge_videos_filter_complex(video_paths, output_path, audio_path)
