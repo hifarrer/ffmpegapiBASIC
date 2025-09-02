@@ -9,11 +9,13 @@ def upload_to_storage(local_file_path, storage_filename):
     Returns the public URL if successful, None if failed
     """
     try:
-        # Check if bucket is configured
-        bucket_name = os.environ.get('REPLIT_BUCKET_NAME')
-        if not bucket_name:
-            logging.error("No bucket configured. Please create a bucket in Replit App Storage.")
-            return None
+        # Check if bucket is configured - try multiple env var patterns
+        bucket_name = (os.environ.get('REPLIT_BUCKET_NAME') or 
+                      os.environ.get('BUCKET_NAME') or
+                      os.environ.get('GCS_BUCKET_NAME') or
+                      'ffmpeg-videos')  # fallback to the bucket name we created
+        
+        logging.info(f"Attempting to upload to bucket: {bucket_name}")
         
         # Initialize Google Cloud Storage client
         # Replit App Storage automatically handles authentication
