@@ -962,11 +962,14 @@ def merge_image_audio():
                 logging.warning("Storage upload failed, falling back to local download")
                 
                 # Fix for Replit: Generate proper URL based on environment
-                if os.environ.get('REPLIT_DEV_DOMAIN'):
+                if os.environ.get('REPLIT_DEPLOYMENT'):
+                    # In production deployment
+                    download_url = f"https://ffmpegapi.net/download/{output_filename}"
+                elif os.environ.get('REPLIT_DEV_DOMAIN'):
                     # In Replit development environment
                     download_url = f"https://{os.environ['REPLIT_DEV_DOMAIN']}/download/{output_filename}"
                 else:
-                    # Local or production environment
+                    # Local environment
                     download_url = url_for('download_file', filename=output_filename, _external=True)
                 
                 logging.info(f"Generated download URL: {download_url}")
@@ -1140,11 +1143,14 @@ def merge_videos():
                     logging.warning("Storage upload failed, falling back to local download")
                     
                     # Fix for Replit: Generate proper URL based on environment
-                    if os.environ.get('REPLIT_DEV_DOMAIN'):
+                    if os.environ.get('REPLIT_DEPLOYMENT'):
+                        # In production deployment
+                        download_url = f"https://ffmpegapi.net/download/{output_filename}"
+                    elif os.environ.get('REPLIT_DEV_DOMAIN'):
                         # In Replit development environment
                         download_url = f"https://{os.environ['REPLIT_DEV_DOMAIN']}/download/{output_filename}"
                     else:
-                        # Local or production environment
+                        # Local environment
                         download_url = url_for('download_file', filename=output_filename, _external=True)
                     return jsonify({
                         'success': True,
@@ -1285,11 +1291,14 @@ def picture_in_picture():
                 logging.warning("Storage upload failed, falling back to local download")
                 
                 # Fix for Replit: Generate proper URL based on environment
-                if os.environ.get('REPLIT_DEV_DOMAIN'):
+                if os.environ.get('REPLIT_DEPLOYMENT'):
+                    # In production deployment
+                    download_url = f"https://ffmpegapi.net/download/{output_filename}"
+                elif os.environ.get('REPLIT_DEV_DOMAIN'):
                     # In Replit development environment
                     download_url = f"https://{os.environ['REPLIT_DEV_DOMAIN']}/download/{output_filename}"
                 else:
-                    # Local or production environment
+                    # Local environment
                     download_url = url_for('download_file', filename=output_filename, _external=True)
                 
                 logging.info(f"Generated download URL: {download_url}")
@@ -1611,11 +1620,14 @@ def process_merge_image_audio_job(job, input_data):
         
         if success:
             # Fix for Replit: Generate proper URL based on environment
-            if os.environ.get('REPLIT_DEV_DOMAIN'):
+            if os.environ.get('REPLIT_DEPLOYMENT'):
+                # In production deployment
+                download_url = f"https://ffmpegapi.net/download/{output_filename}"
+            elif os.environ.get('REPLIT_DEV_DOMAIN'):
                 # In Replit development environment
                 download_url = f"https://{os.environ['REPLIT_DEV_DOMAIN']}/download/{output_filename}"
             else:
-                # Local or production environment
+                # Local environment
                 download_url = url_for('download_file', filename=output_filename, _external=True)
             return {
                 'success': True,
@@ -1688,11 +1700,14 @@ def process_merge_videos_job(job, input_data):
         
         if success:
             # Fix for Replit: Generate proper URL based on environment
-            if os.environ.get('REPLIT_DEV_DOMAIN'):
+            if os.environ.get('REPLIT_DEPLOYMENT'):
+                # In production deployment
+                download_url = f"https://ffmpegapi.net/download/{output_filename}"
+            elif os.environ.get('REPLIT_DEV_DOMAIN'):
                 # In Replit development environment
                 download_url = f"https://{os.environ['REPLIT_DEV_DOMAIN']}/download/{output_filename}"
             else:
-                # Local or production environment
+                # Local environment
                 download_url = url_for('download_file', filename=output_filename, _external=True)
             return {
                 'success': True,
@@ -1749,11 +1764,14 @@ def process_picture_in_picture_job(job, input_data):
         
         if success:
             # Fix for Replit: Generate proper URL based on environment
-            if os.environ.get('REPLIT_DEV_DOMAIN'):
+            if os.environ.get('REPLIT_DEPLOYMENT'):
+                # In production deployment
+                download_url = f"https://ffmpegapi.net/download/{output_filename}"
+            elif os.environ.get('REPLIT_DEV_DOMAIN'):
                 # In Replit development environment
                 download_url = f"https://{os.environ['REPLIT_DEV_DOMAIN']}/download/{output_filename}"
             else:
-                # Local or production environment
+                # Local environment
                 download_url = url_for('download_file', filename=output_filename, _external=True)
             return {
                 'success': True,
@@ -1809,11 +1827,14 @@ def process_split_audio_job(job, input_data):
                 download_urls = []
                 for filename in output_files:
                     # Fix for Replit: Generate proper URL based on environment
-                    if os.environ.get('REPLIT_DEV_DOMAIN'):
+                    if os.environ.get('REPLIT_DEPLOYMENT'):
+                        # In production deployment
+                        download_url = f"https://ffmpegapi.net/download/{request_id}/{filename}"
+                    elif os.environ.get('REPLIT_DEV_DOMAIN'):
                         # In Replit development environment
                         download_url = f"https://{os.environ['REPLIT_DEV_DOMAIN']}/download/{request_id}/{filename}"
                     else:
-                        # Local or production environment
+                        # Local environment
                         download_url = url_for('download_file', filename=f"{request_id}/{filename}", _external=True)
                     download_urls.append({
                         'part': filename,
@@ -1978,11 +1999,14 @@ def split_audio():
                 download_urls = []
                 for filename in output_files:
                     # Fix for Replit: Generate proper URL based on environment
-                    if os.environ.get('REPLIT_DEV_DOMAIN'):
+                    if os.environ.get('REPLIT_DEPLOYMENT'):
+                        # In production deployment
+                        download_url = f"https://ffmpegapi.net/download/{request_id}/{filename}"
+                    elif os.environ.get('REPLIT_DEV_DOMAIN'):
                         # In Replit development environment
                         download_url = f"https://{os.environ['REPLIT_DEV_DOMAIN']}/download/{request_id}/{filename}"
                     else:
-                        # Local or production environment
+                        # Local environment
                         download_url = url_for('download_file', filename=f"{request_id}/{filename}", _external=True)
                     download_urls.append({
                         'part': filename,
