@@ -344,14 +344,12 @@ def merge_videos_with_ffmpeg(video_paths, output_path, audio_path=None):
         
         with open(temp_list_path, 'w') as f:
             for video_path in video_paths:
+                # Convert to absolute path to avoid FFMPEG path resolution issues
+                abs_path = os.path.abspath(video_path)
                 # Escape single quotes in file paths for FFMPEG
-                escaped_path = video_path.replace("'", "'\"'\"'")
+                escaped_path = abs_path.replace("'", "'\"'\"'")
                 f.write(f"file '{escaped_path}'\n")
         
-        # Debug: Log the concat list file content
-        with open(temp_list_path, 'r') as f:
-            concat_content = f.read()
-            logging.info(f"Concat list file content:\n{concat_content}")
         
         # If audio is provided, we need a more complex command
         if audio_path:

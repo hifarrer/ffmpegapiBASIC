@@ -1,0 +1,84 @@
+INFO:root:Concat list file content:
+file 'uploads/e537689b-a2fc-4a0a-aa0b-f252e64ca64f_video_0.mp4'
+file 'uploads/e537689b-a2fc-4a0a-aa0b-f252e64ca64f_video_1.mp4'
+file 'uploads/e537689b-a2fc-4a0a-aa0b-f252e64ca64f_video_2.mp4'
+file 'uploads/e537689b-a2fc-4a0a-aa0b-f252e64ca64f_video_3.mp4'
+
+INFO:root:Running FFMPEG concat command: ffmpeg -f concat -safe 0 -i outputs/e537689b-a2fc-4a0a-aa0b-f252e64ca64f_merged_videos.mp4.txt -c:v libx264 -c:a aac -preset fast -y outputs/e537689b-a2fc-4a0a-aa0b-f252e64ca64f_merged_videos.mp4
+ERROR:root:Concat method failed with error: ffmpeg version 7.1.1 Copyright (c) 2000-2025 the FFmpeg developers
+  built with gcc 14.2.1 (GCC) 20250322
+  configuration: --disable-static --prefix=/nix/store/eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee-ffmpeg-7.1.1 --target_os=linux --arch=x86_64 --pkg-config=pkg-config --enable-gpl --enable-version3 --disable-nonfree --disable-static --enable-shared --enable-pic --disable-thumb --disable-small --enable-runtime-cpudetect --disable-gray --enable-swscale-alpha --enable-hardcoded-tables --enable-safe-bitstream-reader --enable-pthreads --disable-w32threads --disable-os2threads --enable-network --enable-pixelutils --datadir=/nix/store/16zmy175ji519qm4zm718fl5asc5sbqh-ffmpeg-7.1.1-data/share/ffmpeg --enable-ffmpeg --enable-ffplay --enable-ffprobe --bindir=/nix/store/eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee-ffmpeg-7.1.1-bin/bin --enable-avcodec --enable-avdevice --enable-avfilter --enable-avformat --enable-avutil --enable-postproc --enable-swresample --enable-swscale --libdir=/nix/store/eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee-ffmpeg-7.1.1-lib/lib --incdir=/nix/store/eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee-ffmpeg-7.1.1-dev/include --enable-doc --enable-htmlpages --enable-manpages --mandir=/nix/store/eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee-ffmpeg-7.1.1-man/share/man --enable-podpages --enable-txtpages --docdir=/nix/store/eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee-ffmpeg-7.1.1-doc/share/doc/ffmpeg --enable-alsa --enable-amf --enable-libaom --disable-libaribb24 --disable-libaribcaption --enable-libass --disable-avisynth --enable-libbluray --disable-libbs2b --enable-bzlib --disable-libcaca --disable-libcdio --disable-libcelt --disable-chromaprint --disable-libcodec2 --disable-cuda --enable-cuda-llvm --disable-cuda-nvcc --enable-cuvid --enable-libdav1d --disable-libdc1394 --enable-libdrm --disable-libdvdnav --disable-libdvdread --disable-libfdk-aac --enable-ffnvcodec --disable-libflite --enable-fontconfig --enable-libfontconfig --enable-libfreetype --disable-frei0r --enable-libfribidi --disable-libgme --enable-gnutls --disable-libgsm --enable-libharfbuzz --enable-iconv --disable-libilbc --disable-libjack --disable-libjxl --disable-libkvazaar --disable-ladspa --disable-liblc3 --disable-liblcevc-dec --disable-lcms2 --enable-lzma --disable-metal --disable-libmfx --disable-libmodplug --enable-libmp3lame --disable-libmysofa --disable-libnpp --enable-nvdec --enable-nvenc --disable-openal --enable-opencl --disable-libopencore-amrnb --disable-libopencore-amrwb --disable-opengl --disable-libopenh264 --enable-libopenjpeg --enable-libopenmpt --enable-libopus --disable-libplacebo --enable-libpulse --disable-libqrencode --disable-libquirc --disable-librav1e --enable-librist --disable-librtmp --disable-librubberband --disable-libsmbclient --enable-sdl2 --disable-libshaderc --disable-libshine --disable-libsnappy --enable-libsoxr --enable-libspeex --enable-libsrt --enable-libssh --disable-librsvg --enable-libsvtav1 --disable-libtensorflow --enable-libtheora --disable-libtwolame --enable-libv4l2 --enable-v4l2-m2m --enable-vaapi --enable-vdpau --disable-libvpl --enable-libvidstab --disable-libvmaf --disable-libvo-amrwbenc --enable-libvorbis --enable-libvpx --enable-vulkan --disable-libvvenc --enable-libwebp --enable-libx264 --enable-libx265 --disable-libxavs --disable-libxcb --disable-libxcb-shape --disable-libxcb-shm --disable-libxcb-xfixes --disable-libxevd --disable-libxeve --disable-xlib --enable-libxml2 --enable-libxvid --enable-libzimg --enable-zlib --disable-libzmq --enable-libzvbi --disable-debug --enable-optimizations --disable-extra-warnings --disable-stripping
+  libavutil      59. 39.100 / 59. 39.100
+  libavcodec     61. 19.101 / 61. 19.101
+  libavformat    61.  7.100 / 61.  7.100
+  libavdevice    61.  3.100 / 61.  3.100
+  libavfilter    10.  4.100 / 10.  4.100
+  libswscale      8.  3.100 /  8.  3.100
+  libswresample   5.  3.100 /  5.  3.100
+  libpostproc    58.  3.100 / 58.  3.100
+[concat @ 0x12aa680] Impossible to open 'outputs/uploads/e537689b-a2fc-4a0a-aa0b-f252e64ca64f_video_0.mp4'
+[in#0 @ 0x12aa3c0] Error opening input: No such file or directory
+Error opening input file outputs/e537689b-a2fc-4a0a-aa0b-f252e64ca64f_merged_videos.mp4.txt.
+Error opening input files: No such file or directory
+
+WARNING:root:Concat method failed, trying filter_complex approach
+INFO:root:Cleaned up file: outputs/e537689b-a2fc-4a0a-aa0b-f252e64ca64f_merged_videos.mp4.txt
+INFO:root:Video paths input: ['uploads/e537689b-a2fc-4a0a-aa0b-f252e64ca64f_video_0.mp4', 'uploads/e537689b-a2fc-4a0a-aa0b-f252e64ca64f_video_1.mp4', 'uploads/e537689b-a2fc-4a0a-aa0b-f252e64ca64f_video_2.mp4', 'uploads/e537689b-a2fc-4a0a-aa0b-f252e64ca64f_video_3.mp4']
+INFO:root:Number of videos: 4
+INFO:root:Video filters: ['[0:v]', '[1:v]', '[2:v]', '[3:v]']
+INFO:root:Audio filters: ['[0:a]', '[1:a]', '[2:a]', '[3:a]']
+INFO:root:New filter complex: [0:v:0][1:v:0][2:v:0][3:v:0]concat=n=4:v=1:a=0[outv];[0:a:0][1:a:0][2:a:0][3:a:0]concat=n=4:v=0:a=1[outa]
+INFO:root:Running FFMPEG filter_complex command: ffmpeg -i uploads/e537689b-a2fc-4a0a-aa0b-f252e64ca64f_video_0.mp4 -i uploads/e537689b-a2fc-4a0a-aa0b-f252e64ca64f_video_1.mp4 -i uploads/e537689b-a2fc-4a0a-aa0b-f252e64ca64f_video_2.mp4 -i uploads/e537689b-a2fc-4a0a-aa0b-f252e64ca64f_video_3.mp4 -filter_complex [0:v:0][1:v:0][2:v:0][3:v:0]concat=n=4:v=1:a=0[outv];[0:a:0][1:a:0][2:a:0][3:a:0]concat=n=4:v=0:a=1[outa] -map [outv] -map [outa] -c:v libx264 -c:a aac -preset fast -y outputs/e537689b-a2fc-4a0a-aa0b-f252e64ca64f_merged_videos.mp4
+INFO:root:Filter complex string: [0:v:0][1:v:0][2:v:0][3:v:0]concat=n=4:v=1:a=0[outv];[0:a:0][1:a:0][2:a:0][3:a:0]concat=n=4:v=0:a=1[outa]
+[2025-09-02 00:41:52 +0000] [146] [CRITICAL] WORKER TIMEOUT (pid:681)
+[2025-09-02 00:41:52 +0000] [681] [ERROR] Error handling request /api/merge_videos
+Traceback (most recent call last):
+  File "/home/runner/workspace/.pythonlibs/lib/python3.11/site-packages/gunicorn/workers/sync.py", line 134, in handle
+    self.handle_request(listener, req, client, addr)
+  File "/home/runner/workspace/.pythonlibs/lib/python3.11/site-packages/gunicorn/workers/sync.py", line 177, in handle_request
+    respiter = self.wsgi(environ, resp.start_response)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/runner/workspace/.pythonlibs/lib/python3.11/site-packages/flask/app.py", line 1536, in __call__
+    return self.wsgi_app(environ, start_response)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/runner/workspace/.pythonlibs/lib/python3.11/site-packages/werkzeug/middleware/proxy_fix.py", line 183, in __call__
+    return self.app(environ, start_response)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/runner/workspace/.pythonlibs/lib/python3.11/site-packages/flask/app.py", line 1511, in wsgi_app
+    response = self.full_dispatch_request()
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/runner/workspace/.pythonlibs/lib/python3.11/site-packages/flask/app.py", line 917, in full_dispatch_request
+    rv = self.dispatch_request()
+         ^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/runner/workspace/.pythonlibs/lib/python3.11/site-packages/flask/app.py", line 902, in dispatch_request
+    return self.ensure_sync(self.view_functions[rule.endpoint])(**view_args)  # type: ignore[no-any-return]
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/runner/workspace/main.py", line 183, in decorated_function
+    return f(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^
+  File "/home/runner/workspace/main.py", line 1092, in merge_videos
+    success, message = merge_videos_with_ffmpeg(downloaded_videos, output_path, audio_path)
+                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/runner/workspace/main.py", line 424, in merge_videos_with_ffmpeg
+    return merge_videos_filter_complex(video_paths, output_path, audio_path)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/runner/workspace/main.py", line 517, in merge_videos_filter_complex
+    result = subprocess.run(cmd, capture_output=True, text=True, timeout=900)  # Longer timeout for complex processing
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/nix/store/7d088dip86hlzri9sk0h78b63yfmx0a0-python3-3.11.13/lib/python3.11/subprocess.py", line 550, in run
+    stdout, stderr = process.communicate(input, timeout=timeout)
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/nix/store/7d088dip86hlzri9sk0h78b63yfmx0a0-python3-3.11.13/lib/python3.11/subprocess.py", line 1209, in communicate
+    stdout, stderr = self._communicate(input, endtime, timeout)
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/nix/store/7d088dip86hlzri9sk0h78b63yfmx0a0-python3-3.11.13/lib/python3.11/subprocess.py", line 2115, in _communicate
+    ready = selector.select(timeout)
+            ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/nix/store/7d088dip86hlzri9sk0h78b63yfmx0a0-python3-3.11.13/lib/python3.11/selectors.py", line 415, in select
+    fd_event_list = self._selector.poll(timeout)
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/runner/workspace/.pythonlibs/lib/python3.11/site-packages/gunicorn/workers/base.py", line 204, in handle_abort
+    sys.exit(1)
+SystemExit: 1
+[2025-09-02 00:41:52 +0000] [681] [INFO] Worker exiting (pid: 681)
+[2025-09-02 00:41:52 +0000] [943] [INFO] Booting worker with pid: 943
