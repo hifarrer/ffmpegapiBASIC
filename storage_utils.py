@@ -24,13 +24,16 @@ def upload_to_storage(local_file_path, storage_filename):
         
         # In Replit App Storage, we need to construct the URL manually
         # Files are accessible through a public URL pattern
-        # For production, use the production domain
+        # Always return absolute URLs to avoid issues with browser handling
         if os.environ.get('REPLIT_DEPLOYMENT'):
             # In production, files are served from the app storage CDN
             download_url = f"https://ffmpegapi.net/api/storage/{storage_filename}"
+        elif os.environ.get('REPLIT_DEV_DOMAIN'):
+            # In development with Replit domain
+            download_url = f"https://{os.environ['REPLIT_DEV_DOMAIN']}/api/storage/{storage_filename}"
         else:
-            # In development
-            download_url = f"/api/storage/{storage_filename}"
+            # Local development - still need absolute URL for consistency
+            download_url = f"http://localhost:5000/api/storage/{storage_filename}"
         
         logging.info(f"Successfully uploaded {storage_filename} to Replit App Storage")
         logging.info(f"File will be accessible at: {download_url}")
@@ -56,15 +59,16 @@ def get_storage_download_url(storage_filename):
             return None
         
         # Return the appropriate URL based on environment
+        # Always return absolute URLs to avoid issues with browser handling
         if os.environ.get('REPLIT_DEPLOYMENT'):
             # In production, files are served from the app storage CDN
             return f"https://ffmpegapi.net/api/storage/{storage_filename}"
+        elif os.environ.get('REPLIT_DEV_DOMAIN'):
+            # In development with Replit domain
+            return f"https://{os.environ['REPLIT_DEV_DOMAIN']}/api/storage/{storage_filename}"
         else:
-            # In development
-            if os.environ.get('REPLIT_DEV_DOMAIN'):
-                return f"https://{os.environ['REPLIT_DEV_DOMAIN']}/api/storage/{storage_filename}"
-            else:
-                return f"/api/storage/{storage_filename}"
+            # Local development - still need absolute URL for consistency
+            return f"http://localhost:5000/api/storage/{storage_filename}"
     except Exception as e:
         logging.error(f"Failed to get download URL for {storage_filename}: {str(e)}")
         return None
