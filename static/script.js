@@ -234,6 +234,12 @@ class VideoMerger {
             requestData.subtitle_url = subtitleUrl;
         }
         
+        // Add optional watermark URL
+        const watermarkUrl = document.getElementById('videosWatermarkUrl').value.trim();
+        if (watermarkUrl) {
+            requestData.watermark_url = watermarkUrl;
+        }
+        
         // Add optional dimensions
         const dimensions = document.getElementById('videosDimensions').value.trim();
         if (dimensions) {

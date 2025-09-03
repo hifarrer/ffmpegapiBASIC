@@ -1119,6 +1119,7 @@ def merge_videos():
         audio_url = data.get('audio_url')  # Optional audio override
         dimensions = data.get('dimensions')  # Optional output dimensions
         subtitle_url = data.get('subtitle_url')  # Optional subtitle file URL
+        watermark_url = data.get('watermark_url')  # Optional watermark image URL
         
         if not isinstance(video_urls, list) or len(video_urls) < 2:
             return jsonify({
@@ -1131,6 +1132,7 @@ def merge_videos():
         downloaded_videos = []
         audio_path = None
         subtitle_path = None
+        watermark_path = None
         
         try:
             # Download all videos
@@ -1180,6 +1182,25 @@ def merge_videos():
                     return jsonify({
                         'success': False,
                         'error': f'Failed to download subtitle: {message}'
+                    }), 400
+            
+            # Download watermark if provided
+            if watermark_url:
+                watermark_filename = f"{request_id}_watermark.png"
+                watermark_path = os.path.join(UPLOAD_FOLDER, watermark_filename)
+                
+                success, message = download_file_from_url(watermark_url, watermark_path, "watermark image")
+                if not success:
+                    # Cleanup downloaded files
+                    for path in downloaded_videos:
+                        cleanup_file(path)
+                    if audio_path:
+                        cleanup_file(audio_path)
+                    if subtitle_path:
+                        cleanup_file(subtitle_path)
+                    return jsonify({
+                        'success': False,
+                        'error': f'Failed to download watermark: {message}'
                     }), 400
             
             # Check video compatibility (skip if dimensions are provided)
@@ -1240,6 +1261,40 @@ def merge_videos():
                 # Cleanup subtitle file if merge failed
                 cleanup_file(subtitle_path)
             
+            # Add watermark if provided and processing was successful so far
+            if success and watermark_path:
+                # Generate filename for watermarked video
+                watermarked_filename = f"{request_id}_merged_watermarked_videos.mp4"
+                watermarked_output_path = os.path.join(OUTPUT_FOLDER, watermarked_filename)
+                
+                # Add watermark to the video (could be merged or merged+subtitled)
+                watermark_success, watermark_message = add_watermark_with_ffmpeg(output_path, watermark_path, watermarked_output_path)
+                
+                # Cleanup watermark file
+                cleanup_file(watermark_path)
+                
+                if watermark_success:
+                    # Remove the non-watermarked version and use the watermarked one
+                    cleanup_file(output_path)
+                    output_path = watermarked_output_path
+                    output_filename = watermarked_filename
+                    # Update message to reflect all processing done
+                    if subtitle_path:
+                        message = f"Videos merged, subtitles and watermark added successfully"
+                    else:
+                        message = f"Videos merged and watermark added successfully"
+                else:
+                    # Cleanup watermark file if it failed
+                    cleanup_file(watermarked_output_path)
+                    cleanup_file(watermark_path)
+                    return jsonify({
+                        'success': False,
+                        'error': f'Video processing succeeded but watermark addition failed: {watermark_message}'
+                    }), 500
+            elif watermark_path:
+                # Cleanup watermark file if merge failed
+                cleanup_file(watermark_path)
+            
             if success:
                 # Upload to storage for persistence
                 storage_url = upload_to_storage(output_path, output_filename)
@@ -1288,6 +1343,8 @@ def merge_videos():
                 cleanup_file(audio_path)
             if subtitle_path:
                 cleanup_file(subtitle_path)
+            if watermark_path:
+                cleanup_file(watermark_path)
             raise e
             
     except Exception as e:
@@ -2316,6 +2373,43 @@ def add_subtitles_with_ffmpeg(video_path, subtitle_path, output_path):
     except Exception as e:
         logging.error(f"Subtitle processing error: {str(e)}")
         return False, f"Subtitle error: {str(e)}"
+
+def add_watermark_with_ffmpeg(video_path, watermark_path, output_path):
+    """Add watermark to video using FFMPEG with dynamic scaling"""
+    try:
+        # Create filter that scales watermark to 10% of video width and positions at bottom right
+        # The watermark is scaled dynamically and positioned with 20px padding from edges
+        watermark_filter = (
+            f"[1:v]scale=iw*0.1:-1[watermark];"
+            f"[0:v][watermark]overlay=main_w-overlay_w-20:main_h-overlay_h-20"
+        )
+        
+        cmd = [
+            'ffmpeg',
+            '-i', video_path,
+            '-i', watermark_path,
+            '-filter_complex', watermark_filter,
+            '-c:a', 'copy',
+            '-y',
+            output_path
+        ]
+        
+        logging.info(f"Running FFMPEG watermark command: {' '.join(cmd)}")
+        result = subprocess.run(cmd, capture_output=True, text=True, timeout=1800)  # 30 minutes
+        
+        if result.returncode == 0:
+            logging.info("Watermark processing completed successfully")
+            return True, "Watermark added successfully"
+        else:
+            logging.error(f"FFMPEG watermark error: {result.stderr}")
+            return False, f"Watermark processing failed: {result.stderr}"
+            
+    except subprocess.TimeoutExpired:
+        logging.error("Watermark processing timed out")
+        return False, "Watermark processing timed out"
+    except Exception as e:
+        logging.error(f"Watermark processing error: {str(e)}")
+        return False, f"Watermark error: {str(e)}"
 
 @app.route('/api/add_subtitles', methods=['POST'])
 @require_api_key
