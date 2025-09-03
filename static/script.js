@@ -228,6 +228,12 @@ class VideoMerger {
             requestData.audio_url = audioUrl;
         }
         
+        // Add optional subtitle URL
+        const subtitleUrl = document.getElementById('videosSubtitleUrl').value.trim();
+        if (subtitleUrl) {
+            requestData.subtitle_url = subtitleUrl;
+        }
+        
         // Add optional dimensions
         const dimensions = document.getElementById('videosDimensions').value.trim();
         if (dimensions) {

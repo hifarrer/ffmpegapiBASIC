@@ -1118,6 +1118,7 @@ def merge_videos():
         video_urls = data['video_urls']
         audio_url = data.get('audio_url')  # Optional audio override
         dimensions = data.get('dimensions')  # Optional output dimensions
+        subtitle_url = data.get('subtitle_url')  # Optional subtitle file URL
         
         if not isinstance(video_urls, list) or len(video_urls) < 2:
             return jsonify({
@@ -1129,6 +1130,7 @@ def merge_videos():
         request_id = str(uuid.uuid4())
         downloaded_videos = []
         audio_path = None
+        subtitle_path = None
         
         try:
             # Download all videos
@@ -1163,6 +1165,23 @@ def merge_videos():
                         'error': f'Failed to download audio: {message}'
                     }), 400
             
+            # Download subtitle if provided
+            if subtitle_url:
+                subtitle_filename = f"{request_id}_subtitle.ass"
+                subtitle_path = os.path.join(UPLOAD_FOLDER, subtitle_filename)
+                
+                success, message = download_file_from_url(subtitle_url, subtitle_path, "subtitle")
+                if not success:
+                    # Cleanup downloaded files
+                    for path in downloaded_videos:
+                        cleanup_file(path)
+                    if audio_path:
+                        cleanup_file(audio_path)
+                    return jsonify({
+                        'success': False,
+                        'error': f'Failed to download subtitle: {message}'
+                    }), 400
+            
             # Check video compatibility (skip if dimensions are provided)
             if not dimensions:
                 success, message = check_video_compatibility(downloaded_videos)
@@ -1190,6 +1209,36 @@ def merge_videos():
                 cleanup_file(path)
             if audio_path:
                 cleanup_file(audio_path)
+            
+            # Add subtitles if provided and merge was successful
+            if success and subtitle_path:
+                # Generate filename for subtitled video
+                subtitled_filename = f"{request_id}_merged_subtitled_videos.mp4"
+                subtitled_output_path = os.path.join(OUTPUT_FOLDER, subtitled_filename)
+                
+                # Add subtitles to the merged video
+                subtitle_success, subtitle_message = add_subtitles_with_ffmpeg(output_path, subtitle_path, subtitled_output_path)
+                
+                # Cleanup subtitle file
+                cleanup_file(subtitle_path)
+                
+                if subtitle_success:
+                    # Remove the non-subtitled version and use the subtitled one
+                    cleanup_file(output_path)
+                    output_path = subtitled_output_path
+                    output_filename = subtitled_filename
+                    message = f"Videos merged and subtitles added successfully"
+                else:
+                    # Cleanup subtitle file if it failed
+                    cleanup_file(subtitled_output_path)
+                    cleanup_file(subtitle_path)
+                    return jsonify({
+                        'success': False,
+                        'error': f'Video merge succeeded but subtitle addition failed: {subtitle_message}'
+                    }), 500
+            elif subtitle_path:
+                # Cleanup subtitle file if merge failed
+                cleanup_file(subtitle_path)
             
             if success:
                 # Upload to storage for persistence
@@ -1237,6 +1286,8 @@ def merge_videos():
                 cleanup_file(path)
             if audio_path:
                 cleanup_file(audio_path)
+            if subtitle_path:
+                cleanup_file(subtitle_path)
             raise e
             
     except Exception as e:
