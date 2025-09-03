@@ -5,6 +5,7 @@ class VideoMerger {
         this.initializeImageAudioTab();
         this.initializeVideosTab();
         this.initializePipTab();
+        this.initializeSubtitlesTab();
         this.initializeSplitAudioTab();
     }
 
@@ -655,6 +656,154 @@ class VideoMerger {
 
     hidePipResult() {
         this.pipResultContainer.style.display = 'none';
+    }
+
+    initializeSubtitlesTab() {
+        this.subtitlesForm = document.getElementById('subtitlesForm');
+        this.subtitlesProgressContainer = document.getElementById('subtitlesProcessing');
+        this.subtitlesAlertContainer = document.getElementById('subtitlesAlertContainer');
+        this.subtitlesResultContainer = document.getElementById('subtitlesResultContainer');
+        this.subtitlesDownloadBtn = document.getElementById('subtitlesDownloadBtn');
+        this.subtitlesCleanupBtn = document.getElementById('subtitlesCleanupBtn');
+        this.subtitlesResetBtn = document.getElementById('subtitlesResetBtn');
+        this.subtitlesCurrentFilename = null;
+
+        // Event listeners for Subtitles tab
+        this.subtitlesForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            this.handleSubtitlesSubmit();
+        });
+
+        document.getElementById('subtitlesVideoUrl').addEventListener('input', () => {
+            this.validateSubtitlesForm();
+        });
+
+        document.getElementById('subtitleFileUrl').addEventListener('input', () => {
+            this.validateSubtitlesForm();
+        });
+
+        this.subtitlesCleanupBtn.addEventListener('click', () => {
+            this.handleSubtitlesCleanup();
+        });
+
+        this.subtitlesResetBtn.addEventListener('click', () => {
+            this.resetSubtitlesForm();
+        });
+
+        // Initial validation
+        this.validateSubtitlesForm();
+    }
+
+    validateSubtitlesForm() {
+        const videoUrl = document.getElementById('subtitlesVideoUrl').value;
+        const subtitleUrl = document.getElementById('subtitleFileUrl').value;
+        
+        const isValidVideoUrl = this.isValidUrl(videoUrl);
+        const isValidSubtitleUrl = this.isValidUrl(subtitleUrl);
+        
+        const submitBtn = this.subtitlesForm.querySelector('button[type="submit"]');
+        submitBtn.disabled = !isValidVideoUrl || !isValidSubtitleUrl;
+    }
+
+    async handleSubtitlesSubmit() {
+        this.showSubtitlesProgress();
+        this.hideSubtitlesAlert();
+        this.hideSubtitlesResult();
+
+        const formData = new FormData(this.subtitlesForm);
+        const data = {
+            video_url: formData.get('video_url'),
+            subtitle_url: formData.get('subtitle_url')
+        };
+
+        try {
+            const response = await fetch('/api/add_subtitles', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-API-Key': window.API_KEY
+                },
+                body: JSON.stringify(data)
+            });
+
+            const result = await response.json();
+            this.hideSubtitlesProgress();
+
+            if (result.success) {
+                this.subtitlesCurrentFilename = result.filename;
+                this.subtitlesDownloadBtn.href = result.download_url;
+                this.showSubtitlesResult();
+                this.showSubtitlesAlert('success', result.message || 'Subtitles added successfully!');
+            } else {
+                this.showSubtitlesAlert('danger', result.error || 'Failed to add subtitles.');
+            }
+        } catch (error) {
+            this.hideSubtitlesProgress();
+            console.error('Error:', error);
+            this.showSubtitlesAlert('danger', 'Network error. Please try again.');
+        }
+    }
+
+    async handleSubtitlesCleanup() {
+        if (!this.subtitlesCurrentFilename) {
+            this.showSubtitlesAlert('warning', 'No file to delete.');
+            return;
+        }
+
+        try {
+            const response = await fetch(`/cleanup/${this.subtitlesCurrentFilename}`, {
+                method: 'DELETE'
+            });
+
+            if (response.ok) {
+                this.showSubtitlesAlert('success', 'File deleted from server successfully.');
+                this.hideSubtitlesResult();
+                this.subtitlesCurrentFilename = null;
+            } else {
+                this.showSubtitlesAlert('warning', 'File may have already been deleted.');
+            }
+        } catch (error) {
+            console.error('Cleanup error:', error);
+            this.showSubtitlesAlert('warning', 'Could not delete file from server.');
+        }
+    }
+
+    resetSubtitlesForm() {
+        this.subtitlesForm.reset();
+        this.hideSubtitlesAlert();
+        this.hideSubtitlesResult();
+        this.validateSubtitlesForm();
+        this.subtitlesCurrentFilename = null;
+    }
+
+    showSubtitlesProgress() {
+        this.subtitlesProgressContainer.style.display = 'block';
+    }
+
+    hideSubtitlesProgress() {
+        this.subtitlesProgressContainer.style.display = 'none';
+    }
+
+    showSubtitlesAlert(type, message) {
+        this.subtitlesAlertContainer.innerHTML = `
+            <div class="alert alert-${type} alert-dismissible fade show" role="alert">
+                <i class="fas fa-${this.getAlertIcon(type)} me-2"></i>
+                ${message}
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+        `;
+    }
+
+    hideSubtitlesAlert() {
+        this.subtitlesAlertContainer.innerHTML = '';
+    }
+
+    showSubtitlesResult() {
+        this.subtitlesResultContainer.style.display = 'block';
+    }
+
+    hideSubtitlesResult() {
+        this.subtitlesResultContainer.style.display = 'none';
     }
 
     initializeSplitAudioTab() {

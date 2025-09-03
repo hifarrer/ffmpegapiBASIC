@@ -1660,6 +1660,8 @@ def process_job_async(job_id):
                 result = process_picture_in_picture_job(job, input_data)
             elif job.job_type == 'split_audio':
                 result = process_split_audio_job(job, input_data)
+            elif job.job_type == 'add_subtitles':
+                result = process_add_subtitles_job(job, input_data)
             else:
                 job.update_status('failed', f'Unknown job type: {job.job_type}')
                 return
@@ -1962,6 +1964,92 @@ def process_split_audio_job(job, input_data):
             cleanup_file(audio_path)
         return {'success': False, 'error': f'Server error: {str(e)}'}
 
+def process_add_subtitles_job(job, input_data):
+    """Process add_subtitles job"""
+    try:
+        request_id = str(uuid.uuid4())
+        video_path = ""
+        subtitle_path = ""
+        
+        # Handle URL-based inputs
+        if 'video_url' in input_data and 'subtitle_url' in input_data:
+            video_url = input_data['video_url']
+            subtitle_url = input_data['subtitle_url']
+            
+            # Generate file paths
+            video_path = os.path.join(UPLOAD_FOLDER, f"{request_id}_video.mp4")
+            subtitle_path = os.path.join(UPLOAD_FOLDER, f"{request_id}_subtitle.ass")
+            
+            # Download video file
+            success, message = download_file_from_url(video_url, video_path, "video")
+            if not success:
+                cleanup_file(video_path)
+                return {'success': False, 'error': message}
+            
+            # Download subtitle file
+            success, message = download_file_from_url(subtitle_url, subtitle_path, "subtitle")
+            if not success:
+                cleanup_file(video_path)
+                cleanup_file(subtitle_path)
+                return {'success': False, 'error': message}
+            
+            # Generate output filename
+            output_filename = f"{request_id}_subtitled_video.mp4"
+            output_path = os.path.join(OUTPUT_FOLDER, output_filename)
+            
+            # Add subtitles using FFMPEG
+            success, message = add_subtitles_with_ffmpeg(video_path, subtitle_path, output_path)
+            
+            # Cleanup downloaded files
+            cleanup_file(video_path)
+            cleanup_file(subtitle_path)
+            
+            if success:
+                # Upload to storage for persistence
+                storage_url = upload_to_storage(output_path, output_filename)
+                
+                if storage_url:
+                    # Clean up local file after successful upload
+                    cleanup_file(output_path)
+                    
+                    return {
+                        'success': True,
+                        'message': message,
+                        'download_url': storage_url,
+                        'filename': output_filename
+                    }
+                else:
+                    # Fallback to local download if storage upload fails
+                    logging.warning("Storage upload failed, falling back to local download")
+                    
+                    # Generate proper URL based on environment
+                    if os.environ.get('REPLIT_DEPLOYMENT'):
+                        download_url = f"https://ffmpegapi.net/download/{output_filename}"
+                    elif os.environ.get('REPLIT_DEV_DOMAIN'):
+                        download_url = f"https://{os.environ['REPLIT_DEV_DOMAIN']}/download/{output_filename}"
+                    else:
+                        download_url = url_for('download_file', filename=output_filename, _external=True)
+                    
+                    return {
+                        'success': True,
+                        'message': f"{message} (Note: Using temporary local storage - download soon)",
+                        'download_url': download_url,
+                        'filename': output_filename
+                    }
+            else:
+                return {'success': False, 'error': message}
+        else:
+            return {'success': False, 'error': 'Both video_url and subtitle_url are required'}
+            
+    except Exception as e:
+        logging.error(f"Error in process_add_subtitles_job: {str(e)}")
+        # Cleanup files on error
+        if video_path and os.path.exists(video_path):
+            cleanup_file(video_path)
+        if subtitle_path and os.path.exists(subtitle_path):
+            cleanup_file(subtitle_path)
+        return {'success': False, 'error': f'Server error: {str(e)}'}
+
 # Job status endpoint
 @app.route('/api/job/<job_id>/status', methods=['GET'])
 @require_api_key
@@ -2144,6 +2232,179 @@ def split_audio():
             
     except Exception as e:
         logging.error(f"Split audio API error: {str(e)}")
+        return jsonify({
+            'success': False,
+            'error': f'Server error: {str(e)}'
+        }), 500
+
+def add_subtitles_with_ffmpeg(video_path, subtitle_path, output_path):
+    """Add subtitles to video using FFMPEG"""
+    try:
+        cmd = [
+            'ffmpeg',
+            '-i', video_path,
+            '-vf', f'subtitles={subtitle_path}',
+            '-c:a', 'copy',
+            '-y',
+            output_path
+        ]
+        
+        logging.info(f"Running FFMPEG subtitle command: {' '.join(cmd)}")
+        result = subprocess.run(cmd, capture_output=True, text=True, timeout=1800)  # 30 minutes
+        
+        if result.returncode == 0:
+            logging.info("Subtitle processing completed successfully")
+            return True, "Subtitles added successfully"
+        else:
+            logging.error(f"FFMPEG subtitle error: {result.stderr}")
+            return False, f"Subtitle processing failed: {result.stderr}"
+            
+    except subprocess.TimeoutExpired:
+        logging.error("Subtitle processing timed out")
+        return False, "Subtitle processing timed out"
+    except Exception as e:
+        logging.error(f"Subtitle processing error: {str(e)}")
+        return False, f"Subtitle error: {str(e)}"
+
+@app.route('/api/add_subtitles', methods=['POST'])
+@require_api_key
+def add_subtitles():
+    """API endpoint to add subtitles to video"""
+    try:
+        # Check if async processing is requested
+        data = request.get_json()
+        async_processing = data.get('async', False) if data else False
+        
+        # If async processing is requested, create job and return immediately
+        if async_processing:
+            # Get user from API key
+            api_key = request.headers.get('X-API-Key') or request.args.get('api_key')
+            key_record = ApiKey.query.filter_by(key=api_key, is_active=True).first()
+            
+            # Create job record
+            job = Job()
+            job.user_id = key_record.user_id
+            job.job_type = 'add_subtitles'
+            job.status = 'pending'
+            job.set_input_data(data)
+            
+            db.session.add(job)
+            db.session.commit()
+            
+            # Start background processing
+            from threading import Thread
+            thread = Thread(target=process_job_async, args=(job.id,))
+            thread.start()
+            
+            return jsonify({
+                'success': True,
+                'job_id': job.id,
+                'status': 'pending',
+                'message': 'Job submitted for async processing. Use /api/job/{job_id}/status to check progress.',
+                'status_url': url_for('job_status', job_id=job.id, _external=True)
+            })
+        
+        # Synchronous processing
+        if not data:
+            return jsonify({
+                'success': False,
+                'error': 'Invalid JSON data'
+            }), 400
+            
+        video_url = data.get('video_url')
+        subtitle_url = data.get('subtitle_url')
+        
+        # Validate required parameters
+        if not video_url or not subtitle_url:
+            return jsonify({
+                'success': False,
+                'error': 'Both video_url and subtitle_url are required'
+            }), 400
+            
+        # Generate unique request ID
+        request_id = str(uuid.uuid4())
+        
+        # Set up file paths
+        video_path = os.path.join(UPLOAD_FOLDER, f"{request_id}_video.mp4")
+        subtitle_path = os.path.join(UPLOAD_FOLDER, f"{request_id}_subtitle.ass")
+        
+        try:
+            # Download video file
+            success, message = download_file_from_url(video_url, video_path, "video")
+            if not success:
+                cleanup_file(video_path)
+                return jsonify({
+                    'success': False,
+                    'error': message
+                }), 400
+            
+            # Download subtitle file
+            success, message = download_file_from_url(subtitle_url, subtitle_path, "subtitle")
+            if not success:
+                cleanup_file(video_path)
+                cleanup_file(subtitle_path)
+                return jsonify({
+                    'success': False,
+                    'error': message
+                }), 400
+            
+            # Generate output filename
+            output_filename = f"{request_id}_subtitled_video.mp4"
+            output_path = os.path.join(OUTPUT_FOLDER, output_filename)
+            
+            # Add subtitles using FFMPEG
+            success, message = add_subtitles_with_ffmpeg(video_path, subtitle_path, output_path)
+            
+            # Cleanup downloaded files
+            cleanup_file(video_path)
+            cleanup_file(subtitle_path)
+            
+            if success:
+                # Upload to storage for persistence
+                storage_url = upload_to_storage(output_path, output_filename)
+                
+                if storage_url:
+                    # Clean up local file after successful upload
+                    cleanup_file(output_path)
+                    
+                    return jsonify({
+                        'success': True,
+                        'message': message,
+                        'download_url': storage_url,
+                        'filename': output_filename
+                    })
+                else:
+                    # Fallback to local download if storage upload fails
+                    logging.warning("Storage upload failed, falling back to local download")
+                    
+                    # Generate proper URL based on environment
+                    if os.environ.get('REPLIT_DEPLOYMENT'):
+                        download_url = f"https://ffmpegapi.net/download/{output_filename}"
+                    elif os.environ.get('REPLIT_DEV_DOMAIN'):
+                        download_url = f"https://{os.environ['REPLIT_DEV_DOMAIN']}/download/{output_filename}"
+                    else:
+                        download_url = url_for('download_file', filename=output_filename, _external=True)
+                    
+                    return jsonify({
+                        'success': True,
+                        'message': f"{message} (Note: Using temporary local storage - download soon)",
+                        'download_url': download_url,
+                        'filename': output_filename
+                    })
+            else:
+                return jsonify({
+                    'success': False,
+                    'error': message
+                }), 500
+                
+        except Exception as e:
+            # Cleanup downloaded files on error
+            cleanup_file(video_path)
+            cleanup_file(subtitle_path)
+            raise e
+            
+    except Exception as e:
+        logging.error(f"Error in add_subtitles: {str(e)}")
         return jsonify({
             'success': False,
             'error': f'Server error: {str(e)}'
