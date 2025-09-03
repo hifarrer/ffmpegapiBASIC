@@ -346,154 +346,139 @@ def check_video_compatibility(video_paths):
 def merge_videos_with_ffmpeg(video_paths, output_path, audio_path=None, dimensions=None):
     """Merge multiple videos using FFMPEG"""
     temp_list_path = None
-    scaled_videos = []
+    normalized_videos = []
     
     try:
-        # If dimensions are specified, scale all videos first
-        if dimensions:
-            try:
-                width, height = dimensions.split('x')
-                width = int(width)
-                height = int(height)
-            except:
-                return False, "Invalid dimensions format. Use format like '864x480'"
+        # First, normalize all videos to have the same properties
+        # This prevents freezing at transitions
+        for i, video_path in enumerate(video_paths):
+            normalized_path = f"{video_path}_normalized.mp4"
             
-            # Scale each video to the target dimensions
-            for i, video_path in enumerate(video_paths):
-                scaled_path = f"{video_path}_scaled.mp4"
-                scale_cmd = [
+            # Build normalization command
+            if dimensions:
+                try:
+                    width, height = dimensions.split('x')
+                    width = int(width)
+                    height = int(height)
+                except:
+                    return False, "Invalid dimensions format. Use format like '864x480'"
+                
+                # Scale and normalize
+                normalize_cmd = [
                     'ffmpeg',
                     '-i', video_path,
-                    '-vf', f'scale={width}:{height}:force_original_aspect_ratio=decrease,pad={width}:{height}:(ow-iw)/2:(oh-ih)/2,setsar=1',
+                    '-vf', f'scale={width}:{height}:force_original_aspect_ratio=decrease,pad={width}:{height}:(ow-iw)/2:(oh-ih)/2,setsar=1,fps=30,format=yuv420p',
                     '-c:v', 'libx264',
                     '-c:a', 'aac',
+                    '-ar', '48000',  # Audio sample rate
+                    '-ac', '2',  # Audio channels (stereo)
                     '-preset', 'medium',
                     '-crf', '23',
                     '-g', '30',  # Set keyframe interval
                     '-keyint_min', '30',  # Minimum keyframe interval
                     '-sc_threshold', '0',  # Disable scene change detection
+                    '-video_track_timescale', '30000',  # Set video timescale
                     '-y',
-                    scaled_path
+                    normalized_path
                 ]
-                
-                logging.info(f"Scaling video {i+1} to {width}x{height}")
-                result = subprocess.run(scale_cmd, capture_output=True, text=True, timeout=300)
-                
-                if result.returncode != 0:
-                    # Cleanup scaled videos
-                    for path in scaled_videos:
-                        cleanup_file(path)
-                    return False, f"Failed to scale video {i+1}: {result.stderr}"
-                
-                scaled_videos.append(scaled_path)
+                logging.info(f"Normalizing and scaling video {i+1} to {width}x{height}")
+            else:
+                # Just normalize without scaling
+                normalize_cmd = [
+                    'ffmpeg',
+                    '-i', video_path,
+                    '-vf', 'fps=30,format=yuv420p',
+                    '-c:v', 'libx264',
+                    '-c:a', 'aac',
+                    '-ar', '48000',  # Audio sample rate
+                    '-ac', '2',  # Audio channels (stereo)
+                    '-preset', 'medium',
+                    '-crf', '23',
+                    '-g', '30',  # Set keyframe interval
+                    '-keyint_min', '30',  # Minimum keyframe interval
+                    '-sc_threshold', '0',  # Disable scene change detection
+                    '-video_track_timescale', '30000',  # Set video timescale
+                    '-y',
+                    normalized_path
+                ]
+                logging.info(f"Normalizing video {i+1}")
             
-            # Use scaled videos for concatenation
-            videos_to_merge = scaled_videos
-        else:
-            videos_to_merge = video_paths
+            result = subprocess.run(normalize_cmd, capture_output=True, text=True, timeout=300)
+            
+            if result.returncode != 0:
+                # Cleanup normalized videos
+                for path in normalized_videos:
+                    cleanup_file(path)
+                return False, f"Failed to normalize video {i+1}: {result.stderr}"
+            
+            normalized_videos.append(normalized_path)
         
-        # Create concat list file
-        temp_list_path = f"{output_path}.txt"
+        # Use normalized videos for concatenation
+        videos_to_merge = normalized_videos
         
-        with open(temp_list_path, 'w') as f:
-            for video_path in videos_to_merge:
-                # Convert to absolute path to avoid FFMPEG path resolution issues
-                abs_path = os.path.abspath(video_path)
-                # Escape single quotes in file paths for FFMPEG
-                escaped_path = abs_path.replace("'", "'\"'\"'")
-                f.write(f"file '{escaped_path}'\n")
+        # Use concat filter instead of concat demuxer for better compatibility
+        # Build input arguments
+        inputs = []
+        for video_path in videos_to_merge:
+            inputs.extend(['-i', video_path])
         
+        # Build filter complex for concatenation
+        num_videos = len(videos_to_merge)
         
-        # If audio is provided, we need a more complex command
         if audio_path:
-            # First, merge videos without audio using re-encoding for compatibility
-            temp_video_path = f"{output_path}_temp.mp4"
-            temp_cmd = [
-                'ffmpeg',
-                '-f', 'concat',
-                '-safe', '0',
-                '-i', temp_list_path,
-                '-c:v', 'libx264',  # Re-encode video for compatibility
-                '-c:a', 'aac',      # Re-encode audio
-                '-preset', 'medium',  # Better quality preset
-                '-crf', '23',  # Constant rate factor for quality
-                '-g', '30',  # Set keyframe interval
-                '-keyint_min', '30',  # Minimum keyframe interval
-                '-sc_threshold', '0',  # Disable scene change detection
-                '-an',  # Remove audio from concatenated video
-                '-y',
-                temp_video_path
-            ]
+            # Concatenate videos without audio, then add custom audio
+            filter_complex = ''.join([f"[{i}:v:0]" for i in range(num_videos)])
+            filter_complex += f"concat=n={num_videos}:v=1:a=0[outv]"
             
-            logging.info(f"Running FFMPEG concat command: {' '.join(temp_cmd)}")
-            result = subprocess.run(temp_cmd, capture_output=True, text=True, timeout=1800)  # 30 minutes
-            
-            if result.returncode != 0:
-                # If concat fails, try the filter_complex approach
-                logging.error(f"Concat method failed with error: {result.stderr}")
-                logging.warning("Concat method failed, trying filter_complex approach")
-                return merge_videos_filter_complex(video_paths, output_path, audio_path)
-            
-            # Then add the audio to the concatenated video
-            final_cmd = [
-                'ffmpeg',
-                '-i', temp_video_path,
-                '-i', audio_path,
-                '-c:v', 'copy',  # Copy video without re-encoding
-                '-c:a', 'aac',   # Encode audio as AAC
-                '-b:a', '192k',  # Audio bitrate
-                '-shortest',     # End when shortest input ends
-                '-y',
-                output_path
-            ]
-            
-            logging.info(f"Running FFMPEG audio merge command: {' '.join(final_cmd)}")
-            result = subprocess.run(final_cmd, capture_output=True, text=True, timeout=300)
-            
-            # Cleanup temporary files
-            cleanup_file(temp_list_path)
-            cleanup_file(temp_video_path)
-            
-        else:
-            # Try simple concat first with re-encoding for compatibility
             cmd = [
-                'ffmpeg',
-                '-f', 'concat',
-                '-safe', '0',
-                '-i', temp_list_path,
-                '-c:v', 'libx264',  # Re-encode video for compatibility
-                '-c:a', 'aac',      # Re-encode audio
-                '-preset', 'medium',  # Better quality preset
-                '-crf', '23',  # Constant rate factor for quality
-                '-g', '30',  # Set keyframe interval
-                '-keyint_min', '30',  # Minimum keyframe interval
-                '-sc_threshold', '0',  # Disable scene change detection
+                'ffmpeg'
+            ] + inputs + [
+                '-i', audio_path,
+                '-filter_complex', filter_complex,
+                '-map', '[outv]',
+                '-map', f'{num_videos}:a',
+                '-c:v', 'libx264',
+                '-c:a', 'aac',
+                '-preset', 'medium',
+                '-crf', '23',
+                '-b:a', '192k',
+                '-shortest',
                 '-y',
                 output_path
             ]
+        else:
+            # Concatenate both video and audio
+            video_concat = ''.join([f"[{i}:v:0]" for i in range(num_videos)])
+            audio_concat = ''.join([f"[{i}:a:0]" for i in range(num_videos)])
+            filter_complex = f"{video_concat}concat=n={num_videos}:v=1:a=0[outv];{audio_concat}concat=n={num_videos}:v=0:a=1[outa]"
             
-            logging.info(f"Running FFMPEG concat command: {' '.join(cmd)}")
-            result = subprocess.run(cmd, capture_output=True, text=True, timeout=1800)  # 30 minutes
-            
-            if result.returncode != 0:
-                # If concat fails, try the filter_complex approach
-                logging.error(f"Concat method failed with error: {result.stderr}")
-                logging.warning("Concat method failed, trying filter_complex approach")
-                cleanup_file(temp_list_path)
-                return merge_videos_filter_complex(video_paths, output_path, audio_path)
-                
-            cleanup_file(temp_list_path)
+            cmd = [
+                'ffmpeg'
+            ] + inputs + [
+                '-filter_complex', filter_complex,
+                '-map', '[outv]',
+                '-map', '[outa]',
+                '-c:v', 'libx264',
+                '-c:a', 'aac',
+                '-preset', 'medium',
+                '-crf', '23',
+                '-y',
+                output_path
+            ]
+        
+        logging.info(f"Running FFMPEG concat filter command: {' '.join(cmd)}")
+        result = subprocess.run(cmd, capture_output=True, text=True, timeout=1800)  # 30 minutes
         
         if result.returncode == 0:
             logging.info("Video merge processing completed successfully")
-            # Cleanup scaled videos if any
-            for path in scaled_videos:
+            # Cleanup normalized videos if any
+            for path in normalized_videos:
                 cleanup_file(path)
             return True, "Videos merged successfully"
         else:
             logging.error(f"FFMPEG merge error: {result.stderr}")
-            # Cleanup scaled videos if any
-            for path in scaled_videos:
+            # Cleanup normalized videos if any
+            for path in normalized_videos:
                 cleanup_file(path)
             return False, f"Video merge failed: {result.stderr}"
             
@@ -501,16 +486,16 @@ def merge_videos_with_ffmpeg(video_paths, output_path, audio_path=None, dimensio
         logging.error("Video merge processing timed out")
         if temp_list_path:
             cleanup_file(temp_list_path)
-        # Cleanup scaled videos if any
-        for path in scaled_videos:
+        # Cleanup normalized videos if any
+        for path in normalized_videos:
             cleanup_file(path)
         return False, "Video merge processing timed out"
     except Exception as e:
         logging.error(f"Video merge processing error: {str(e)}")
         if temp_list_path:
             cleanup_file(temp_list_path)
-        # Cleanup scaled videos if any
-        for path in scaled_videos:
+        # Cleanup normalized videos if any
+        for path in normalized_videos:
             cleanup_file(path)
         return False, f"Video merge error: {str(e)}"
 
