@@ -221,12 +221,10 @@ class VideoMerger {
             video_urls: videoUrls
         };
         
-        // Add optional audio file URL (if it's a URL input)
-        const audioFile = document.getElementById('videosAudioFile').files[0];
-        if (audioFile) {
-            // For now, we'll skip audio file uploads and only support URL-based audio
-            this.showVideosAlert('warning', 'Audio file uploads are not supported yet. Please provide audio URLs in the video merger.');
-            return;
+        // Add optional audio URL
+        const audioUrl = document.getElementById('videosAudioUrl').value.trim();
+        if (audioUrl) {
+            requestData.audio_url = audioUrl;
         }
 
         this.setVideosLoadingState(true);
