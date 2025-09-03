@@ -364,10 +364,14 @@ def merge_videos_with_ffmpeg(video_paths, output_path, audio_path=None, dimensio
                 scale_cmd = [
                     'ffmpeg',
                     '-i', video_path,
-                    '-vf', f'scale={width}:{height}:force_original_aspect_ratio=decrease,pad={width}:{height}:(ow-iw)/2:(oh-ih)/2',
+                    '-vf', f'scale={width}:{height}:force_original_aspect_ratio=decrease,pad={width}:{height}:(ow-iw)/2:(oh-ih)/2,setsar=1',
                     '-c:v', 'libx264',
                     '-c:a', 'aac',
-                    '-preset', 'fast',
+                    '-preset', 'medium',
+                    '-crf', '23',
+                    '-g', '30',  # Set keyframe interval
+                    '-keyint_min', '30',  # Minimum keyframe interval
+                    '-sc_threshold', '0',  # Disable scene change detection
                     '-y',
                     scaled_path
                 ]
@@ -411,7 +415,11 @@ def merge_videos_with_ffmpeg(video_paths, output_path, audio_path=None, dimensio
                 '-i', temp_list_path,
                 '-c:v', 'libx264',  # Re-encode video for compatibility
                 '-c:a', 'aac',      # Re-encode audio
-                '-preset', 'fast',  # Fast encoding preset
+                '-preset', 'medium',  # Better quality preset
+                '-crf', '23',  # Constant rate factor for quality
+                '-g', '30',  # Set keyframe interval
+                '-keyint_min', '30',  # Minimum keyframe interval
+                '-sc_threshold', '0',  # Disable scene change detection
                 '-an',  # Remove audio from concatenated video
                 '-y',
                 temp_video_path
@@ -455,7 +463,11 @@ def merge_videos_with_ffmpeg(video_paths, output_path, audio_path=None, dimensio
                 '-i', temp_list_path,
                 '-c:v', 'libx264',  # Re-encode video for compatibility
                 '-c:a', 'aac',      # Re-encode audio
-                '-preset', 'fast',  # Fast encoding preset
+                '-preset', 'medium',  # Better quality preset
+                '-crf', '23',  # Constant rate factor for quality
+                '-g', '30',  # Set keyframe interval
+                '-keyint_min', '30',  # Minimum keyframe interval
+                '-sc_threshold', '0',  # Disable scene change detection
                 '-y',
                 output_path
             ]
@@ -551,7 +563,11 @@ def merge_videos_filter_complex(video_paths, output_path, audio_path=None):
                 '-map', f'{num_videos}:a',  # Map the custom audio file
                 '-c:v', 'libx264',
                 '-c:a', 'aac',
-                '-preset', 'fast',
+                '-preset', 'medium',
+                '-crf', '23',
+                '-g', '30',
+                '-keyint_min', '30',
+                '-sc_threshold', '0',
                 '-b:a', '192k',
                 '-shortest',
                 '-y',
@@ -566,7 +582,11 @@ def merge_videos_filter_complex(video_paths, output_path, audio_path=None):
                 '-map', '[outa]',
                 '-c:v', 'libx264',
                 '-c:a', 'aac',
-                '-preset', 'fast',
+                '-preset', 'medium',
+                '-crf', '23',
+                '-g', '30',
+                '-keyint_min', '30',
+                '-sc_threshold', '0',
                 '-y',
                 output_path
             ]
