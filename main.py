@@ -343,15 +343,56 @@ def check_video_compatibility(video_paths):
     
     return True, "All videos are compatible"
 
-def merge_videos_with_ffmpeg(video_paths, output_path, audio_path=None):
+def merge_videos_with_ffmpeg(video_paths, output_path, audio_path=None, dimensions=None):
     """Merge multiple videos using FFMPEG"""
     temp_list_path = None
+    scaled_videos = []
+    
     try:
-        # First, let's try the simple concat approach
+        # If dimensions are specified, scale all videos first
+        if dimensions:
+            try:
+                width, height = dimensions.split('x')
+                width = int(width)
+                height = int(height)
+            except:
+                return False, "Invalid dimensions format. Use format like '864x480'"
+            
+            # Scale each video to the target dimensions
+            for i, video_path in enumerate(video_paths):
+                scaled_path = f"{video_path}_scaled.mp4"
+                scale_cmd = [
+                    'ffmpeg',
+                    '-i', video_path,
+                    '-vf', f'scale={width}:{height}:force_original_aspect_ratio=decrease,pad={width}:{height}:(ow-iw)/2:(oh-ih)/2',
+                    '-c:v', 'libx264',
+                    '-c:a', 'aac',
+                    '-preset', 'fast',
+                    '-y',
+                    scaled_path
+                ]
+                
+                logging.info(f"Scaling video {i+1} to {width}x{height}")
+                result = subprocess.run(scale_cmd, capture_output=True, text=True, timeout=300)
+                
+                if result.returncode != 0:
+                    # Cleanup scaled videos
+                    for path in scaled_videos:
+                        cleanup_file(path)
+                    return False, f"Failed to scale video {i+1}: {result.stderr}"
+                
+                scaled_videos.append(scaled_path)
+            
+            # Use scaled videos for concatenation
+            videos_to_merge = scaled_videos
+        else:
+            videos_to_merge = video_paths
+        
+        # Create concat list file
         temp_list_path = f"{output_path}.txt"
         
         with open(temp_list_path, 'w') as f:
-            for video_path in video_paths:
+            for video_path in videos_to_merge:
                 # Convert to absolute path to avoid FFMPEG path resolution issues
                 abs_path = os.path.abspath(video_path)
                 # Escape single quotes in file paths for FFMPEG
@@ -433,20 +474,32 @@ def merge_videos_with_ffmpeg(video_paths, output_path, audio_path=None):
         
         if result.returncode == 0:
             logging.info("Video merge processing completed successfully")
+            # Cleanup scaled videos if any
+            for path in scaled_videos:
+                cleanup_file(path)
             return True, "Videos merged successfully"
         else:
             logging.error(f"FFMPEG merge error: {result.stderr}")
+            # Cleanup scaled videos if any
+            for path in scaled_videos:
+                cleanup_file(path)
             return False, f"Video merge failed: {result.stderr}"
             
     except subprocess.TimeoutExpired:
         logging.error("Video merge processing timed out")
         if temp_list_path:
             cleanup_file(temp_list_path)
+        # Cleanup scaled videos if any
+        for path in scaled_videos:
+            cleanup_file(path)
         return False, "Video merge processing timed out"
     except Exception as e:
         logging.error(f"Video merge processing error: {str(e)}")
         if temp_list_path:
             cleanup_file(temp_list_path)
+        # Cleanup scaled videos if any
+        for path in scaled_videos:
+            cleanup_file(path)
         return False, f"Video merge error: {str(e)}"
 
 def merge_videos_filter_complex(video_paths, output_path, audio_path=None):
@@ -1059,6 +1112,7 @@ def merge_videos():
         
         video_urls = data['video_urls']
         audio_url = data.get('audio_url')  # Optional audio override
+        dimensions = data.get('dimensions')  # Optional output dimensions
         
         if not isinstance(video_urls, list) or len(video_urls) < 2:
             return jsonify({
@@ -1104,26 +1158,27 @@ def merge_videos():
                         'error': f'Failed to download audio: {message}'
                     }), 400
             
-            # Check video compatibility
-            success, message = check_video_compatibility(downloaded_videos)
-            if not success:
-                # Cleanup downloaded files
-                for path in downloaded_videos:
-                    cleanup_file(path)
-                if audio_path:
-                    cleanup_file(audio_path)
-                
-                return jsonify({
-                    'success': False,
-                    'error': message
-                }), 400
+            # Check video compatibility (skip if dimensions are provided)
+            if not dimensions:
+                success, message = check_video_compatibility(downloaded_videos)
+                if not success:
+                    # Cleanup downloaded files
+                    for path in downloaded_videos:
+                        cleanup_file(path)
+                    if audio_path:
+                        cleanup_file(audio_path)
+                    
+                    return jsonify({
+                        'success': False,
+                        'error': message
+                    }), 400
             
             # Generate output filename
             output_filename = f"{request_id}_merged_videos.mp4"
             output_path = os.path.join(OUTPUT_FOLDER, output_filename)
             
             # Merge videos using FFMPEG
-            success, message = merge_videos_with_ffmpeg(downloaded_videos, output_path, audio_path)
+            success, message = merge_videos_with_ffmpeg(downloaded_videos, output_path, audio_path, dimensions)
             
             # Cleanup downloaded files
             for path in downloaded_videos:

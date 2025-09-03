@@ -226,6 +226,12 @@ class VideoMerger {
         if (audioUrl) {
             requestData.audio_url = audioUrl;
         }
+        
+        // Add optional dimensions
+        const dimensions = document.getElementById('videosDimensions').value.trim();
+        if (dimensions) {
+            requestData.dimensions = dimensions;
+        }
 
         this.setVideosLoadingState(true);
         this.hideVideosAlert();

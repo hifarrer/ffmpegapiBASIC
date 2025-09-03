@@ -201,6 +201,16 @@
                                         <div class="form-text">If provided, this audio will replace the audio track of the final video</div>
                                     </div>
 
+                                    <div class="mb-4">
+                                        <label for="videosDimensions" class="form-label">
+                                            <i class="fas fa-expand me-2"></i>
+                                            Output Dimensions (Optional)
+                                        </label>
+                                        <input type="text" class="form-control" id="videosDimensions" name="dimensions" 
+                                               placeholder="864x480" pattern="\d+x\d+">
+                                        <div class="form-text">Specify output dimensions (e.g., 864x480) to resize all videos to match. Videos will be scaled/cropped as needed.</div>
+                                    </div>
+
                                     <div class="d-grid">
                                         <button type="submit" class="btn btn-primary btn-lg" id="videosSubmitBtn">
                                             <i class="fas fa-play me-2"></i>
