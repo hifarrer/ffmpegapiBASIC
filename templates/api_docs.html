@@ -81,6 +81,7 @@
                                 <a class="toc-link ms-3" href="#merge-image-audio">Image & Audio Merge</a>
                                 <a class="toc-link ms-3" href="#merge-videos">Video Merge</a>
                                 <a class="toc-link ms-3" href="#picture-in-picture">Picture in Picture</a>
+                                <a class="toc-link ms-3" href="#add-subtitles">Add Subtitles</a>
                                 <a class="toc-link ms-3" href="#split-audio">Split Audio</a>
                                 <a class="toc-link ms-3" href="#job-status">Job Status</a>
                                 <a class="toc-link" href="#errors">Error Handling</a>
@@ -104,7 +105,7 @@
                 <!-- Overview -->
                 <section id="overview" class="mb-5">
                     <h2><i class="fas fa-info-circle me-2"></i>Overview</h2>
-                    <p>The FFMPEG Video Merger API provides four powerful video processing capabilities:</p>
+                    <p>The FFMPEG Video Merger API provides five powerful video processing capabilities:</p>
                     
                     <div class="row">
                         <div class="col-md-4 mb-3">
@@ -131,6 +132,15 @@
                                     <i class="fas fa-layer-group fa-2x text-primary mb-3"></i>
                                     <h5>Picture in Picture</h5>
                                     <p class="small">Overlay one video on top of another with customizable positioning</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-3 mb-3">
+                            <div class="card h-100">
+                                <div class="card-body text-center">
+                                    <i class="fas fa-closed-captioning fa-2x text-primary mb-3"></i>
+                                    <h5>Add Subtitles</h5>
+                                    <p class="small">Burn ASS subtitle files directly into videos</p>
                                 </div>
                             </div>
                         </div>
@@ -546,6 +556,82 @@
   "message": "Job submitted for async processing. Use /api/job/{job_id}/status to check progress.",
   "status_url": "https://ffmpegapi.net/api/job/550e8400-e29b-41d4-a716-446655440000/status"
 }</code></pre>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Add Subtitles -->
+                    <div id="add-subtitles" class="api-endpoint">
+                        <div class="card">
+                            <div class="card-header">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <h4 class="mb-0">Add Subtitles</h4>
+                                    <span class="method-badge method-post">POST</span>
+                                </div>
+                            </div>
+                            <div class="card-body">
+                                <p><strong>Endpoint:</strong> <code>/api/add_subtitles</code></p>
+                                <p>Burns ASS subtitle files directly into videos using FFmpeg, creating a permanent overlay of subtitles.</p>
+                                
+                                <h5>Parameters</h5>
+                                <div class="table-responsive">
+                                    <table class="table table-striped">
+                                        <thead>
+                                            <tr>
+                                                <th>Parameter</th>
+                                                <th>Type</th>
+                                                <th>Required</th>
+                                                <th>Description</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <tr>
+                                                <td><code>video_url</code></td>
+                                                <td>string</td>
+                                                <td>Yes</td>
+                                                <td>Direct URL to the video file</td>
+                                            </tr>
+                                            <tr>
+                                                <td><code>subtitle_url</code></td>
+                                                <td>string</td>
+                                                <td>Yes</td>
+                                                <td>Direct URL to the ASS subtitle file</td>
+                                            </tr>
+                                            <tr>
+                                                <td><code>async</code></td>
+                                                <td>boolean</td>
+                                                <td>No</td>
+                                                <td>Process in background (default: false)</td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+
+                                <h5>Example Request</h5>
+                                <div class="code-block p-3 mb-3">
+                                    <pre><code class="language-bash">curl -X POST https://ffmpegapi.net/api/add_subtitles \
+  -H "X-API-Key: your_api_key_here" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "video_url": "https://example.com/video.mp4",
+    "subtitle_url": "https://example.com/subtitles.ass"
+  }'</code></pre>
+                                </div>
+
+                                <h5>Response</h5>
+                                <div class="code-block p-3 mb-3">
+                                    <pre><code class="language-json">{
+  "success": true,
+  "message": "Subtitles added successfully!",
+  "filename": "uuid_subtitled_video.mp4",
+  "download_url": "https://ffmpegapi.net/api/storage/uuid_subtitled_video.mp4"
+}</code></pre>
+                                </div>
+
+                                <div class="alert alert-info">
+                                    <i class="fas fa-info-circle me-2"></i>
+                                    <strong>Note:</strong> Only ASS subtitle format is supported. The subtitles are permanently burned into the video and cannot be toggled off.
                                 </div>
                             </div>
                         </div>
