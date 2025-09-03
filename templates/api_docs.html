@@ -364,7 +364,7 @@
                                 <code class="text-muted">/api/merge_videos</code>
                             </div>
                             <div class="card-body">
-                                <p>Concatenate multiple videos from URLs into a single video. All videos should have the same aspect ratio for best results.</p>
+                                <p>Concatenate multiple videos from URLs into a single video. Videos with different aspect ratios can be handled by specifying output dimensions.</p>
                                 
                                 <h6>Request Format</h6>
                                 <p><strong>Content-Type:</strong> <code>application/json</code></p>
@@ -394,6 +394,12 @@
                                                 <td>Optional audio URL to replace original audio</td>
                                             </tr>
                                             <tr>
+                                                <td><code>dimensions</code></td>
+                                                <td>String</td>
+                                                <td>No</td>
+                                                <td>Output video dimensions (e.g., "864x480"). All videos will be scaled/padded to match these dimensions. Useful for merging videos with different aspect ratios.</td>
+                                            </tr>
+                                            <tr>
                                                 <td><code>async</code></td>
                                                 <td>Boolean</td>
                                                 <td>No</td>
@@ -412,6 +418,7 @@
     "https://example.com/video3.mp4"
   ],
   "audio_url": "https://example.com/audio.mp3",
+  "dimensions": "1920x1080",
   "async": true
 }</code></pre>
                                 </div>
