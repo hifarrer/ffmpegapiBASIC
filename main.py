@@ -1231,6 +1231,9 @@ def merge_videos():
             if audio_path:
                 cleanup_file(audio_path)
             
+            # Track whether subtitles were successfully processed
+            subtitles_added = False
+            
             # Add subtitles if provided and merge was successful
             if success and subtitle_path:
                 # Generate filename for subtitled video
@@ -1249,10 +1252,10 @@ def merge_videos():
                     output_path = subtitled_output_path
                     output_filename = subtitled_filename
                     message = f"Videos merged and subtitles added successfully"
+                    subtitles_added = True
                 else:
                     # Cleanup subtitle file if it failed
                     cleanup_file(subtitled_output_path)
-                    cleanup_file(subtitle_path)
                     return jsonify({
                         'success': False,
                         'error': f'Video merge succeeded but subtitle addition failed: {subtitle_message}'
@@ -1279,14 +1282,13 @@ def merge_videos():
                     output_path = watermarked_output_path
                     output_filename = watermarked_filename
                     # Update message to reflect all processing done
-                    if subtitle_path:
+                    if subtitles_added:
                         message = f"Videos merged, subtitles and watermark added successfully"
                     else:
                         message = f"Videos merged and watermark added successfully"
                 else:
                     # Cleanup watermark file if it failed
                     cleanup_file(watermarked_output_path)
-                    cleanup_file(watermark_path)
                     return jsonify({
                         'success': False,
                         'error': f'Video processing succeeded but watermark addition failed: {watermark_message}'
@@ -1857,9 +1859,14 @@ def process_merge_videos_job(job, input_data):
         request_id = str(uuid.uuid4())
         video_urls = input_data['video_urls']
         audio_url = input_data.get('audio_url')
+        dimensions = input_data.get('dimensions')
+        subtitle_url = input_data.get('subtitle_url')
+        watermark_url = input_data.get('watermark_url')
         
         downloaded_videos = []
         audio_path = None
+        subtitle_path = None
+        watermark_path = None
         
         # Download all videos
         for i, url in enumerate(video_urls):
@@ -1885,45 +1892,155 @@ def process_merge_videos_job(job, input_data):
                     cleanup_file(path)
                 return {'success': False, 'error': f'Failed to download audio: {message}'}
         
-        # Check video compatibility
-        success, message = check_video_compatibility(downloaded_videos)
-        if not success:
-            for path in downloaded_videos:
-                cleanup_file(path)
-            if audio_path:
-                cleanup_file(audio_path)
-            return {'success': False, 'error': message}
+        # Download subtitle if provided
+        if subtitle_url:
+            subtitle_filename = f"{request_id}_subtitle.ass"
+            subtitle_path = os.path.join(UPLOAD_FOLDER, subtitle_filename)
+            
+            success, message = download_file_from_url(subtitle_url, subtitle_path, "subtitle")
+            if not success:
+                for path in downloaded_videos:
+                    cleanup_file(path)
+                if audio_path:
+                    cleanup_file(audio_path)
+                return {'success': False, 'error': f'Failed to download subtitle: {message}'}
+        
+        # Download watermark if provided
+        if watermark_url:
+            watermark_filename = f"{request_id}_watermark.png"
+            watermark_path = os.path.join(UPLOAD_FOLDER, watermark_filename)
+            
+            success, message = download_file_from_url(watermark_url, watermark_path, "watermark image")
+            if not success:
+                for path in downloaded_videos:
+                    cleanup_file(path)
+                if audio_path:
+                    cleanup_file(audio_path)
+                if subtitle_path:
+                    cleanup_file(subtitle_path)
+                return {'success': False, 'error': f'Failed to download watermark: {message}'}
+        
+        # Check video compatibility (skip if dimensions are provided)
+        if not dimensions:
+            success, message = check_video_compatibility(downloaded_videos)
+            if not success:
+                for path in downloaded_videos:
+                    cleanup_file(path)
+                if audio_path:
+                    cleanup_file(audio_path)
+                if subtitle_path:
+                    cleanup_file(subtitle_path)
+                if watermark_path:
+                    cleanup_file(watermark_path)
+                return {'success': False, 'error': message}
         
         # Generate output filename
-        output_filename = f"{request_id}_merged_output.mp4"
+        output_filename = f"{request_id}_merged_videos.mp4"
         output_path = os.path.join(OUTPUT_FOLDER, output_filename)
         
         # Merge videos using FFMPEG
-        success, message = merge_videos_with_ffmpeg(downloaded_videos, output_path, audio_path)
+        success, message = merge_videos_with_ffmpeg(downloaded_videos, output_path, audio_path, dimensions)
         
-        # Cleanup input files
+        # Cleanup downloaded files
         for path in downloaded_videos:
             cleanup_file(path)
         if audio_path:
             cleanup_file(audio_path)
         
-        if success:
-            # Fix for Replit: Generate proper URL based on environment
-            if os.environ.get('REPLIT_DEPLOYMENT'):
-                # In production deployment
-                download_url = f"https://ffmpegapi.net/download/{output_filename}"
-            elif os.environ.get('REPLIT_DEV_DOMAIN'):
-                # In Replit development environment
-                download_url = f"https://{os.environ['REPLIT_DEV_DOMAIN']}/download/{output_filename}"
+        # Track whether subtitles were successfully processed
+        subtitles_added = False
+        
+        # Add subtitles if provided and merge was successful
+        if success and subtitle_path:
+            # Generate filename for subtitled video
+            subtitled_filename = f"{request_id}_merged_subtitled_videos.mp4"
+            subtitled_output_path = os.path.join(OUTPUT_FOLDER, subtitled_filename)
+            
+            # Add subtitles to the merged video
+            subtitle_success, subtitle_message = add_subtitles_with_ffmpeg(output_path, subtitle_path, subtitled_output_path)
+            
+            # Cleanup subtitle file
+            cleanup_file(subtitle_path)
+            
+            if subtitle_success:
+                # Remove the non-subtitled version and use the subtitled one
+                cleanup_file(output_path)
+                output_path = subtitled_output_path
+                output_filename = subtitled_filename
+                message = f"Videos merged and subtitles added successfully"
+                subtitles_added = True
             else:
-                # Local environment
-                download_url = url_for('download_file', filename=output_filename, _external=True)
-            return {
-                'success': True,
-                'message': message,
-                'download_url': download_url,
-                'filename': output_filename
-            }
+                # Cleanup subtitle file if it failed
+                cleanup_file(subtitled_output_path)
+                return {'success': False, 'error': f'Video merge succeeded but subtitle addition failed: {subtitle_message}'}
+        elif subtitle_path:
+            # Cleanup subtitle file if merge failed
+            cleanup_file(subtitle_path)
+        
+        # Add watermark if provided and processing was successful so far
+        if success and watermark_path:
+            # Generate filename for watermarked video
+            watermarked_filename = f"{request_id}_merged_watermarked_videos.mp4"
+            watermarked_output_path = os.path.join(OUTPUT_FOLDER, watermarked_filename)
+            
+            # Add watermark to the video (could be merged or merged+subtitled)
+            watermark_success, watermark_message = add_watermark_with_ffmpeg(output_path, watermark_path, watermarked_output_path)
+            
+            # Cleanup watermark file
+            cleanup_file(watermark_path)
+            
+            if watermark_success:
+                # Remove the non-watermarked version and use the watermarked one
+                cleanup_file(output_path)
+                output_path = watermarked_output_path
+                output_filename = watermarked_filename
+                # Update message to reflect all processing done
+                if subtitles_added:
+                    message = f"Videos merged, subtitles and watermark added successfully"
+                else:
+                    message = f"Videos merged and watermark added successfully"
+            else:
+                # Cleanup watermark file if it failed
+                cleanup_file(watermarked_output_path)
+                return {'success': False, 'error': f'Video processing succeeded but watermark addition failed: {watermark_message}'}
+        elif watermark_path:
+            # Cleanup watermark file if merge failed
+            cleanup_file(watermark_path)
+        
+        if success:
+            # Upload to storage for persistence
+            storage_url = upload_to_storage(output_path, output_filename)
+            
+            if storage_url:
+                # Clean up local file after successful upload
+                cleanup_file(output_path)
+                
+                return {
+                    'success': True,
+                    'message': message,
+                    'download_url': storage_url,
+                    'filename': output_filename
+                }
+            else:
+                # Fallback to local download if storage upload fails
+                logging.warning("Storage upload failed, falling back to local download")
+                
+                # Fix for Replit: Generate proper URL based on environment
+                if os.environ.get('REPLIT_DEPLOYMENT'):
+                    # In production deployment
+                    download_url = f"https://ffmpegapi.net/download/{output_filename}"
+                elif os.environ.get('REPLIT_DEV_DOMAIN'):
+                    # In Replit development environment
+                    download_url = f"https://{os.environ['REPLIT_DEV_DOMAIN']}/download/{output_filename}"
+                else:
+                    # Local environment
+                    download_url = url_for('download_file', filename=output_filename, _external=True)
+                return {
+                    'success': True,
+                    'message': message,
+                    'download_url': download_url,
+                    'filename': output_filename
+                }
         else:
             return {'success': False, 'error': message}
             
