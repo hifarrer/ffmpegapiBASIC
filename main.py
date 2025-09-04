@@ -1247,20 +1247,8 @@ def merge_videos():
                         'error': f'Failed to download watermark: {message}'
                     }), 400
             
-            # Check video compatibility (skip if dimensions are provided)
-            if not dimensions:
-                success, message = check_video_compatibility(downloaded_videos)
-                if not success:
-                    # Cleanup downloaded files
-                    for path in downloaded_videos:
-                        cleanup_file(path)
-                    if audio_path:
-                        cleanup_file(audio_path)
-                    
-                    return jsonify({
-                        'success': False,
-                        'error': message
-                    }), 400
+            # Note: Removed aspect ratio check since we now handle different aspect ratios
+            # during the normalization process in merge_videos_with_ffmpeg
             
             # Generate output filename
             output_filename = f"{request_id}_merged_videos.mp4"
@@ -1394,7 +1382,8 @@ def merge_videos():
             raise e
             
     except Exception as e:
-        logging.error(f"Error in merge_videos: {str(e)}")
+        logging.error(f"[MERGE_VIDEOS] Error in merge_videos: {str(e)}")
+        logging.error(f"[MERGE_VIDEOS] Full traceback:", exc_info=True)
         return jsonify({
             'success': False,
             'error': f'Server error: {str(e)}'
@@ -1972,19 +1961,8 @@ def process_merge_videos_job(job, input_data):
                     cleanup_file(subtitle_path)
                 return {'success': False, 'error': f'Failed to download watermark: {message}'}
         
-        # Check video compatibility (skip if dimensions are provided)
-        if not dimensions:
-            success, message = check_video_compatibility(downloaded_videos)
-            if not success:
-                for path in downloaded_videos:
-                    cleanup_file(path)
-                if audio_path:
-                    cleanup_file(audio_path)
-                if subtitle_path:
-                    cleanup_file(subtitle_path)
-                if watermark_path:
-                    cleanup_file(watermark_path)
-                return {'success': False, 'error': message}
+        # Note: Removed aspect ratio check since we now handle different aspect ratios
+        # during the normalization process in merge_videos_with_ffmpeg
         
         # Generate output filename
         output_filename = f"{request_id}_merged_videos.mp4"
@@ -2097,7 +2075,8 @@ def process_merge_videos_job(job, input_data):
             return {'success': False, 'error': message}
             
     except Exception as e:
-        logging.error(f"Error in process_merge_videos_job: {str(e)}")
+        logging.error(f"[ASYNC_MERGE_VIDEOS] Error in process_merge_videos_job: {str(e)}")
+        logging.error(f"[ASYNC_MERGE_VIDEOS] Full traceback:", exc_info=True)
         return {'success': False, 'error': f'Server error: {str(e)}'}
 
 def process_picture_in_picture_job(job, input_data):
