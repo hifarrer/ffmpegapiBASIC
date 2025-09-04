@@ -383,11 +383,20 @@ def merge_videos_with_ffmpeg(video_paths, output_path, audio_path=None, dimensio
                 ]
                 logging.info(f"Normalizing and scaling video {i+1} to {width}x{height}")
             else:
-                # Just normalize without scaling
+                # Automatically determine target dimensions from first video
+                if i == 0:
+                    # Get dimensions of first video to use as target
+                    success, first_dims = get_video_dimensions(video_path)
+                    if not success:
+                        return False, f"Could not analyze first video dimensions: {first_dims}"
+                    target_width, target_height = first_dims
+                    logging.info(f"Using target dimensions from first video: {target_width}x{target_height}")
+                
+                # Scale and normalize to ensure consistent dimensions
                 normalize_cmd = [
                     'ffmpeg',
                     '-i', video_path,
-                    '-vf', 'fps=30,format=yuv420p',
+                    '-vf', f'scale={target_width}:{target_height}:force_original_aspect_ratio=decrease,pad={target_width}:{target_height}:(ow-iw)/2:(oh-ih)/2,setsar=1,fps=30,format=yuv420p',
                     '-c:v', 'libx264',
                     '-c:a', 'aac',
                     '-ar', '48000',  # Audio sample rate
@@ -401,7 +410,7 @@ def merge_videos_with_ffmpeg(video_paths, output_path, audio_path=None, dimensio
                     '-y',
                     normalized_path
                 ]
-                logging.info(f"Normalizing video {i+1}")
+                logging.info(f"Normalizing and scaling video {i+1} to {target_width}x{target_height}")
             
             result = subprocess.run(normalize_cmd, capture_output=True, text=True, timeout=300)
             

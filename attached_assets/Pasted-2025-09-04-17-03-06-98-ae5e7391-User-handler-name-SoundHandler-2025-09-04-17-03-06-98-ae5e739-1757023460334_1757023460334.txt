@@ -1,0 +1,124 @@
+2025-09-04 17:03:06.98
+ae5e7391
+User
+handler_name : SoundHandler
+2025-09-04 17:03:06.98
+ae5e7391
+User
+vendor_id : [0][0][0][0]
+2025-09-04 17:03:06.98
+ae5e7391
+User
+[mp3 @ 0x2c78e400] Estimating duration from bitrate, this may be inaccurate
+2025-09-04 17:03:06.98
+ae5e7391
+User
+Input #7, mp3, from '/tmp/uploads/0686352b-5af6-4e8f-ac11-580068255831_audio.mp3':
+2025-09-04 17:03:06.98
+ae5e7391
+User
+Metadata:
+2025-09-04 17:03:06.98
+ae5e7391
+User
+encoder : Lavf60.16.100
+2025-09-04 17:03:06.98
+ae5e7391
+User
+Duration: 00:01:00.00, start: 0.000000, bitrate: 128 kb/s
+2025-09-04 17:03:06.98
+ae5e7391
+User
+Stream #7:0: Audio: mp3 (mp3float), 44100 Hz, stereo, fltp, 128 kb/s
+2025-09-04 17:03:06.98
+ae5e7391
+User
+Stream mapping:
+2025-09-04 17:03:06.98
+ae5e7391
+User
+Stream #0:0 (h264) -> concat
+2025-09-04 17:03:06.98
+ae5e7391
+User
+Stream #1:0 (h264) -> concat
+2025-09-04 17:03:06.98
+ae5e7391
+User
+Stream #2:0 (h264) -> concat
+2025-09-04 17:03:06.98
+ae5e7391
+User
+Stream #3:0 (h264) -> concat
+2025-09-04 17:03:06.98
+ae5e7391
+User
+Stream #4:0 (h264) -> concat
+2025-09-04 17:03:06.98
+ae5e7391
+User
+Stream #5:0 (h264) -> concat
+2025-09-04 17:03:06.98
+ae5e7391
+User
+Stream #6:0 (h264) -> concat
+2025-09-04 17:03:06.98
+ae5e7391
+User
+concat:out:v0 -> Stream #0:0 (libx264)
+2025-09-04 17:03:06.98
+ae5e7391
+User
+Stream #7:0 -> #0:1 (mp3 (mp3float) -> aac (native))
+2025-09-04 17:03:06.98
+ae5e7391
+User
+Press [q] to stop, [?] for help
+2025-09-04 17:03:06.98
+ae5e7391
+User
+[Parsed_concat_0 @ 0x7fef9c0073c0] Input link in0:v0 parameters (size 832x464, SAR 0:1) do not match the corresponding output link in0:v0 parameters (864x480, SAR 0:1)
+2025-09-04 17:03:06.98
+ae5e7391
+User
+[Parsed_concat_0 @ 0x7fef9c0073c0] Failed to configure output pad on Parsed_concat_0
+2025-09-04 17:03:06.98
+ae5e7391
+User
+[fc#0 @ 0x2c76cac0] Error reinitializing filters!
+2025-09-04 17:03:06.98
+ae5e7391
+User
+[fc#0 @ 0x2c76cac0] Task finished with error code: -22 (Invalid argument)
+2025-09-04 17:03:06.98
+ae5e7391
+User
+[fc#0 @ 0x2c76cac0] Terminating thread with return code -22 (Invalid argument)
+2025-09-04 17:03:06.98
+ae5e7391
+User
+[vost#0:0/libx264 @ 0x2c79e480] Could not open encoder before EOF
+2025-09-04 17:03:06.98
+ae5e7391
+User
+[vost#0:0/libx264 @ 0x2c79e480] Task finished with error code: -22 (Invalid argument)
+2025-09-04 17:03:06.98
+ae5e7391
+User
+[vost#0:0/libx264 @ 0x2c79e480] Terminating thread with return code -22 (Invalid argument)
+2025-09-04 17:03:06.98
+ae5e7391
+User
+[out#0/mp4 @ 0x2c845bc0] Nothing was written into output file, because at least one of its streams received no packets.
+2025-09-04 17:03:06.98
+ae5e7391
+User
+frame= 0 fps=0.0 q=0.0 Lsize= 0KiB time=N/A bitrate=N/A speed=N/A
+2025-09-04 17:03:06.98
+ae5e7391
+User
+[aac @ 0x2c7f9480] Qavg: 152.637
+2025-09-04 17:03:06.98
+ae5e7391
+User
+Conversion failed!
