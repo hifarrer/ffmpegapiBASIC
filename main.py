@@ -447,24 +447,51 @@ def merge_videos_with_ffmpeg(video_paths, output_path, audio_path=None, dimensio
                 output_path
             ]
         else:
-            # Concatenate both video and audio
-            video_concat = ''.join([f"[{i}:v:0]" for i in range(num_videos)])
-            audio_concat = ''.join([f"[{i}:a:0]" for i in range(num_videos)])
-            filter_complex = f"{video_concat}concat=n={num_videos}:v=1:a=0[outv];{audio_concat}concat=n={num_videos}:v=0:a=1[outa]"
+            # Check which videos have audio streams
+            videos_with_audio = []
+            for i, video_path in enumerate(videos_to_merge):
+                # Check if video has audio stream
+                check_cmd = ['ffprobe', '-v', 'quiet', '-select_streams', 'a', '-show_entries', 'stream=index', '-of', 'csv=p=0', video_path]
+                result = subprocess.run(check_cmd, capture_output=True, text=True)
+                if result.returncode == 0 and result.stdout.strip():
+                    videos_with_audio.append(i)
             
-            cmd = [
-                'ffmpeg'
-            ] + inputs + [
-                '-filter_complex', filter_complex,
-                '-map', '[outv]',
-                '-map', '[outa]',
-                '-c:v', 'libx264',
-                '-c:a', 'aac',
-                '-preset', 'medium',
-                '-crf', '23',
-                '-y',
-                output_path
-            ]
+            # Build filter complex based on audio stream availability
+            video_concat = ''.join([f"[{i}:v:0]" for i in range(num_videos)])
+            
+            if videos_with_audio:
+                # Only concatenate audio from videos that have audio streams
+                audio_concat = ''.join([f"[{i}:a:0]" for i in videos_with_audio])
+                filter_complex = f"{video_concat}concat=n={num_videos}:v=1:a=0[outv];{audio_concat}concat=n={len(videos_with_audio)}:v=0:a=1[outa]"
+                
+                cmd = [
+                    'ffmpeg'
+                ] + inputs + [
+                    '-filter_complex', filter_complex,
+                    '-map', '[outv]',
+                    '-map', '[outa]',
+                    '-c:v', 'libx264',
+                    '-c:a', 'aac',
+                    '-preset', 'medium',
+                    '-crf', '23',
+                    '-y',
+                    output_path
+                ]
+            else:
+                # No videos have audio, just concatenate video
+                filter_complex = f"{video_concat}concat=n={num_videos}:v=1:a=0[outv]"
+                
+                cmd = [
+                    'ffmpeg'
+                ] + inputs + [
+                    '-filter_complex', filter_complex,
+                    '-map', '[outv]',
+                    '-c:v', 'libx264',
+                    '-preset', 'medium',
+                    '-crf', '23',
+                    '-y',
+                    output_path
+                ]
         
         logging.info(f"Running FFMPEG concat filter command: {' '.join(cmd)}")
         result = subprocess.run(cmd, capture_output=True, text=True, timeout=1800)  # 30 minutes
