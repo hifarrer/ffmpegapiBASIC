@@ -2521,10 +2521,10 @@ def add_subtitles_with_ffmpeg(video_path, subtitle_path, output_path):
 def add_watermark_with_ffmpeg(video_path, watermark_path, output_path):
     """Add watermark to video using FFMPEG with dynamic scaling"""
     try:
-        # Create filter that scales watermark to 10% of video width and positions at bottom right
+        # Create filter that scales watermark to 30% of video width and positions at bottom right
         # The watermark is scaled dynamically and positioned with 20px padding from edges
         watermark_filter = (
-            f"[1:v]scale=iw*0.1:-1[watermark];"
+            f"[1:v]scale=iw*0.3:-1[watermark];"
             f"[0:v][watermark]overlay=main_w-overlay_w-20:main_h-overlay_h-20"
         )
         
