@@ -851,6 +851,15 @@ def api_docs():
 @require_api_key
 def merge_image_audio():
     """API endpoint to merge image and audio into video from URLs or files (sync/async)"""
+    # Log full request details for debugging
+    api_key = request.headers.get('X-API-Key') or request.args.get('api_key')
+    logging.info(f"[MERGE_IMAGE_AUDIO] Request received from API key: {api_key[:20]}...")
+    logging.info(f"[MERGE_IMAGE_AUDIO] Headers: {dict(request.headers)}")
+    logging.info(f"[MERGE_IMAGE_AUDIO] Files: {list(request.files.keys())}")
+    if request.is_json:
+        logging.info(f"[MERGE_IMAGE_AUDIO] JSON data: {request.get_json()}")
+    logging.info(f"[MERGE_IMAGE_AUDIO] Form data: {dict(request.form)}")
+    
     try:
         # Initialize variables at function level
         image_path = ""
@@ -1098,6 +1107,14 @@ def merge_image_audio():
 @require_api_key
 def merge_videos():
     """API endpoint to merge multiple videos from URLs (sync/async)"""
+    # Log full request details for debugging
+    api_key = request.headers.get('X-API-Key') or request.args.get('api_key')
+    logging.info(f"[MERGE_VIDEOS] Request received from API key: {api_key[:20]}...")
+    logging.info(f"[MERGE_VIDEOS] Headers: {dict(request.headers)}")
+    if request.is_json:
+        logging.info(f"[MERGE_VIDEOS] JSON data: {request.get_json()}")
+    logging.info(f"[MERGE_VIDEOS] Form data: {dict(request.form)}")
+    
     try:
         # Check if async processing is requested
         data = request.get_json()
@@ -1387,6 +1404,14 @@ def merge_videos():
 @require_api_key
 def picture_in_picture():
     """API endpoint to create picture-in-picture video (sync/async)"""
+    # Log full request details for debugging
+    api_key = request.headers.get('X-API-Key') or request.args.get('api_key')
+    logging.info(f"[PICTURE_IN_PICTURE] Request received from API key: {api_key[:20]}...")
+    logging.info(f"[PICTURE_IN_PICTURE] Headers: {dict(request.headers)}")
+    if request.is_json:
+        logging.info(f"[PICTURE_IN_PICTURE] JSON data: {request.get_json()}")
+    logging.info(f"[PICTURE_IN_PICTURE] Form data: {dict(request.form)}")
+    
     try:
         # Check if async processing is requested
         data = request.get_json()
@@ -2354,6 +2379,14 @@ def get_job_status(job_id):
 @require_api_key
 def split_audio():
     """API endpoint to split audio into equal parts (sync/async)"""
+    # Log full request details for debugging
+    api_key = request.headers.get('X-API-Key') or request.args.get('api_key')
+    logging.info(f"[SPLIT_AUDIO] Request received from API key: {api_key[:20]}...")
+    logging.info(f"[SPLIT_AUDIO] Headers: {dict(request.headers)}")
+    if request.is_json:
+        logging.info(f"[SPLIT_AUDIO] JSON data: {request.get_json()}")
+    logging.info(f"[SPLIT_AUDIO] Form data: {dict(request.form)}")
+    
     try:
         # Check if async processing is requested
         data = request.get_json()
@@ -2559,6 +2592,14 @@ def add_watermark_with_ffmpeg(video_path, watermark_path, output_path):
 @require_api_key
 def add_subtitles():
     """API endpoint to add subtitles to video"""
+    # Log full request details for debugging
+    api_key = request.headers.get('X-API-Key') or request.args.get('api_key')
+    logging.info(f"[ADD_SUBTITLES] Request received from API key: {api_key[:20]}...")
+    logging.info(f"[ADD_SUBTITLES] Headers: {dict(request.headers)}")
+    if request.is_json:
+        logging.info(f"[ADD_SUBTITLES] JSON data: {request.get_json()}")
+    logging.info(f"[ADD_SUBTITLES] Form data: {dict(request.form)}")
+    
     try:
         # Check if async processing is requested
         data = request.get_json()
