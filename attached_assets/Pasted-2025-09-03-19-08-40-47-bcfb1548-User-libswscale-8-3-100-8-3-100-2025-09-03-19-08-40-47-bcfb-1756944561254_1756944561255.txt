@@ -1,0 +1,132 @@
+2025-09-03 19:08:40.47
+bcfb1548
+User
+libswscale 8. 3.100 / 8. 3.100
+2025-09-03 19:08:40.47
+bcfb1548
+User
+libswresample 5. 3.100 / 5. 3.100
+2025-09-03 19:08:40.47
+bcfb1548
+User
+libpostproc 58. 3.100 / 58. 3.100
+2025-09-03 19:08:40.47
+bcfb1548
+User
+Input #0, mov,mp4,m4a,3gp,3g2,mj2, from '/tmp/uploads/573b74ab-751e-4f47-9091-15ee795b900d_video_0.mp4_normalized.mp4':
+2025-09-03 19:08:40.47
+bcfb1548
+User
+Metadata:
+2025-09-03 19:08:40.47
+bcfb1548
+User
+major_brand : isom
+2025-09-03 19:08:40.47
+bcfb1548
+User
+minor_version : 512
+2025-09-03 19:08:40.47
+bcfb1548
+User
+compatible_brands: isomiso2avc1mp41
+2025-09-03 19:08:40.47
+bcfb1548
+User
+encoder : Lavf61.7.100
+2025-09-03 19:08:40.47
+bcfb1548
+User
+Duration: 00:00:10.03, start: 0.000000, bitrate: 1455 kb/s
+2025-09-03 19:08:40.47
+bcfb1548
+User
+Stream #0:0[0x1](und): Video: h264 (High) (avc1 / 0x31637661), yuv420p(progressive), 864x448 [SAR 1:1 DAR 27:14], 1452 kb/s, 30 fps, 30 tbr, 30k tbn (default)
+2025-09-03 19:08:40.47
+bcfb1548
+User
+Metadata:
+2025-09-03 19:08:40.47
+bcfb1548
+User
+handler_name : VideoHandler
+2025-09-03 19:08:40.47
+bcfb1548
+User
+vendor_id : [0][0][0][0]
+2025-09-03 19:08:40.47
+bcfb1548
+User
+encoder : Lavc61.19.101 libx264
+2025-09-03 19:08:40.47
+bcfb1548
+User
+Input #1, mov,mp4,m4a,3gp,3g2,mj2, from '/tmp/uploads/573b74ab-751e-4f47-9091-15ee795b900d_video_1.mp4_normalized.mp4':
+2025-09-03 19:08:40.47
+bcfb1548
+User
+Metadata:
+2025-09-03 19:08:40.47
+bcfb1548
+User
+major_brand : isom
+2025-09-03 19:08:40.47
+bcfb1548
+User
+minor_version : 512
+2025-09-03 19:08:40.47
+bcfb1548
+User
+compatible_brands: isomiso2avc1mp41
+2025-09-03 19:08:40.47
+bcfb1548
+User
+encoder : Lavf61.7.100
+2025-09-03 19:08:40.47
+bcfb1548
+User
+Duration: 00:00:10.00, start: 0.000000, bitrate: 1410 kb/s
+2025-09-03 19:08:40.47
+bcfb1548
+User
+Stream #1:0[0x1](und): Video: h264 (High) (avc1 / 0x31637661), yuv420p(tv, bt709, progressive), 864x448 [SAR 1:1 DAR 27:14], 1270 kb/s, 30 fps, 30 tbr, 30k tbn (default)
+2025-09-03 19:08:40.47
+bcfb1548
+User
+Metadata:
+2025-09-03 19:08:40.47
+bcfb1548
+User
+handler_name : VideoHandler
+2025-09-03 19:08:40.47
+bcfb1548
+User
+vendor_id : [0][0][0][0]
+2025-09-03 19:08:40.47
+bcfb1548
+User
+encoder : Lavc61.19.101 libx264
+2025-09-03 19:08:40.47
+bcfb1548
+User
+Stream #1:1[0x2](und): Audio: aac (LC) (mp4a / 0x6134706D), 48000 Hz, stereo, fltp, 129 kb/s (default)
+2025-09-03 19:08:40.47
+bcfb1548
+User
+Metadata:
+2025-09-03 19:08:40.47
+bcfb1548
+User
+handler_name : SoundHandler
+2025-09-03 19:08:40.47
+bcfb1548
+User
+vendor_id : [0][0][0][0]
+2025-09-03 19:08:40.47
+bcfb1548
+User
+[fc#0 @ 0x8db08c0] Stream specifier ':a:0' in filtergraph description [0:v:0][1:v:0]concat=n=2:v=1:a=0[outv];[0:a:0][1:a:0]concat=n=2:v=0:a=1[outa] matches no streams.
+2025-09-03 19:08:40.47
+bcfb1548
+User
+Error binding filtergraph inputs/outputs: Invalid argument
