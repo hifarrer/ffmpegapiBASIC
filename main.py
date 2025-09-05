@@ -435,22 +435,22 @@ def merge_videos_with_ffmpeg(video_paths, output_path, audio_path=None, dimensio
         num_videos = len(videos_to_merge)
         
         if audio_path:
+            # Concatenate videos and preserve their original audio timeline
+            # Then add custom audio as overlay - when custom audio ends, original audio continues
+            video_concat = ''.join([f"[{i}:v:0]" for i in range(num_videos)])
+            
             # Check which videos have audio streams
             videos_with_audio = []
             for i, video_path in enumerate(videos_to_merge):
-                # Check if video has audio stream
                 check_cmd = ['ffprobe', '-v', 'quiet', '-select_streams', 'a', '-show_entries', 'stream=index', '-of', 'csv=p=0', video_path]
                 result = subprocess.run(check_cmd, capture_output=True, text=True)
                 if result.returncode == 0 and result.stdout.strip():
                     videos_with_audio.append(i)
             
-            # Concatenate videos with their original audio preserved
-            video_concat = ''.join([f"[{i}:v:0]" for i in range(num_videos)])
-            
             if videos_with_audio:
-                # Concatenate videos with audio
+                # Concatenate videos preserving original audio
                 audio_concat = ''.join([f"[{i}:a:0]" for i in videos_with_audio])
-                filter_complex = f"{video_concat}concat=n={num_videos}:v=1:a=0[outv];{audio_concat}concat=n={len(videos_with_audio)}:v=0:a=1[original_audio];[{num_videos}:a:0][original_audio]concat=n=2:v=0:a=1[final_audio]"
+                filter_complex = f"{video_concat}concat=n={num_videos}:v=1:a=0[outv];{audio_concat}concat=n={len(videos_with_audio)}:v=0:a=1[video_audio];[{num_videos}:a:0][video_audio]amix=inputs=2:duration=longest:weights=1 0.1[final_audio]"
                 
                 cmd = [
                     'ffmpeg'
