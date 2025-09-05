@@ -1,0 +1,33 @@
+JSON data: {'video_urls': ['https://d1q70pf5vjeyhc.cloudfront.net/predictions/5dbd9ad4df95443086e961a45b547594/1.mp4', 'https://d2p7pge43lyniu.cloudfront.net/output/7cad647f-df62-4e49-8719-1778831c9a2c-u2_1ec6b377-3ba2-4a0d-96be-2807226f066a.mp4', 'https://d1q70pf5vjeyhc.cloudfront.net/predictions/464fa255dbc54d398a04982404e957f6/1.mp4', 'https://storage.googleapis.com/replit-objstore-e575b29a-5b91-4cc8-9e7c-23ea3b54fe73/public/outro.mp4?X-Goog-Algorithm=GOOG4-RSA-SHA256&X-Goog-Credential=heimdall-production%40replit-user-deployments.iam.gserviceaccount.com%2F20250905%2Fauto%2Fstorage%2Fgoog4_request&X-Goog-Date=20250905T164914Z&X-Goog-Expires=7199&X-Goog-Signature=8662fb5b34ffac35c50432775ab18f114ad5ef7eb35c607dd8a548fa39e06e91400d54ca98e26b330a13385b2bb786ceb12b76cea62f71d6e8bea81458b18bf8dcdf33b208c40d4671179e9f03edd7829067883e3351a75dd817bf7da189bf7fd77a5a79ddae3495b69079c9f916115ab23e3387faa66e38c802ca8f3ca059f648ed69107909eb07156c619df98b5b750c888e6869ed66433329d7c77adcfcbc62ae3148c76297d39daa7ba4ef43ecf938cab1fecf9549dff791bc81eb2eb5d2469c222b236bbdbf807113b0bcd081719568c2888635892c39f03abc23438b4a9148696aed65724640cfe6b0231c6146d267bfd40160d19db8bf7f1775d3bca7&X-Goog-SignedHeaders=host'], 'async': False, 'audio_url': 'https://storage.googleapis.com/replit-objstore-e575b29a-5b91-4cc8-9e7c-23ea3b54fe73/.private/songs/4a1f7dbf-ba4f-432a-91f6-9cff1c9ec66c.mp3?X-Goog-Algorithm=GOOG4-RSA-SHA256&X-Goog-Credential=heimdall-production%40replit-user-deployments.iam.gserviceaccount.com%2F20250905%2Fauto%2Fstorage%2Fgoog4_request&X-Goog-Date=20250905T164914Z&X-Goog-Expires=7199&X-Goog-Signature=79b3902bfab4b2457f17f7861a9c7a5b2a58cbd3a3cd04f77c23a66f5efa9c61152c6c081c9bf9c6dcdb1a1d3d1d8538ac798c14ebdc5d62453061ba9a70e9c9db1ee8d57a9e129b173f9166b3c11b4ac82eb5c3fd382630a9adffb7152e6dc7cc0faee4dd40dbcfadd153e03db14e92583bd6389a3d7f7e9783ddadfa5e16a6b0c3788f7c3000e8c02ca9b6651bd8d60c4ccbc9be38a2e9ab32cd5663417fd18f372139ae2b08a349568bd6c3cd93110f0ebc126d9b12b1a5bc8d58ad1eaa9c29ef3cdd009645bd84a70cc90025e8d155faf561cbbeb3cfa3c5df458af15489274de191f799fceb02e5024a9df37cdfc0fc7b3799a9c74d029f325b96e6b0cd&X-Goog-SignedHeaders=host', 'subtitle_url': 'https://046b05f0-5ff8-4276-acdf-2f3159a5e709-00-3a4g2oro15uqc.kirk.replit.dev/public-objects/subtitles/1199a5ed-059d-4820-8253-073455984b77.ass', 'watermark_url': 'https://notifications.nusong.ai/neonlogo.png'}
+2025-09-05 11:49:17.71
+14562737
+User
+INFO:root:[MERGE_VIDEOS] Form data: {}
+2025-09-05 11:49:17.71
+14562737
+User
+INFO:root:Downloading video from: https://d1q70pf5vjeyhc.cloudfront.net/predictions/5dbd9ad4df95443086e961a45b547594/1.mp4
+2025-09-05 11:49:18.37
+14562737
+User
+INFO:root:Downloading video from: https://d2p7pge43lyniu.cloudfront.net/output/7cad647f-df62-4e49-8719-1778831c9a2c-u2_1ec6b377-3ba2-4a0d-96be-2807226f066a.mp4
+2025-09-05 11:49:18.84
+14562737
+User
+INFO:root:Downloading video from: https://d1q70pf5vjeyhc.cloudfront.net/predictions/464fa255dbc54d398a04982404e957f6/1.mp4
+2025-09-05 11:49:19.50
+14562737
+User
+INFO:root:Downloading video from: https://storage.googleapis.com/replit-objstore-e575b29a-5b91-4cc8-9e7c-23ea3b54fe73/public/outro.mp4?X-Goog-Algorithm=GOOG4-RSA-SHA256&X-Goog-Credential=heimdall-production%40replit-user-deployments.iam.gserviceaccount.com%2F20250905%2Fauto%2Fstorage%2Fgoog4_request&X-Goog-Date=20250905T164914Z&X-Goog-Expires=7199&X-Goog-Signature=8662fb5b34ffac35c50432775ab18f114ad5ef7eb35c607dd8a548fa39e06e91400d54ca98e26b330a13385b2bb786ceb12b76cea62f71d6e8bea81458b18bf8dcdf33b208c40d4671179e9f03edd7829067883e3351a75dd817bf7da189bf7fd77a5a79ddae3495b69079c9f916115ab23e3387faa66e38c802ca8f3ca059f648ed69107909eb07156c619df98b5b750c888e6869ed66433329d7c77adcfcbc62ae3148c76297d39daa7ba4ef43ecf938cab1fecf9549dff791bc81eb2eb5d2469c222b236bbdbf807113b0bcd081719568c2888635892c39f03abc23438b4a9148696aed65724640cfe6b0231c6146d267bfd40160d19db8bf7f1775d3bca7&X-Goog-SignedHeaders=host
+2025-09-05 11:49:19.71
+14562737
+User
+INFO:root:Downloading video from: https://storage.googleapis.com/replit-objstore-e575b29a-5b91-4cc8-9e7c-23ea3b54fe73/.private/songs/4a1f7dbf-ba4f-432a-91f6-9cff1c9ec66c.mp3?X-Goog-Algorithm=GOOG4-RSA-SHA256&X-Goog-Credential=heimdall-production%40replit-user-deployments.iam.gserviceaccount.com%2F20250905%2Fauto%2Fstorage%2Fgoog4_request&X-Goog-Date=20250905T164914Z&X-Goog-Expires=7199&X-Goog-Signature=79b3902bfab4b2457f17f7861a9c7a5b2a58cbd3a3cd04f77c23a66f5efa9c61152c6c081c9bf9c6dcdb1a1d3d1d8538ac798c14ebdc5d62453061ba9a70e9c9db1ee8d57a9e129b173f9166b3c11b4ac82eb5c3fd382630a9adffb7152e6dc7cc0faee4dd40dbcfadd153e03db14e92583bd6389a3d7f7e9783ddadfa5e16a6b0c3788f7c3000e8c02ca9b6651bd8d60c4ccbc9be38a2e9ab32cd5663417fd18f372139ae2b08a349568bd6c3cd93110f0ebc126d9b12b1a5bc8d58ad1eaa9c29ef3cdd009645bd84a70cc90025e8d155faf561cbbeb3cfa3c5df458af15489274de191f799fceb02e5024a9df37cdfc0fc7b3799a9c74d029f325b96e6b0cd&X-Goog-SignedHeaders=host
+2025-09-05 11:49:19.82
+14562737
+User
+INFO:root:Downloading subtitle from: https://046b05f0-5ff8-4276-acdf-2f3159a5e709-00-3a4g2oro15uqc.kirk.replit.dev/public-objects/subtitles/1199a5ed-059d-4820-8253-073455984b77.ass
+2025-09-05 11:49:20.27
+14562737
+User
+INFO:root:Downloading watermark image from: https://notifications.nusong.ai/neonlogo.png
