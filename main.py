@@ -451,7 +451,6 @@ def merge_videos_with_ffmpeg(video_paths, output_path, audio_path=None, dimensio
                 '-preset', 'medium',
                 '-crf', '23',
                 '-b:a', '192k',
-                '-shortest',
                 '-y',
                 output_path
             ]
