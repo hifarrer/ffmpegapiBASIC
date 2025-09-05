@@ -450,7 +450,7 @@ def merge_videos_with_ffmpeg(video_paths, output_path, audio_path=None, dimensio
             if videos_with_audio:
                 # Concatenate videos with audio
                 audio_concat = ''.join([f"[{i}:a:0]" for i in videos_with_audio])
-                filter_complex = f"{video_concat}concat=n={num_videos}:v=1:a=0[outv];{audio_concat}concat=n={len(videos_with_audio)}:v=0:a=1[original_audio];[original_audio][{num_videos}:a:0]amix=inputs=2:duration=longest[final_audio]"
+                filter_complex = f"{video_concat}concat=n={num_videos}:v=1:a=0[outv];{audio_concat}concat=n={len(videos_with_audio)}:v=0:a=1[original_audio];[{num_videos}:a:0][original_audio]concat=n=2:v=0:a=1[final_audio]"
                 
                 cmd = [
                     'ffmpeg'
