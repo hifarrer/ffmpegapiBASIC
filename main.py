@@ -435,25 +435,57 @@ def merge_videos_with_ffmpeg(video_paths, output_path, audio_path=None, dimensio
         num_videos = len(videos_to_merge)
         
         if audio_path:
-            # Concatenate videos without audio, then add custom audio
-            filter_complex = ''.join([f"[{i}:v:0]" for i in range(num_videos)])
-            filter_complex += f"concat=n={num_videos}:v=1:a=0[outv]"
+            # Check which videos have audio streams
+            videos_with_audio = []
+            for i, video_path in enumerate(videos_to_merge):
+                # Check if video has audio stream
+                check_cmd = ['ffprobe', '-v', 'quiet', '-select_streams', 'a', '-show_entries', 'stream=index', '-of', 'csv=p=0', video_path]
+                result = subprocess.run(check_cmd, capture_output=True, text=True)
+                if result.returncode == 0 and result.stdout.strip():
+                    videos_with_audio.append(i)
             
-            cmd = [
-                'ffmpeg'
-            ] + inputs + [
-                '-i', audio_path,
-                '-filter_complex', filter_complex,
-                '-map', '[outv]',
-                '-map', f'{num_videos}:a',
-                '-c:v', 'libx264',
-                '-c:a', 'aac',
-                '-preset', 'medium',
-                '-crf', '23',
-                '-b:a', '192k',
-                '-y',
-                output_path
-            ]
+            # Concatenate videos with their original audio preserved
+            video_concat = ''.join([f"[{i}:v:0]" for i in range(num_videos)])
+            
+            if videos_with_audio:
+                # Concatenate videos with audio
+                audio_concat = ''.join([f"[{i}:a:0]" for i in videos_with_audio])
+                filter_complex = f"{video_concat}concat=n={num_videos}:v=1:a=0[outv];{audio_concat}concat=n={len(videos_with_audio)}:v=0:a=1[original_audio];[original_audio][{num_videos}:a:0]amix=inputs=2:duration=longest[final_audio]"
+                
+                cmd = [
+                    'ffmpeg'
+                ] + inputs + [
+                    '-i', audio_path,
+                    '-filter_complex', filter_complex,
+                    '-map', '[outv]',
+                    '-map', '[final_audio]',
+                    '-c:v', 'libx264',
+                    '-c:a', 'aac',
+                    '-preset', 'medium',
+                    '-crf', '23',
+                    '-b:a', '192k',
+                    '-y',
+                    output_path
+                ]
+            else:
+                # No videos have audio, just use custom audio
+                filter_complex = f"{video_concat}concat=n={num_videos}:v=1:a=0[outv]"
+                
+                cmd = [
+                    'ffmpeg'
+                ] + inputs + [
+                    '-i', audio_path,
+                    '-filter_complex', filter_complex,
+                    '-map', '[outv]',
+                    '-map', f'{num_videos}:a',
+                    '-c:v', 'libx264',
+                    '-c:a', 'aac',
+                    '-preset', 'medium',
+                    '-crf', '23',
+                    '-b:a', '192k',
+                    '-y',
+                    output_path
+                ]
         else:
             # Check which videos have audio streams
             videos_with_audio = []
