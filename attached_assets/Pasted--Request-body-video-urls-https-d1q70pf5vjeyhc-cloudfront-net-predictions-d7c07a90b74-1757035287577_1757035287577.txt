@@ -1,0 +1,14 @@
+
+
+Request body: {
+"video_urls": [
+"https://d1q70pf5vjeyhc.cloudfront.net/predictions/d7c07a90b74f43f39d69a1ddb7fa0fd8/1.mp4",
+"https://d2p7pge43lyniu.cloudfront.net/output/f86ad498-f90e-4963-a8d1-ed9450a589c5-u1_3721ab9e-313b-46fc-9d9a-6c42c75520af.mp4",
+"https://d1q70pf5vjeyhc.cloudfront.net/predictions/470c0a70bcfa4e59b7a8fe2149549ed5/1.mp4",
+"https://storage.googleapis.com/replit-objstore-e575b29a-5b91-4cc8-9e7c-23ea3b54fe73/public/outro.mp4?X-Goog-Algorithm=GOOG4-RSA-SHA256&X-Goog-Credential=heimdall-production%40replit-user-deployments.iam.gserviceaccount.com%2F20250905%2Fauto%2Fstorage%2Fgoog4_request&X-Goog-Date=20250905T011025Z&X-Goog-Expires=7199&X-Goog-Signature=a8d8fd44355a838cc5471b6923df2b43c13d9bf7af38202325b6f8caa438e9fbad231199a9beb806f1e286abbfd7df394bf973f8599d7b7b591cf3379f494242b3d5c10589c2f0bf45146ae8a9684ef3c1c06af1971eff87e2c84e55042dabd30483c1cacfbf74a340ef4cec1fb42e03b69302d1f1236c02ce58c9b0bc9a475d0e31f9a1fd0ecb0656969c2b8148a7bf732d9ea485fcd74a93661bc5103ce2cdf3ff32cd787bffb591a01423d44c68d52db5ab34ada17531f4f59c3e20ea9d88e28adffad85e703d31c9a032343a8286cdc8eab71424105eb7b3d0968e49bf11e441a96e5106d507eb7cf9f752add8cc9eccad1d859bfd833dc3fafdf3e1a03a&X-Goog-SignedHeaders=host"
+],
+"async": false,
+"audio_url": "https://storage.googleapis.com/replit-objstore-e575b29a-5b91-4cc8-9e7c-23ea3b54fe73/.private/songs/ac620950-bd4d-43f7-850e-32b01ff84525.mp3?X-Goog-Algorithm=GOOG4-RSA-SHA256&X-Goog-Credential=heimdall-production%40replit-user-deployments.iam.gserviceaccount.com%2F20250905%2Fauto%2Fstorage%2Fgoog4_request&X-Goog-Date=20250905T011026Z&X-Goog-Expires=7199&X-Goog-Signature=a53ed4f4f7a973a492a9164d263165c91086d0717172e3257e0ff1a53d355e9d87e3a0fe3d02f8996046554a7941f7503ae3c7dc90087e03419c889bf4dc97411e910b72a850752d7bf5dd900aa0b5fe95cc3d76d045513fbdc7bda332242407bb13d4436a5d8f6c07aac123bc0df48a07aa6f6bc6298d1b88c7b5a9fbc4b08fe83d27986968749327c370a9ee7102b7b07237428112033a3c09f238063e2b87fa5848390d8d1f264a812edb23c9842099e64d1423f9f5f6e0f47a957b999f0a381b006056f237d9b6556c081b9532abc3da2374df4e7518277fbf9f2401bdeb9b08a4a2f95771ff6f29940add15e4f113618c4043176432ffcfecce46772a8d&X-Goog-SignedHeaders=host",
+"subtitle_url": "https://neonvideo.ai/public-objects/subtitles/50518ac5-063f-409a-add3-c5e3ffb8d402.ass",
+"watermark_url": "https://notifications.nusong.ai/neonlogo.png"
+}
