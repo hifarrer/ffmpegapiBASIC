@@ -7,6 +7,7 @@ class VideoMerger {
         this.initializePipTab();
         this.initializeSubtitlesTab();
         this.initializeSplitAudioTab();
+        this.initializeTrimAudioTab();
     }
 
     initializeImageAudioTab() {
@@ -972,6 +973,140 @@ class VideoMerger {
 
     hideSplitAudioResult() {
         this.splitAudioResultContainer.style.display = 'none';
+    }
+
+    // Trim Audio Tab Methods
+    initializeTrimAudioTab() {
+        this.trimAudioForm = document.getElementById('trimAudioForm');
+        this.trimAudioSubmitBtn = document.getElementById('trimAudioSubmitBtn');
+        this.trimAudioProgressContainer = document.getElementById('trimAudioProgressContainer');
+        this.trimAudioAlertContainer = document.getElementById('trimAudioAlertContainer');
+        this.trimAudioResultContainer = document.getElementById('trimAudioResultContainer');
+        this.trimAudioDownloadBtn = document.getElementById('trimAudioDownloadBtn');
+        this.trimAudioCleanupBtn = document.getElementById('trimAudioCleanupBtn');
+        this.trimAudioResetBtn = document.getElementById('trimAudioResetBtn');
+        this.trimAudioCurrentFilename = null;
+
+        // Event listeners for Trim Audio tab
+        this.trimAudioForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            this.handleTrimAudioSubmit();
+        });
+
+        this.trimAudioCleanupBtn.addEventListener('click', () => {
+            this.handleTrimAudioCleanup();
+        });
+
+        this.trimAudioResetBtn.addEventListener('click', () => {
+            this.resetTrimAudioForm();
+        });
+    }
+
+    async handleTrimAudioSubmit() {
+        const formData = new FormData(this.trimAudioForm);
+        
+        // Convert to JSON
+        const jsonData = {};
+        formData.forEach((value, key) => {
+            jsonData[key] = value;
+        });
+
+        this.showTrimAudioProgress();
+        this.hideTrimAudioAlert();
+        this.hideTrimAudioResult();
+
+        try {
+            const response = await fetch('/api/trim_audio', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-API-Key': window.API_KEY
+                },
+                body: JSON.stringify(jsonData)
+            });
+
+            const result = await response.json();
+
+            if (result.success) {
+                this.trimAudioDownloadBtn.href = result.download_url;
+                this.trimAudioDownloadBtn.download = result.filename;
+                this.trimAudioCurrentFilename = result.filename;
+                
+                this.showTrimAudioResult();
+                this.showTrimAudioAlert('success', `Audio trimmed to ${result.trimmed_length} seconds successfully!`);
+            } else {
+                this.showTrimAudioAlert('danger', `Error: ${result.error}`);
+            }
+        } catch (error) {
+            console.error('Trim audio error:', error);
+            this.showTrimAudioAlert('danger', `An error occurred: ${error.message}`);
+        } finally {
+            this.hideTrimAudioProgress();
+        }
+    }
+
+    async handleTrimAudioCleanup() {
+        if (!this.trimAudioCurrentFilename) return;
+
+        try {
+            const response = await fetch(`/api/cleanup/${this.trimAudioCurrentFilename}`, {
+                method: 'DELETE',
+                headers: {
+                    'X-API-Key': window.API_KEY
+                }
+            });
+
+            if (response.ok) {
+                this.showTrimAudioAlert('info', 'File deleted from server successfully');
+                this.trimAudioCurrentFilename = null;
+                this.hideTrimAudioResult();
+            } else {
+                this.showTrimAudioAlert('warning', 'File cleanup failed, but it will be automatically deleted after 24 hours');
+            }
+        } catch (error) {
+            console.error('Cleanup error:', error);
+            this.showTrimAudioAlert('warning', 'File cleanup failed, but it will be automatically deleted after 24 hours');
+        }
+    }
+
+    resetTrimAudioForm() {
+        this.trimAudioForm.reset();
+        this.hideTrimAudioAlert();
+        this.hideTrimAudioResult();
+        this.hideTrimAudioProgress();
+        this.trimAudioCurrentFilename = null;
+    }
+
+    showTrimAudioProgress() {
+        this.trimAudioProgressContainer.style.display = 'block';
+        this.trimAudioSubmitBtn.disabled = true;
+    }
+
+    hideTrimAudioProgress() {
+        this.trimAudioProgressContainer.style.display = 'none';
+        this.trimAudioSubmitBtn.disabled = false;
+    }
+
+    showTrimAudioAlert(type, message) {
+        this.trimAudioAlertContainer.innerHTML = `
+            <div class="alert alert-${type} alert-dismissible fade show" role="alert">
+                <i class="fas fa-${this.getAlertIcon(type)} me-2"></i>
+                ${message}
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+        `;
+    }
+
+    hideTrimAudioAlert() {
+        this.trimAudioAlertContainer.innerHTML = '';
+    }
+
+    showTrimAudioResult() {
+        this.trimAudioResultContainer.style.display = 'block';
+    }
+
+    hideTrimAudioResult() {
+        this.trimAudioResultContainer.style.display = 'none';
     }
 }
 
