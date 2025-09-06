@@ -2607,6 +2607,36 @@ def add_watermark_with_ffmpeg(video_path, watermark_path, output_path):
         logging.error(f"Watermark processing error: {str(e)}")
         return False, f"Watermark error: {str(e)}"
 
+def trim_audio_with_ffmpeg(audio_path, output_path, desired_length):
+    """Trim audio to desired length using FFMPEG"""
+    try:
+        cmd = [
+            'ffmpeg',
+            '-i', audio_path,
+            '-t', str(desired_length),  # Duration in seconds
+            '-c:a', 'aac',  # Audio codec
+            '-b:a', '192k',  # Audio bitrate
+            '-y',
+            output_path
+        ]
+        
+        logging.info(f"Trimming audio to {desired_length} seconds")
+        result = subprocess.run(cmd, capture_output=True, text=True, timeout=300)
+        
+        if result.returncode == 0:
+            logging.info("Audio trimming completed successfully")
+            return True, "Audio trimmed successfully"
+        else:
+            logging.error(f"Audio trimming failed: {result.stderr}")
+            return False, f"Audio trimming failed: {result.stderr}"
+            
+    except subprocess.TimeoutExpired:
+        logging.error("Audio trimming timed out")
+        return False, "Audio trimming processing timed out"
+    except Exception as e:
+        logging.error(f"Audio trimming error: {str(e)}")
+        return False, f"Audio trimming error: {str(e)}"
+
 @app.route('/api/add_subtitles', methods=['POST'])
 @require_api_key
 def add_subtitles():
@@ -2753,7 +2783,133 @@ def add_subtitles():
             raise e
             
     except Exception as e:
-        logging.error(f"Error in add_subtitles: {str(e)}")
+        logging.error(f"[ADD_SUBTITLES] Error in add_subtitles: {str(e)}")
+        logging.error(f"[ADD_SUBTITLES] Full traceback:", exc_info=True)
+        return jsonify({
+            'success': False,
+            'error': f'Server error: {str(e)}'
+        }), 500
+
+@app.route('/api/trim_audio', methods=['POST'])
+@require_api_key
+def trim_audio():
+    """API endpoint to trim audio to desired length"""
+    # Log full request details for debugging
+    api_key = request.headers.get('X-API-Key') or request.args.get('api_key')
+    logging.info(f"[TRIM_AUDIO] Request received from API key: {api_key[:20]}...")
+    logging.info(f"[TRIM_AUDIO] Headers: {dict(request.headers)}")
+    if request.is_json:
+        logging.info(f"[TRIM_AUDIO] JSON data: {request.get_json()}")
+    logging.info(f"[TRIM_AUDIO] Form data: {dict(request.form)}")
+    
+    try:
+        request_id = str(uuid.uuid4())
+        
+        # Get parameters from JSON or form data
+        if request.is_json:
+            data = request.get_json()
+            audio_url = data.get('audio_url')
+            desired_length = data.get('desired_length')
+        else:
+            audio_url = request.form.get('audio_url')
+            desired_length = request.form.get('desired_length')
+        
+        # Validate inputs
+        if not audio_url:
+            return jsonify({
+                'success': False,
+                'error': 'audio_url is required'
+            }), 400
+        
+        if not desired_length:
+            return jsonify({
+                'success': False,
+                'error': 'desired_length is required'
+            }), 400
+        
+        try:
+            desired_length = float(desired_length)
+            if desired_length <= 0:
+                return jsonify({
+                    'success': False,
+                    'error': 'desired_length must be a positive number'
+                }), 400
+        except ValueError:
+            return jsonify({
+                'success': False,
+                'error': 'desired_length must be a valid number'
+            }), 400
+        
+        # Download audio file
+        audio_filename = f"{request_id}_audio.mp3"
+        audio_path = os.path.join(UPLOAD_FOLDER, audio_filename)
+        
+        success, message = download_file_from_url(audio_url, audio_path, "audio")
+        if not success:
+            return jsonify({
+                'success': False,
+                'error': message
+            }), 400
+        
+        try:
+            # Generate output filename
+            output_filename = f"{request_id}_trimmed_audio.mp3"
+            output_path = os.path.join(OUTPUT_FOLDER, output_filename)
+            
+            # Trim audio using FFMPEG
+            success, message = trim_audio_with_ffmpeg(audio_path, output_path, desired_length)
+            
+            # Cleanup downloaded file
+            cleanup_file(audio_path)
+            
+            if success:
+                # Upload to storage for persistence
+                storage_url = upload_to_storage(output_path, output_filename)
+                
+                if storage_url:
+                    # Clean up local file after successful upload
+                    cleanup_file(output_path)
+                    
+                    return jsonify({
+                        'success': True,
+                        'message': f"Audio trimmed to {desired_length} seconds successfully",
+                        'download_url': storage_url,
+                        'filename': output_filename,
+                        'trimmed_length': desired_length
+                    })
+                else:
+                    # Fallback to local download if storage upload fails
+                    logging.warning("Storage upload failed, falling back to local download")
+                    
+                    # Generate proper URL based on environment
+                    if os.environ.get('REPLIT_DEPLOYMENT'):
+                        download_url = f"https://ffmpegapi.net/download/{output_filename}"
+                    elif os.environ.get('REPLIT_DEV_DOMAIN'):
+                        download_url = f"https://{os.environ['REPLIT_DEV_DOMAIN']}/download/{output_filename}"
+                    else:
+                        download_url = url_for('download_file', filename=output_filename, _external=True)
+                    
+                    return jsonify({
+                        'success': True,
+                        'message': f"Audio trimmed to {desired_length} seconds successfully (Note: Using temporary local storage - download soon)",
+                        'download_url': download_url,
+                        'filename': output_filename,
+                        'trimmed_length': desired_length
+                    })
+            else:
+                return jsonify({
+                    'success': False,
+                    'error': message
+                }), 500
+                
+        except Exception as e:
+            # Cleanup downloaded file on error
+            cleanup_file(audio_path)
+            raise e
+            
+    except Exception as e:
+        logging.error(f"[TRIM_AUDIO] Error in trim_audio: {str(e)}")
+        logging.error(f"[TRIM_AUDIO] Full traceback:", exc_info=True)
         return jsonify({
             'success': False,
             'error': f'Server error: {str(e)}'
