@@ -811,6 +811,12 @@
                                                 <td>Yes</td>
                                                 <td>Desired length in seconds (supports decimal values, e.g., 90.5)</td>
                                             </tr>
+                                            <tr>
+                                                <td><code>fade_duration</code></td>
+                                                <td>number</td>
+                                                <td>No</td>
+                                                <td>Duration of fade-out effect in seconds (default: 0, no fade)</td>
+                                            </tr>
                                         </tbody>
                                     </table>
                                 </div>
@@ -822,7 +828,8 @@
      -H "Content-Type: application/json" \
      -d '{
        "audio_url": "https://example.com/audio.mp3",
-       "desired_length": 120.5
+       "desired_length": 120.5,
+       "fade_duration": 10
      }'</code></pre>
                                 </div>
 
@@ -833,8 +840,9 @@
   "filename": "trimmed_audio_1694022400.mp3",
   "download_url": "https://ffmpegapi.net/api/storage/trimmed_audio_1694022400.mp3",
   "trimmed_length": 120.5,
+  "fade_duration": 10,
   "original_length": 240.0,
-  "message": "Audio trimmed successfully"
+  "message": "Audio trimmed successfully with fade effect"
 }</code></pre>
                                 </div>
 
@@ -850,6 +858,8 @@
                                 <ul>
                                     <li><strong>Format Support:</strong> Supports MP3, WAV, FLAC, AAC, OGG, and other common audio formats</li>
                                     <li><strong>Duration Validation:</strong> Desired length cannot exceed the original audio duration</li>
+                                    <li><strong>Fade Effect:</strong> Optional fade-out creates smooth audio endings. Fade duration must be less than total length</li>
+                                    <li><strong>Fade Calculation:</strong> For 60s audio with 10s fade, fade starts at 50s (desired_length - fade_duration)</li>
                                     <li><strong>Precision:</strong> Supports sub-second precision (e.g., 90.5 seconds)</li>
                                     <li><strong>Quality:</strong> Output maintains original audio quality and format</li>
                                     <li><strong>File Size:</strong> Audio file URLs must be publicly accessible and under 100MB</li>
@@ -857,7 +867,7 @@
 
                                 <div class="alert alert-info mt-3">
                                     <i class="fas fa-info-circle me-2"></i>
-                                    <strong>Tip:</strong> The trimming always starts from the beginning (00:00) of the audio file and cuts to the specified duration.
+                                    <strong>Tip:</strong> The trimming always starts from the beginning (00:00) of the audio file and cuts to the specified duration. Use fade_duration=0 for no fade effect, or specify seconds for a smooth fade-out.
                                 </div>
 
                                 <!-- Code Examples Tabs -->
@@ -884,7 +894,8 @@
      -H "Content-Type: application/json" \
      -d '{
        "audio_url": "https://example.com/podcast_episode.mp3",
-       "desired_length": 180
+       "desired_length": 180,
+       "fade_duration": 10
      }'</code></pre>
                                         </div>
                                     </div>
@@ -900,7 +911,8 @@ headers = {
 }
 data = {
     "audio_url": "https://example.com/podcast_episode.mp3",
-    "desired_length": 180
+    "desired_length": 180,
+    "fade_duration": 10
 }
 
 response = requests.post(url, headers=headers, json=data)
@@ -910,6 +922,8 @@ if result["success"]:
     print(f"Audio trimmed successfully!")
     print(f"Download URL: {result['download_url']}")
     print(f"Trimmed to: {result['trimmed_length']} seconds")
+    if result.get('fade_duration', 0) > 0:
+        print(f"Fade effect: {result['fade_duration']} seconds")
 else:
     print(f"Error: {result['error']}")</code></pre>
                                         </div>
@@ -925,7 +939,8 @@ else:
     },
     body: JSON.stringify({
       audio_url: 'https://example.com/podcast_episode.mp3',
-      desired_length: 180
+      desired_length: 180,
+      fade_duration: 10
     })
   });
   
@@ -935,6 +950,9 @@ else:
     console.log('Audio trimmed successfully!');
     console.log('Download URL:', result.download_url);
     console.log('Trimmed to:', result.trimmed_length, 'seconds');
+    if (result.fade_duration > 0) {
+      console.log('Fade effect:', result.fade_duration, 'seconds');
+    }
   } else {
     console.error('Error:', result.error);
   }
@@ -949,7 +967,8 @@ trimAudio();</code></pre>
 $url = 'https://ffmpegapi.net/api/trim_audio';
 $data = array(
     'audio_url' => 'https://example.com/podcast_episode.mp3',
-    'desired_length' => 180
+    'desired_length' => 180,
+    'fade_duration' => 10
 );
 
 $options = array(
@@ -969,6 +988,9 @@ if ($result['success']) {
     echo "Audio trimmed successfully!\n";
     echo "Download URL: " . $result['download_url'] . "\n";
     echo "Trimmed to: " . $result['trimmed_length'] . " seconds\n";
+    if ($result['fade_duration'] > 0) {
+        echo "Fade effect: " . $result['fade_duration'] . " seconds\n";
+    }
 } else {
     echo "Error: " . $result['error'] . "\n";
 }
