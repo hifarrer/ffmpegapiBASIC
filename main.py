@@ -2610,31 +2610,53 @@ def add_watermark_with_ffmpeg(video_path, watermark_path, output_path):
 def trim_audio_with_ffmpeg(audio_path, output_path, desired_length):
     """Trim audio to desired length using FFMPEG"""
     try:
+        # First, try with stream copy (most efficient and preserves quality)
         cmd = [
             'ffmpeg',
             '-i', audio_path,
             '-t', str(desired_length),  # Duration in seconds
-            '-c:a', 'aac',  # Audio codec
-            '-b:a', '192k',  # Audio bitrate
+            '-c:a', 'copy',  # Copy audio stream without re-encoding
             '-y',
             output_path
         ]
         
-        logging.info(f"Trimming audio to {desired_length} seconds")
+        logging.info(f"[TRIM_AUDIO] Attempting trim with stream copy to {desired_length} seconds")
+        logging.info(f"[TRIM_AUDIO] Command: {' '.join(cmd)}")
         result = subprocess.run(cmd, capture_output=True, text=True, timeout=300)
         
         if result.returncode == 0:
-            logging.info("Audio trimming completed successfully")
+            logging.info("[TRIM_AUDIO] Audio trimming completed successfully with stream copy")
             return True, "Audio trimmed successfully"
         else:
-            logging.error(f"Audio trimming failed: {result.stderr}")
-            return False, f"Audio trimming failed: {result.stderr}"
+            logging.warning(f"[TRIM_AUDIO] Stream copy failed: {result.stderr}")
+            
+            # If stream copy fails, try with re-encoding to MP3 (more compatible)
+            cmd_reencode = [
+                'ffmpeg',
+                '-i', audio_path,
+                '-t', str(desired_length),  # Duration in seconds
+                '-c:a', 'mp3',  # Use MP3 codec (more compatible)
+                '-b:a', '192k',  # Audio bitrate
+                '-y',
+                output_path
+            ]
+            
+            logging.info(f"[TRIM_AUDIO] Retrying with MP3 re-encoding")
+            logging.info(f"[TRIM_AUDIO] Command: {' '.join(cmd_reencode)}")
+            result = subprocess.run(cmd_reencode, capture_output=True, text=True, timeout=300)
+            
+            if result.returncode == 0:
+                logging.info("[TRIM_AUDIO] Audio trimming completed successfully with MP3 re-encoding")
+                return True, "Audio trimmed successfully"
+            else:
+                logging.error(f"[TRIM_AUDIO] MP3 re-encoding also failed: {result.stderr}")
+                return False, f"Audio trimming failed: {result.stderr}"
             
     except subprocess.TimeoutExpired:
-        logging.error("Audio trimming timed out")
+        logging.error("[TRIM_AUDIO] Audio trimming timed out")
         return False, "Audio trimming processing timed out"
     except Exception as e:
-        logging.error(f"Audio trimming error: {str(e)}")
+        logging.error(f"[TRIM_AUDIO] Audio trimming error: {str(e)}")
         return False, f"Audio trimming error: {str(e)}"
 
 @app.route('/api/add_subtitles', methods=['POST'])
