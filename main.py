@@ -2607,50 +2607,68 @@ def add_watermark_with_ffmpeg(video_path, watermark_path, output_path):
         logging.error(f"Watermark processing error: {str(e)}")
         return False, f"Watermark error: {str(e)}"
 
-def trim_audio_with_ffmpeg(audio_path, output_path, desired_length):
-    """Trim audio to desired length using FFMPEG"""
+def trim_audio_with_ffmpeg(audio_path, output_path, desired_length, fade_duration=0):
+    """Trim audio to desired length using FFMPEG with optional fade out"""
     try:
-        # First, try with stream copy (most efficient and preserves quality)
-        cmd = [
-            'ffmpeg',
-            '-i', audio_path,
-            '-t', str(desired_length),  # Duration in seconds
-            '-c:a', 'copy',  # Copy audio stream without re-encoding
-            '-y',
-            output_path
-        ]
+        # Build audio filter for fade effect
+        audio_filter = None
+        if fade_duration > 0:
+            # Calculate fade start time (desired_length - fade_duration)
+            fade_start = max(0, desired_length - fade_duration)
+            audio_filter = f"afade=t=out:st={fade_start}:d={fade_duration}"
+            logging.info(f"[TRIM_AUDIO] Adding fade out: start={fade_start}s, duration={fade_duration}s")
         
-        logging.info(f"[TRIM_AUDIO] Attempting trim with stream copy to {desired_length} seconds")
-        logging.info(f"[TRIM_AUDIO] Command: {' '.join(cmd)}")
-        result = subprocess.run(cmd, capture_output=True, text=True, timeout=300)
-        
-        if result.returncode == 0:
-            logging.info("[TRIM_AUDIO] Audio trimming completed successfully with stream copy")
-            return True, "Audio trimmed successfully"
-        else:
-            logging.warning(f"[TRIM_AUDIO] Stream copy failed: {result.stderr}")
-            
-            # If stream copy fails, try with re-encoding to MP3 (more compatible)
-            cmd_reencode = [
+        # First, try with stream copy if no fade is needed (most efficient)
+        if fade_duration == 0:
+            cmd = [
                 'ffmpeg',
                 '-i', audio_path,
                 '-t', str(desired_length),  # Duration in seconds
-                '-c:a', 'mp3',  # Use MP3 codec (more compatible)
-                '-b:a', '192k',  # Audio bitrate
+                '-c:a', 'copy',  # Copy audio stream without re-encoding
                 '-y',
                 output_path
             ]
             
-            logging.info(f"[TRIM_AUDIO] Retrying with MP3 re-encoding")
-            logging.info(f"[TRIM_AUDIO] Command: {' '.join(cmd_reencode)}")
-            result = subprocess.run(cmd_reencode, capture_output=True, text=True, timeout=300)
+            logging.info(f"[TRIM_AUDIO] Attempting trim with stream copy to {desired_length} seconds")
+            logging.info(f"[TRIM_AUDIO] Command: {' '.join(cmd)}")
+            result = subprocess.run(cmd, capture_output=True, text=True, timeout=300)
             
             if result.returncode == 0:
-                logging.info("[TRIM_AUDIO] Audio trimming completed successfully with MP3 re-encoding")
+                logging.info("[TRIM_AUDIO] Audio trimming completed successfully with stream copy")
                 return True, "Audio trimmed successfully"
             else:
-                logging.error(f"[TRIM_AUDIO] MP3 re-encoding also failed: {result.stderr}")
-                return False, f"Audio trimming failed: {result.stderr}"
+                logging.warning(f"[TRIM_AUDIO] Stream copy failed: {result.stderr}")
+        
+        # If stream copy failed or fade is needed, use MP3 re-encoding with optional filter
+        cmd_reencode = [
+            'ffmpeg',
+            '-i', audio_path,
+            '-t', str(desired_length)  # Duration in seconds
+        ]
+        
+        # Add audio filter if fade is specified
+        if audio_filter:
+            cmd_reencode.extend(['-af', audio_filter])
+        
+        # Add encoding settings
+        cmd_reencode.extend([
+            '-c:a', 'mp3',  # Use MP3 codec (more compatible)
+            '-b:a', '192k',  # Audio bitrate
+            '-y',
+            output_path
+        ])
+        
+        action_desc = "with fade effect" if fade_duration > 0 else "with MP3 re-encoding"
+        logging.info(f"[TRIM_AUDIO] Processing {action_desc}")
+        logging.info(f"[TRIM_AUDIO] Command: {' '.join(cmd_reencode)}")
+        result = subprocess.run(cmd_reencode, capture_output=True, text=True, timeout=300)
+        
+        if result.returncode == 0:
+            logging.info(f"[TRIM_AUDIO] Audio trimming completed successfully {action_desc}")
+            return True, "Audio trimmed successfully"
+        else:
+            logging.error(f"[TRIM_AUDIO] Audio processing failed: {result.stderr}")
+            return False, f"Audio trimming failed: {result.stderr}"
             
     except subprocess.TimeoutExpired:
         logging.error("[TRIM_AUDIO] Audio trimming timed out")
@@ -2832,9 +2850,11 @@ def trim_audio():
             data = request.get_json()
             audio_url = data.get('audio_url')
             desired_length = data.get('desired_length')
+            fade_duration = data.get('fade_duration', 0)
         else:
             audio_url = request.form.get('audio_url')
             desired_length = request.form.get('desired_length')
+            fade_duration = request.form.get('fade_duration', 0)
         
         # Validate inputs
         if not audio_url:
@@ -2862,6 +2882,24 @@ def trim_audio():
                 'error': 'desired_length must be a valid number'
             }), 400
         
+        try:
+            fade_duration = float(fade_duration)
+            if fade_duration < 0:
+                return jsonify({
+                    'success': False,
+                    'error': 'fade_duration must be a non-negative number'
+                }), 400
+            if fade_duration >= desired_length:
+                return jsonify({
+                    'success': False,
+                    'error': 'fade_duration must be less than desired_length'
+                }), 400
+        except ValueError:
+            return jsonify({
+                'success': False,
+                'error': 'fade_duration must be a valid number'
+            }), 400
+        
         # Download audio file
         audio_filename = f"{request_id}_audio.mp3"
         audio_path = os.path.join(UPLOAD_FOLDER, audio_filename)
@@ -2879,7 +2917,7 @@ def trim_audio():
             output_path = os.path.join(OUTPUT_FOLDER, output_filename)
             
             # Trim audio using FFMPEG
-            success, message = trim_audio_with_ffmpeg(audio_path, output_path, desired_length)
+            success, message = trim_audio_with_ffmpeg(audio_path, output_path, desired_length, fade_duration)
             
             # Cleanup downloaded file
             cleanup_file(audio_path)

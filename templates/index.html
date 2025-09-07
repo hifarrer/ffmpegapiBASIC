@@ -648,6 +648,16 @@
                                         <div class="form-text">Enter the length in seconds (e.g., 120 for 2 minutes)</div>
                                     </div>
 
+                                    <div class="mb-4">
+                                        <label for="fadeDuration" class="form-label">
+                                            <i class="fas fa-volume-down me-2"></i>
+                                            Fade Audio At (seconds)
+                                        </label>
+                                        <input type="number" class="form-control" id="fadeDuration" name="fade_duration" 
+                                               placeholder="0" min="0" step="0.1" value="0">
+                                        <div class="form-text">Duration of fade out effect before audio ends (0 = no fade, e.g., 10 for 10-second fade)</div>
+                                    </div>
+
                                     <div class="d-grid">
                                         <button type="submit" class="btn btn-primary btn-lg" id="trimAudioSubmitBtn">
                                             <i class="fas fa-cut me-2"></i>
