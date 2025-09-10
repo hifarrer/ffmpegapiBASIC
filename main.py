@@ -448,9 +448,8 @@ def merge_videos_with_ffmpeg(video_paths, output_path, audio_path=None, dimensio
                     videos_with_audio.append(i)
             
             if videos_with_audio:
-                # Concatenate videos preserving original audio
-                audio_concat = ''.join([f"[{i}:a:0]" for i in videos_with_audio])
-                filter_complex = f"{video_concat}concat=n={num_videos}:v=1:a=0[outv];{audio_concat}concat=n={len(videos_with_audio)}:v=0:a=1[video_audio];[{num_videos}:a:0][video_audio]amix=inputs=2:duration=longest:weights=1 0.1[final_audio]"
+                # When external audio is provided, completely ignore video audio
+                filter_complex = f"{video_concat}concat=n={num_videos}:v=1:a=0[outv]"
                 
                 cmd = [
                     'ffmpeg'
@@ -458,7 +457,7 @@ def merge_videos_with_ffmpeg(video_paths, output_path, audio_path=None, dimensio
                     '-i', audio_path,
                     '-filter_complex', filter_complex,
                     '-map', '[outv]',
-                    '-map', '[final_audio]',
+                    '-map', f'{num_videos}:a:0',  # Use only external audio
                     '-c:v', 'libx264',
                     '-c:a', 'aac',
                     '-preset', 'medium',
