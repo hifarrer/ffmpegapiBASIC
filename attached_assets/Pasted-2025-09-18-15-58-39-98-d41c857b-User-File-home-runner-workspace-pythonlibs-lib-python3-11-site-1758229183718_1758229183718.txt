@@ -1,0 +1,156 @@
+2025-09-18 15:58:39.98
+d41c857b
+User
+File "/home/runner/workspace/.pythonlibs/lib/python3.11/site-packages/sqlalchemy/engine/base.py", line 1986, in _exec_single_context
+2025-09-18 15:58:39.98
+d41c857b
+User
+self._handle_dbapi_exception(
+2025-09-18 15:58:39.98
+d41c857b
+User
+File "/home/runner/workspace/.pythonlibs/lib/python3.11/site-packages/sqlalchemy/engine/base.py", line 2355, in _handle_dbapi_exception
+2025-09-18 15:58:39.98
+d41c857b
+User
+raise sqlalchemy_exception.with_traceback(exc_info[2]) from e
+2025-09-18 15:58:39.98
+d41c857b
+User
+File "/home/runner/workspace/.pythonlibs/lib/python3.11/site-packages/sqlalchemy/engine/base.py", line 1967, in _exec_single_context
+2025-09-18 15:58:39.98
+d41c857b
+User
+self.dialect.do_execute(
+2025-09-18 15:58:39.98
+d41c857b
+User
+File "/home/runner/workspace/.pythonlibs/lib/python3.11/site-packages/sqlalchemy/engine/default.py", line 951, in do_execute
+2025-09-18 15:58:39.98
+d41c857b
+User
+cursor.execute(statement, parameters)
+2025-09-18 15:58:39.98
+d41c857b
+User
+sqlalchemy.exc.OperationalError: (psycopg2.OperationalError) SSL connection has been closed unexpectedly
+2025-09-18 15:58:39.98
+d41c857b
+User
+2025-09-18 15:58:39.98
+d41c857b
+User
+[SQL: UPDATE jobs SET result_data=%(result_data)s, updated_at=%(updated_at)s WHERE jobs.id = %(jobs_id)s]
+2025-09-18 15:58:39.98
+d41c857b
+User
+[parameters: {'result_data': '{"success": true, "message": "Videos merged successfully", "download_url": "https://ffmpegapi.net/api/storage/3bb0090c-dc9d-4555-9a91-bc6ba5b4196c_merged_videos.mp4", "filename": "3bb0090c-dc9d-4555-9a91-bc6ba5b4196c_merged_videos.mp4"}', 'updated_at': datetime.datetime(2025, 9, 18, 20, 58, 39, 943067), 'jobs_id': 46}]
+2025-09-18 15:58:39.98
+d41c857b
+User
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+2025-09-18 15:58:39.98
+d41c857b
+User
+2025-09-18 15:58:39.98
+d41c857b
+User
+During handling of the above exception, another exception occurred:
+2025-09-18 15:58:39.98
+d41c857b
+User
+2025-09-18 15:58:39.98
+d41c857b
+User
+Traceback (most recent call last):
+2025-09-18 15:58:39.98
+d41c857b
+User
+File "/nix/store/7d088dip86hlzri9sk0h78b63yfmx0a0-python3-3.11.13/lib/python3.11/threading.py", line 1045, in _bootstrap_inner
+2025-09-18 15:58:39.98
+d41c857b
+User
+self.run()
+2025-09-18 15:58:39.98
+d41c857b
+User
+File "/nix/store/7d088dip86hlzri9sk0h78b63yfmx0a0-python3-3.11.13/lib/python3.11/threading.py", line 982, in run
+2025-09-18 15:58:39.98
+d41c857b
+User
+self._target(*self._args, **self._kwargs)
+2025-09-18 15:58:39.98
+d41c857b
+User
+File "/home/runner/workspace/main.py", line 1867, in process_job_async
+2025-09-18 15:58:39.98
+d41c857b
+User
+job.update_status('failed', str(e))
+2025-09-18 15:58:39.98
+d41c857b
+User
+File "/home/runner/workspace/models.py", line 270, in update_status
+2025-09-18 15:58:39.99
+d41c857b
+User
+db.session.commit()
+2025-09-18 15:58:39.99
+d41c857b
+User
+File "/home/runner/workspace/.pythonlibs/lib/python3.11/site-packages/sqlalchemy/orm/scoping.py", line 599, in commit
+2025-09-18 15:58:39.99
+d41c857b
+User
+return self._proxied.commit()
+2025-09-18 15:58:39.99
+d41c857b
+User
+^^^^^^^^^^^^^^^^^^^^^^
+2025-09-18 15:58:39.99
+d41c857b
+User
+File "/home/runner/workspace/.pythonlibs/lib/python3.11/site-packages/sqlalchemy/orm/session.py", line 2032, in commit
+2025-09-18 15:58:39.99
+d41c857b
+User
+trans.commit(_to_root=True)
+2025-09-18 15:58:39.99
+d41c857b
+User
+File "", line 2, in commit
+2025-09-18 15:58:39.99
+d41c857b
+User
+File "/home/runner/workspace/.pythonlibs/lib/python3.11/site-packages/sqlalchemy/orm/state_changes.py", line 101, in _go
+2025-09-18 15:58:39.99
+d41c857b
+User
+self._raise_for_prerequisite_state(fn.__name__, current_state)
+2025-09-18 15:58:39.99
+d41c857b
+User
+File "/home/runner/workspace/.pythonlibs/lib/python3.11/site-packages/sqlalchemy/orm/session.py", line 973, in _raise_for_prerequisite_state
+2025-09-18 15:58:39.99
+d41c857b
+User
+raise sa_exc.PendingRollbackError(
+2025-09-18 15:58:39.99
+d41c857b
+User
+sqlalchemy.exc.PendingRollbackError: This Session's transaction has been rolled back due to a previous exception during flush. To begin a new transaction with this Session, first issue Session.rollback(). Original exception was: (psycopg2.OperationalError) SSL connection has been closed unexpectedly
+2025-09-18 15:58:39.99
+d41c857b
+User
+2025-09-18 15:58:39.99
+d41c857b
+User
+[SQL: UPDATE jobs SET result_data=%(result_data)s, updated_at=%(updated_at)s WHERE jobs.id = %(jobs_id)s]
+2025-09-18 15:58:39.99
+d41c857b
+User
+[parameters: {'result_data': '{"success": true, "message": "Videos merged successfully", "download_url": "https://ffmpegapi.net/api/storage/3bb0090c-dc9d-4555-9a91-bc6ba5b4196c_merged_videos.mp4", "filename": "3bb0090c-dc9d-4555-9a91-bc6ba5b4196c_merged_videos.mp4"}', 'updated_at': datetime.datetime(2025, 9, 18, 20, 58, 39, 943067), 'jobs_id': 46}]
+2025-09-18 15:58:39.99
+d41c857b
+User
+(Background on this error at: https://sqlalche.me/e/20/e3q8) (Background on this error at: https://sqlalche.me/e/20/7s2a)
