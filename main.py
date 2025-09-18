@@ -10,6 +10,7 @@ from functools import wraps
 from flask import Flask, render_template, request, jsonify, send_from_directory, url_for, flash, redirect, Response, send_file
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager, login_required, current_user
+from sqlalchemy.exc import OperationalError, PendingRollbackError
 from werkzeug.utils import secure_filename
 from werkzeug.exceptions import RequestEntityTooLarge
 from werkzeug.middleware.proxy_fix import ProxyFix
@@ -1830,15 +1831,82 @@ def delete_account():
         return redirect(url_for('profile'))
 
 # Background job processing functions
+def safe_update_job_status(job, status, error_message=None):
+    """Safely update job status with proper error handling for database connection issues"""
+    max_retries = 3
+    for attempt in range(max_retries):
+        try:
+            # Create a fresh query to ensure we have the latest job state
+            fresh_job = Job.query.filter_by(job_id=job.job_id).first()
+            if fresh_job:
+                fresh_job.status = status
+                if error_message:
+                    fresh_job.error_message = error_message
+                fresh_job.updated_at = datetime.utcnow()
+                db.session.commit()
+                logging.info(f"Successfully updated job {job.job_id} status to {status}")
+                return True
+            else:
+                logging.error(f"Job {job.job_id} not found during status update")
+                return False
+        except (OperationalError, PendingRollbackError) as db_error:
+            logging.warning(f"Database error updating job {job.job_id} status (attempt {attempt + 1}/{max_retries}): {str(db_error)}")
+            db.session.rollback()
+            if attempt == max_retries - 1:
+                logging.error(f"Failed to update job {job.job_id} status after {max_retries} attempts")
+                return False
+            # Wait a bit before retrying
+            import time
+            time.sleep(0.5)
+        except Exception as e:
+            logging.error(f"Unexpected error updating job {job.job_id} status: {str(e)}")
+            db.session.rollback()
+            return False
+    return False
+
+def safe_update_job_status_by_id(job_id, status, error_message=None):
+    """Safely update job status by job ID with proper error handling for database connection issues"""
+    max_retries = 3
+    for attempt in range(max_retries):
+        try:
+            # Create a fresh query to get the job
+            job = Job.query.filter_by(job_id=job_id).first()
+            if job:
+                job.status = status
+                if error_message:
+                    job.error_message = error_message
+                job.updated_at = datetime.utcnow()
+                db.session.commit()
+                logging.info(f"Successfully updated job {job_id} status to {status}")
+                return True
+            else:
+                logging.error(f"Job {job_id} not found during status update")
+                return False
+        except (OperationalError, PendingRollbackError) as db_error:
+            logging.warning(f"Database error updating job {job_id} status (attempt {attempt + 1}/{max_retries}): {str(db_error)}")
+            db.session.rollback()
+            if attempt == max_retries - 1:
+                logging.error(f"Failed to update job {job_id} status after {max_retries} attempts")
+                return False
+            # Wait a bit before retrying
+            import time
+            time.sleep(0.5)
+        except Exception as e:
+            logging.error(f"Unexpected error updating job {job_id} status: {str(e)}")
+            db.session.rollback()
+            return False
+    return False
+
 def process_job_async(job_id):
     """Process a job asynchronously in background thread"""
     with app.app_context():
-        job = Job.query.filter_by(job_id=job_id).first()
-        if not job:
-            logging.error(f"Job {job_id} not found")
-            return
-        
+        job = None
         try:
+            job = Job.query.filter_by(job_id=job_id).first()
+            if not job:
+                logging.error(f"Job {job_id} not found")
+                return
+            
             job.update_status('processing')
             input_data = job.get_input_data()
             
@@ -1853,18 +1921,24 @@ def process_job_async(job_id):
             elif job.job_type == 'add_subtitles':
                 result = process_add_subtitles_job(job, input_data)
             else:
-                job.update_status('failed', f'Unknown job type: {job.job_type}')
+                safe_update_job_status_by_id(job_id, 'failed', f'Unknown job type: {job.job_type}')
                 return
             
             if result['success']:
                 job.set_result_data(result)
-                job.update_status('completed')
+                safe_update_job_status_by_id(job_id, 'completed')
             else:
-                job.update_status('failed', result.get('error', 'Unknown error'))
+                safe_update_job_status_by_id(job_id, 'failed', result.get('error', 'Unknown error'))
                 
+        except (OperationalError, PendingRollbackError) as db_error:
+            logging.error(f"Database error processing job {job_id}: {str(db_error)}")
+            # Roll back the session due to database connection issues
+            db.session.rollback()
+            # Try to update job status with a fresh transaction
+            safe_update_job_status_by_id(job_id, 'failed', f'Database connection error: {str(db_error)}')
         except Exception as e:
             logging.error(f"Error processing job {job_id}: {str(e)}")
-            job.update_status('failed', str(e))
+            safe_update_job_status_by_id(job_id, 'failed', str(e))
 
 def process_merge_image_audio_job(job, input_data):
     """Process merge_image_audio job"""
