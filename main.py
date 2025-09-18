@@ -1864,6 +1864,37 @@ def safe_update_job_status(job, status, error_message=None):
             return False
     return False
 
+def safe_set_result_data(job_id, result_data):
+    """Safely set job result data with proper error handling for database connection issues"""
+    max_retries = 3
+    for attempt in range(max_retries):
+        try:
+            # Create a fresh query to get the job
+            job = Job.query.filter_by(job_id=job_id).first()
+            if job:
+                job.result_data = json.dumps(result_data)
+                job.updated_at = datetime.utcnow()
+                db.session.commit()
+                logging.info(f"Successfully set result data for job {job_id}")
+                return True
+            else:
+                logging.error(f"Job {job_id} not found during result data update")
+                return False
+        except (OperationalError, PendingRollbackError) as db_error:
+            logging.warning(f"Database error setting result data for job {job_id} (attempt {attempt + 1}/{max_retries}): {str(db_error)}")
+            db.session.rollback()
+            if attempt == max_retries - 1:
+                logging.error(f"Failed to set result data for job {job_id} after {max_retries} attempts")
+                return False
+            # Wait a bit before retrying
+            import time
+            time.sleep(0.5)
+        except Exception as e:
+            logging.error(f"Unexpected error setting result data for job {job_id}: {str(e)}")
+            db.session.rollback()
+            return False
+    return False
+
 def safe_update_job_status_by_id(job_id, status, error_message=None):
     """Safely update job status by job ID with proper error handling for database connection issues"""
     max_retries = 3
@@ -1925,8 +1956,14 @@ def process_job_async(job_id):
                 return
             
             if result['success']:
-                job.set_result_data(result)
-                safe_update_job_status_by_id(job_id, 'completed')
+                # Try to set result data safely, but mark as completed even if this fails
+                result_data_success = safe_set_result_data(job_id, result)
+                if result_data_success:
+                    safe_update_job_status_by_id(job_id, 'completed')
+                else:
+                    # Job succeeded but couldn't save result data - still mark as completed
+                    logging.warning(f"Job {job_id} completed successfully but couldn't save result data due to DB issues")
+                    safe_update_job_status_by_id(job_id, 'completed')
             else:
                 safe_update_job_status_by_id(job_id, 'failed', result.get('error', 'Unknown error'))
                 
