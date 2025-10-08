@@ -8,6 +8,7 @@ class VideoMerger {
         this.initializeSubtitlesTab();
         this.initializeSplitAudioTab();
         this.initializeTrimAudioTab();
+        this.initializeConvertVerticalTab();
     }
 
     initializeImageAudioTab() {
@@ -1107,6 +1108,145 @@ class VideoMerger {
 
     hideTrimAudioResult() {
         this.trimAudioResultContainer.style.display = 'none';
+    }
+
+    initializeConvertVerticalTab() {
+        this.convertVerticalForm = document.getElementById('convertVerticalForm');
+        this.convertVerticalSubmitBtn = document.getElementById('convertVerticalSubmitBtn');
+        this.convertVerticalProgressContainer = document.getElementById('convertVerticalProgressContainer');
+        this.convertVerticalAlertContainer = document.getElementById('convertVerticalAlertContainer');
+        this.convertVerticalResultContainer = document.getElementById('convertVerticalResultContainer');
+        this.convertVerticalDownloadBtn = document.getElementById('convertVerticalDownloadBtn');
+        this.convertVerticalCleanupBtn = document.getElementById('convertVerticalCleanupBtn');
+        this.convertVerticalResetBtn = document.getElementById('convertVerticalResetBtn');
+        this.convertVerticalCurrentFilename = null;
+
+        // Event listeners for Convert to Vertical tab
+        this.convertVerticalForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            this.handleConvertVerticalSubmit();
+        });
+
+        this.convertVerticalCleanupBtn.addEventListener('click', () => {
+            this.handleConvertVerticalCleanup();
+        });
+
+        this.convertVerticalResetBtn.addEventListener('click', () => {
+            this.resetConvertVerticalForm();
+        });
+    }
+
+    async handleConvertVerticalSubmit() {
+        const formData = new FormData(this.convertVerticalForm);
+        
+        // Convert to JSON
+        const jsonData = {};
+        formData.forEach((value, key) => {
+            if (value) {  // Only include non-empty values
+                jsonData[key] = value;
+            }
+        });
+
+        this.showConvertVerticalProgress();
+        this.hideConvertVerticalAlert();
+        this.hideConvertVerticalResult();
+
+        try {
+            const response = await fetch('/api/convert_to_vertical', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-API-Key': window.API_KEY
+                },
+                body: JSON.stringify(jsonData)
+            });
+
+            const result = await response.json();
+
+            if (result.success) {
+                this.convertVerticalDownloadBtn.href = result.download_url;
+                this.convertVerticalDownloadBtn.download = result.filename;
+                this.convertVerticalCurrentFilename = result.filename;
+                
+                // Update result message with aspect ratio info
+                const messageElement = document.getElementById('convertVerticalResultMessage');
+                messageElement.textContent = result.message || 'Your video has been converted to vertical format and is ready for download.';
+                
+                this.showConvertVerticalResult();
+                this.showConvertVerticalAlert('success', result.message || 'Video converted successfully!');
+            } else {
+                this.showConvertVerticalAlert('danger', `Error: ${result.error}`);
+            }
+        } catch (error) {
+            console.error('Convert to vertical error:', error);
+            this.showConvertVerticalAlert('danger', `An error occurred: ${error.message}`);
+        } finally {
+            this.hideConvertVerticalProgress();
+        }
+    }
+
+    async handleConvertVerticalCleanup() {
+        if (!this.convertVerticalCurrentFilename) return;
+
+        try {
+            const response = await fetch(`/api/cleanup/${this.convertVerticalCurrentFilename}`, {
+                method: 'DELETE',
+                headers: {
+                    'X-API-Key': window.API_KEY
+                }
+            });
+
+            if (response.ok) {
+                this.showConvertVerticalAlert('info', 'File deleted from server successfully');
+                this.convertVerticalCurrentFilename = null;
+                this.hideConvertVerticalResult();
+            } else {
+                this.showConvertVerticalAlert('warning', 'File cleanup failed, but it will be automatically deleted after 24 hours');
+            }
+        } catch (error) {
+            console.error('Cleanup error:', error);
+            this.showConvertVerticalAlert('warning', 'File cleanup failed, but it will be automatically deleted after 24 hours');
+        }
+    }
+
+    resetConvertVerticalForm() {
+        this.convertVerticalForm.reset();
+        this.hideConvertVerticalAlert();
+        this.hideConvertVerticalResult();
+        this.hideConvertVerticalProgress();
+        this.convertVerticalCurrentFilename = null;
+    }
+
+    showConvertVerticalProgress() {
+        this.convertVerticalProgressContainer.style.display = 'block';
+        this.convertVerticalSubmitBtn.disabled = true;
+    }
+
+    hideConvertVerticalProgress() {
+        this.convertVerticalProgressContainer.style.display = 'none';
+        this.convertVerticalSubmitBtn.disabled = false;
+    }
+
+    showConvertVerticalAlert(type, message) {
+        this.convertVerticalAlertContainer.innerHTML = `
+            <div class="alert alert-${type} alert-dismissible fade show" role="alert">
+                <i class="fas fa-${this.getAlertIcon(type)} me-2"></i>
+                ${message}
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+        `;
+    }
+
+    hideConvertVerticalAlert() {
+        this.convertVerticalAlertContainer.innerHTML = '';
+    }
+
+    showConvertVerticalResult() {
+        this.convertVerticalResultContainer.style.display = 'block';
+    }
+
+    hideConvertVerticalResult() {
+        this.convertVerticalResultContainer.style.display = 'none';
     }
 }
 
