@@ -861,6 +861,102 @@ def split_audio_with_ffmpeg(audio_path, output_dir, num_parts):
         logging.error(f"Audio splitting error: {str(e)}")
         return False, f"Audio splitting error: {str(e)}", []
 
+def convert_to_vertical_with_ffmpeg(video_path, output_path, watermark_path=None):
+    """Convert horizontal video to vertical format with automatic aspect ratio selection (3:4 or 9:16)"""
+    try:
+        # Get video dimensions
+        success, dimensions = get_video_dimensions(video_path)
+        if not success:
+            return False, f"Could not analyze video dimensions: {dimensions}"
+        
+        width, height = dimensions
+        logging.info(f"Original video dimensions: {width}x{height}")
+        
+        # Calculate aspect ratio
+        aspect_ratio = width / height
+        
+        # Determine target aspect ratio based on which is closer to the original
+        # 3:4 = 0.75, 9:16 = 0.5625
+        target_3_4 = 3 / 4  # 0.75
+        target_9_16 = 9 / 16  # 0.5625
+        
+        # Calculate distances to each target ratio
+        dist_to_3_4 = abs(aspect_ratio - target_3_4)
+        dist_to_9_16 = abs(aspect_ratio - target_9_16)
+        
+        # Choose the closest ratio
+        if dist_to_3_4 < dist_to_9_16:
+            target_width = 1080
+            target_height = 1440  # 3:4 ratio
+            ratio_name = "3:4"
+        else:
+            target_width = 1080
+            target_height = 1920  # 9:16 ratio
+            ratio_name = "9:16"
+        
+        logging.info(f"Selected {ratio_name} aspect ratio for output ({target_width}x{target_height})")
+        
+        # Build FFMPEG filter complex
+        # Scale the video to fit within the target dimensions while maintaining aspect ratio
+        # Then add black bars (pillarbox) to fill the remaining space
+        filter_parts = []
+        
+        # Scale and pad the video
+        scale_filter = f"[0:v]scale={target_width}:{target_height}:force_original_aspect_ratio=decrease,pad={target_width}:{target_height}:(ow-iw)/2:(oh-ih)/2:black[v]"
+        filter_parts.append(scale_filter)
+        
+        # Build the complete filter
+        if watermark_path:
+            # Add watermark in top right corner, scaled to 20% of video width
+            watermark_size = int(target_width * 0.2)
+            watermark_filter = f"[v][1:v]overlay=W-w-20:20:format=auto,scale={target_width}:{target_height}"
+            video_output = watermark_filter
+            inputs = ['-i', video_path, '-i', watermark_path]
+            filter_complex = scale_filter + ';' + watermark_filter
+        else:
+            video_output = '[v]'
+            inputs = ['-i', video_path]
+            filter_complex = scale_filter
+        
+        # Build FFMPEG command
+        cmd = [
+            'ffmpeg',
+            *inputs,
+            '-filter_complex', filter_complex,
+            '-map', video_output if watermark_path else '[v]',
+            '-map', '0:a?',  # Copy audio if it exists
+            '-c:v', 'libx264',
+            '-c:a', 'aac',
+            '-b:a', '192k',
+            '-pix_fmt', 'yuv420p',
+            '-y',
+            output_path
+        ]
+        
+        logging.info(f"Running FFMPEG command: {' '.join(cmd)}")
+        
+        # Run FFMPEG
+        result = subprocess.run(
+            cmd,
+            capture_output=True,
+            text=True,
+            timeout=600  # 10 minute timeout
+        )
+        
+        if result.returncode == 0:
+            logging.info(f"Successfully converted to vertical {ratio_name} format")
+            return True, f"Video successfully converted to vertical {ratio_name} format"
+        else:
+            logging.error(f"FFMPEG error: {result.stderr}")
+            return False, f"Video conversion failed: {result.stderr}"
+            
+    except subprocess.TimeoutExpired:
+        logging.error("Video conversion timed out")
+        return False, "Video conversion processing timed out"
+    except Exception as e:
+        logging.error(f"Video conversion error: {str(e)}")
+        return False, f"Video conversion error: {str(e)}"
+
 # Routes
 @app.route('/')
 def index():
@@ -1951,6 +2047,8 @@ def process_job_async(job_id):
                 result = process_split_audio_job(job, input_data)
             elif job.job_type == 'add_subtitles':
                 result = process_add_subtitles_job(job, input_data)
+            elif job.job_type == 'convert_to_vertical':
+                result = process_convert_to_vertical_job(job, input_data)
             else:
                 safe_update_job_status_by_id(job_id, 'failed', f'Unknown job type: {job.job_type}')
                 return
@@ -2454,6 +2552,95 @@ def process_add_subtitles_job(job, input_data):
             cleanup_file(video_path)
         if subtitle_path and os.path.exists(subtitle_path):
             cleanup_file(subtitle_path)
+        return {'success': False, 'error': f'Server error: {str(e)}'}
+
+def process_convert_to_vertical_job(job, input_data):
+    """Process convert_to_vertical job"""
+    try:
+        request_id = str(uuid.uuid4())
+        video_url = input_data.get('video_url')
+        watermark_url = input_data.get('watermark_url')
+        
+        if video_url:
+            # Download video file
+            video_ext = video_url.split('.')[-1].lower() if '.' in video_url else 'mp4'
+            video_filename = f"{request_id}_video.{video_ext}"
+            video_path = os.path.join(UPLOAD_FOLDER, video_filename)
+            
+            success, message = download_file_from_url(video_url, video_path, "video")
+            if not success:
+                return {'success': False, 'error': message}
+            
+            try:
+                # Download watermark if provided
+                watermark_path = None
+                if watermark_url:
+                    watermark_ext = watermark_url.split('.')[-1].lower() if '.' in watermark_url else 'png'
+                    watermark_filename = f"{request_id}_watermark.{watermark_ext}"
+                    watermark_path = os.path.join(UPLOAD_FOLDER, watermark_filename)
+                    
+                    success, message = download_file_from_url(watermark_url, watermark_path, "watermark")
+                    if not success:
+                        cleanup_file(video_path)
+                        return {'success': False, 'error': f'Failed to download watermark: {message}'}
+                
+                # Generate output filename
+                output_filename = f"{request_id}_vertical.mp4"
+                output_path = os.path.join(OUTPUT_FOLDER, output_filename)
+                
+                # Convert video using FFMPEG
+                success, message = convert_to_vertical_with_ffmpeg(video_path, output_path, watermark_path)
+                
+                # Cleanup downloaded files
+                cleanup_file(video_path)
+                if watermark_path:
+                    cleanup_file(watermark_path)
+                
+                if success:
+                    # Upload to storage for persistence
+                    storage_url = upload_to_storage(output_path, output_filename)
+                    
+                    if storage_url:
+                        # Clean up local file after successful upload
+                        cleanup_file(output_path)
+                        
+                        return {
+                            'success': True,
+                            'message': message,
+                            'download_url': storage_url,
+                            'filename': output_filename
+                        }
+                    else:
+                        # Fallback to local download if storage upload fails
+                        logging.warning("Storage upload failed, falling back to local download")
+                        
+                        # Generate proper URL based on environment
+                        if os.environ.get('REPLIT_DEPLOYMENT'):
+                            download_url = f"https://ffmpegapi.net/download/{output_filename}"
+                        elif os.environ.get('REPLIT_DEV_DOMAIN'):
+                            download_url = f"https://{os.environ['REPLIT_DEV_DOMAIN']}/download/{output_filename}"
+                        else:
+                            download_url = url_for('download_file', filename=output_filename, _external=True)
+                        
+                        return {
+                            'success': True,
+                            'message': f"{message} (Note: Using temporary local storage - download soon)",
+                            'download_url': download_url,
+                            'filename': output_filename
+                        }
+                else:
+                    return {'success': False, 'error': message}
+            except Exception as e:
+                # Cleanup files on error
+                cleanup_file(video_path)
+                if watermark_path:
+                    cleanup_file(watermark_path)
+                raise e
+        else:
+            return {'success': False, 'error': 'video_url is required'}
+            
+    except Exception as e:
+        logging.error(f"Error in process_convert_to_vertical_job: {str(e)}")
         return {'success': False, 'error': f'Server error: {str(e)}'}
 
 # Job status endpoint
@@ -3080,6 +3267,161 @@ def trim_audio():
     except Exception as e:
         logging.error(f"[TRIM_AUDIO] Error in trim_audio: {str(e)}")
         logging.error(f"[TRIM_AUDIO] Full traceback:", exc_info=True)
+        return jsonify({
+            'success': False,
+            'error': f'Server error: {str(e)}'
+        }), 500
+
+@app.route('/api/convert_to_vertical', methods=['POST'])
+@require_api_key
+def convert_to_vertical():
+    """API endpoint to convert horizontal videos to vertical format (sync/async)"""
+    # Log full request details for debugging
+    api_key = request.headers.get('X-API-Key') or request.args.get('api_key')
+    logging.info(f"[CONVERT_TO_VERTICAL] Request received from API key: {api_key[:20] if api_key else 'None'}...")
+    logging.info(f"[CONVERT_TO_VERTICAL] Headers: {dict(request.headers)}")
+    if request.is_json:
+        logging.info(f"[CONVERT_TO_VERTICAL] JSON data: {request.get_json()}")
+    
+    try:
+        # Parse JSON request
+        if not request.is_json:
+            return jsonify({
+                'success': False,
+                'error': 'Content-Type must be application/json'
+            }), 400
+        
+        data = request.get_json()
+        video_url = data.get('video_url')
+        watermark_url = data.get('watermark_url')  # Optional
+        async_processing = data.get('async', False)
+        
+        # Validate required parameters
+        if not video_url:
+            return jsonify({
+                'success': False,
+                'error': 'video_url is required'
+            }), 400
+        
+        # If async processing is requested, create job and return immediately
+        if async_processing:
+            job = Job(
+                user_id=current_user.id,
+                job_type='convert_to_vertical',
+                status='pending'
+            )
+            job.set_input_data({
+                'video_url': video_url,
+                'watermark_url': watermark_url
+            })
+            db.session.add(job)
+            db.session.commit()
+            
+            # Start background processing
+            thread = threading.Thread(target=process_job_async, args=(job.job_id,))
+            thread.start()
+            
+            status_url = url_for('get_job_status', job_id=job.job_id, _external=True)
+            
+            return jsonify({
+                'success': True,
+                'job_id': job.job_id,
+                'status': 'pending',
+                'message': 'Job submitted for async processing. Use /api/job/{job_id}/status to check progress.',
+                'status_url': status_url
+            })
+        
+        # Synchronous processing
+        request_id = str(uuid.uuid4())
+        
+        # Download video file
+        video_ext = video_url.split('.')[-1].lower() if '.' in video_url else 'mp4'
+        video_filename = f"{request_id}_video.{video_ext}"
+        video_path = os.path.join(UPLOAD_FOLDER, video_filename)
+        
+        success, message = download_file_from_url(video_url, video_path, "video")
+        if not success:
+            return jsonify({
+                'success': False,
+                'error': message
+            }), 400
+        
+        try:
+            # Download watermark if provided
+            watermark_path = None
+            if watermark_url:
+                watermark_ext = watermark_url.split('.')[-1].lower() if '.' in watermark_url else 'png'
+                watermark_filename = f"{request_id}_watermark.{watermark_ext}"
+                watermark_path = os.path.join(UPLOAD_FOLDER, watermark_filename)
+                
+                success, message = download_file_from_url(watermark_url, watermark_path, "watermark")
+                if not success:
+                    cleanup_file(video_path)
+                    return jsonify({
+                        'success': False,
+                        'error': f'Failed to download watermark: {message}'
+                    }), 400
+            
+            # Generate output filename
+            output_filename = f"{request_id}_vertical.mp4"
+            output_path = os.path.join(OUTPUT_FOLDER, output_filename)
+            
+            # Convert video using FFMPEG
+            success, message = convert_to_vertical_with_ffmpeg(video_path, output_path, watermark_path)
+            
+            # Cleanup downloaded files
+            cleanup_file(video_path)
+            if watermark_path:
+                cleanup_file(watermark_path)
+            
+            if success:
+                # Upload to storage for persistence
+                storage_url = upload_to_storage(output_path, output_filename)
+                
+                if storage_url:
+                    # Clean up local file after successful upload
+                    cleanup_file(output_path)
+                    
+                    return jsonify({
+                        'success': True,
+                        'message': message,
+                        'download_url': storage_url,
+                        'filename': output_filename
+                    })
+                else:
+                    # Fallback to local download if storage upload fails
+                    logging.warning("Storage upload failed, falling back to local download")
+                    
+                    # Generate proper URL based on environment
+                    if os.environ.get('REPLIT_DEPLOYMENT'):
+                        download_url = f"https://ffmpegapi.net/download/{output_filename}"
+                    elif os.environ.get('REPLIT_DEV_DOMAIN'):
+                        download_url = f"https://{os.environ['REPLIT_DEV_DOMAIN']}/download/{output_filename}"
+                    else:
+                        download_url = url_for('download_file', filename=output_filename, _external=True)
+                    
+                    return jsonify({
+                        'success': True,
+                        'message': f"{message} (Note: Using temporary local storage - download soon)",
+                        'download_url': download_url,
+                        'filename': output_filename
+                    })
+            else:
+                return jsonify({
+                    'success': False,
+                    'error': message
+                }), 500
+                
+        except Exception as e:
+            # Cleanup downloaded files on error
+            cleanup_file(video_path)
+            if watermark_path:
+                cleanup_file(watermark_path)
+            raise e
+            
+    except Exception as e:
+        logging.error(f"[CONVERT_TO_VERTICAL] Error: {str(e)}")
+        logging.error(f"[CONVERT_TO_VERTICAL] Full traceback:", exc_info=True)
         return jsonify({
             'success': False,
             'error': f'Server error: {str(e)}'
