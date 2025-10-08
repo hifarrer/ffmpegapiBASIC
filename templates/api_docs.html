@@ -84,6 +84,7 @@
                                 <a class="toc-link ms-3" href="#add-subtitles">Add Subtitles</a>
                                 <a class="toc-link ms-3" href="#split-audio">Split Audio</a>
                                 <a class="toc-link ms-3" href="#trim-audio">Trim Audio</a>
+                                <a class="toc-link ms-3" href="#convert-to-vertical">Convert to Vertical</a>
                                 <a class="toc-link ms-3" href="#job-status">Job Status</a>
                                 <a class="toc-link" href="#errors">Error Handling</a>
                                 <a class="toc-link" href="#examples">Code Examples</a>
@@ -106,7 +107,7 @@
                 <!-- Overview -->
                 <section id="overview" class="mb-5">
                     <h2><i class="fas fa-info-circle me-2"></i>Overview</h2>
-                    <p>The FFMPEG Video Merger API provides five powerful video processing capabilities:</p>
+                    <p>The FFMPEG Video Merger API provides seven powerful video processing capabilities:</p>
                     
                     <div class="row">
                         <div class="col-md-4 mb-3">
@@ -160,6 +161,15 @@
                                     <i class="fas fa-cut fa-2x text-primary mb-3"></i>
                                     <h5>Trim Audio</h5>
                                     <p class="small">Trim audio files to exact durations with precise timing</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-3 mb-3">
+                            <div class="card h-100">
+                                <div class="card-body text-center">
+                                    <i class="fas fa-mobile-alt fa-2x text-primary mb-3"></i>
+                                    <h5>Convert to Vertical</h5>
+                                    <p class="small">Convert horizontal videos to vertical format (3:4 or 9:16)</p>
                                 </div>
                             </div>
                         </div>
@@ -1009,6 +1019,190 @@ if ($result['success']) {
   "message": "Job submitted for async processing. Use /api/job/{job_id}/status to check progress.",
   "status_url": "https://ffmpegapi.net/api/job/550e8400-e29b-41d4-a716-446655440000/status"
 }</code></pre>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Convert to Vertical -->
+                    <div id="convert-to-vertical" class="api-endpoint">
+                        <div class="card">
+                            <div class="card-header">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <h4 class="mb-0">Convert to Vertical</h4>
+                                    <span class="method-badge method-post">POST</span>
+                                </div>
+                                <code class="text-muted">/api/convert_to_vertical</code>
+                            </div>
+                            <div class="card-body">
+                                <p>Convert horizontal videos to vertical format optimized for mobile viewing. Automatically selects the best aspect ratio (3:4 or 9:16) based on the original video dimensions, with optional watermark placement in the top right corner.</p>
+                                
+                                <h6>Request Format</h6>
+                                <p><strong>Content-Type:</strong> <code>application/json</code></p>
+                                
+                                <h6>Parameters</h6>
+                                <div class="table-responsive">
+                                    <table class="table table-sm">
+                                        <thead>
+                                            <tr>
+                                                <th>Parameter</th>
+                                                <th>Type</th>
+                                                <th>Required</th>
+                                                <th>Description</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <tr>
+                                                <td><code>video_url</code></td>
+                                                <td>String</td>
+                                                <td>Yes</td>
+                                                <td>URL to the horizontal video file to convert</td>
+                                            </tr>
+                                            <tr>
+                                                <td><code>watermark_url</code></td>
+                                                <td>String</td>
+                                                <td>No</td>
+                                                <td>URL to watermark/logo image (PNG recommended) to overlay in top right corner</td>
+                                            </tr>
+                                            <tr>
+                                                <td><code>async</code></td>
+                                                <td>Boolean</td>
+                                                <td>No</td>
+                                                <td>Process job asynchronously (default: false)</td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+
+                                <h6>Request Example</h6>
+                                <div class="code-block p-3">
+                                    <pre><code class="language-json">{
+  "video_url": "https://example.com/horizontal_video.mp4",
+  "watermark_url": "https://example.com/logo.png",
+  "async": true
+}</code></pre>
+                                </div>
+
+                                <h6>Sync Response</h6>
+                                <div class="code-block p-3">
+                                    <pre><code class="language-json">{
+  "success": true,
+  "message": "Video successfully converted to vertical 9:16 format",
+  "download_url": "https://ffmpegapi.net/api/storage/vertical_video.mp4",
+  "filename": "unique_filename_vertical.mp4"
+}</code></pre>
+                                </div>
+
+                                <h6>Async Response</h6>
+                                <div class="code-block p-3">
+                                    <pre><code class="language-json">{
+  "success": true,
+  "job_id": "550e8400-e29b-41d4-a716-446655440000",
+  "status": "pending",
+  "message": "Job submitted for async processing. Use /api/job/{job_id}/status to check progress.",
+  "status_url": "https://ffmpegapi.net/api/job/550e8400-e29b-41d4-a716-446655440000/status"
+}</code></pre>
+                                </div>
+
+                                <h6 class="mt-4">Aspect Ratio Selection</h6>
+                                <p>The API automatically chooses between 3:4 and 9:16 aspect ratios based on which is closer to your original video's aspect ratio:</p>
+                                <ul>
+                                    <li><strong>3:4 (1080x1440):</strong> Selected for wider horizontal videos</li>
+                                    <li><strong>9:16 (1080x1920):</strong> Selected for narrower horizontal videos (closer to square)</li>
+                                </ul>
+                                <p class="small text-muted">The original video is scaled to fit within the target dimensions while maintaining its aspect ratio, with black bars added to fill any remaining space.</p>
+
+                                <h6 class="mt-4">Watermark Details</h6>
+                                <ul>
+                                    <li><strong>Position:</strong> Top right corner with 20px padding</li>
+                                    <li><strong>Size:</strong> Automatically scaled to 20% of video width</li>
+                                    <li><strong>Format:</strong> Supports PNG, JPG, and other common image formats</li>
+                                    <li><strong>Transparency:</strong> PNG transparency is preserved</li>
+                                </ul>
+
+                                <div class="alert alert-info mt-3">
+                                    <i class="fas fa-lightbulb me-2"></i>
+                                    <strong>Tip:</strong> Use PNG format with transparency for watermarks to avoid visible background boxes. The watermark will maintain its aspect ratio and be clearly visible without overpowering the video content.
+                                </div>
+
+                                <h6 class="mt-4 mb-3">Code Examples</h6>
+                                <ul class="nav nav-pills mb-3" id="convertExampleTabs" role="tablist">
+                                    <li class="nav-item" role="presentation">
+                                        <button class="nav-link active" id="convert-curl-tab" data-bs-toggle="pill" data-bs-target="#convert-curl" type="button" role="tab">cURL</button>
+                                    </li>
+                                    <li class="nav-item" role="presentation">
+                                        <button class="nav-link" id="convert-python-tab" data-bs-toggle="pill" data-bs-target="#convert-python" type="button" role="tab">Python</button>
+                                    </li>
+                                    <li class="nav-item" role="presentation">
+                                        <button class="nav-link" id="convert-javascript-tab" data-bs-toggle="pill" data-bs-target="#convert-javascript" type="button" role="tab">JavaScript</button>
+                                    </li>
+                                </ul>
+                                <div class="tab-content" id="convertExampleContent">
+                                    <div class="tab-pane fade show active" id="convert-curl" role="tabpanel">
+                                        <div class="code-block">
+                                            <pre><code class="language-bash">curl -X POST "https://ffmpegapi.net/api/convert_to_vertical" \
+  -H "X-API-Key: YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "video_url": "https://example.com/video.mp4",
+    "watermark_url": "https://example.com/logo.png"
+  }'</code></pre>
+                                        </div>
+                                    </div>
+                                    <div class="tab-pane fade" id="convert-python" role="tabpanel">
+                                        <div class="code-block">
+                                            <pre><code class="language-python">import requests
+
+url = "https://ffmpegapi.net/api/convert_to_vertical"
+headers = {
+    "X-API-Key": "YOUR_API_KEY",
+    "Content-Type": "application/json"
+}
+data = {
+    "video_url": "https://example.com/video.mp4",
+    "watermark_url": "https://example.com/logo.png"
+}
+
+response = requests.post(url, headers=headers, json=data)
+result = response.json()
+
+if result["success"]:
+    print(f"Video converted successfully!")
+    print(f"Download URL: {result['download_url']}")
+    print(f"Format: {result['message']}")
+else:
+    print(f"Error: {result['error']}")</code></pre>
+                                        </div>
+                                    </div>
+                                    <div class="tab-pane fade" id="convert-javascript" role="tabpanel">
+                                        <div class="code-block">
+                                            <pre><code class="language-javascript">const convertVideo = async () => {
+  const response = await fetch('https://ffmpegapi.net/api/convert_to_vertical', {
+    method: 'POST',
+    headers: {
+      'X-API-Key': 'YOUR_API_KEY',
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({
+      video_url: 'https://example.com/video.mp4',
+      watermark_url: 'https://example.com/logo.png'
+    })
+  });
+  
+  const result = await response.json();
+  
+  if (result.success) {
+    console.log('Video converted successfully!');
+    console.log('Download URL:', result.download_url);
+    console.log('Format:', result.message);
+  } else {
+    console.error('Error:', result.error);
+  }
+};
+
+convertVideo();</code></pre>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                         </div>
