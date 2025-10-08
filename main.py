@@ -909,8 +909,8 @@ def convert_to_vertical_with_ffmpeg(video_path, output_path, watermark_path=None
         if watermark_path:
             # Add watermark in top right corner, scaled to 20% of video width
             watermark_size = int(target_width * 0.2)
-            watermark_filter = f"[v][1:v]overlay=W-w-20:20:format=auto,scale={target_width}:{target_height}"
-            video_output = watermark_filter
+            watermark_filter = f"[v][1:v]overlay=W-w-20:20:format=auto,format=yuv420p[outv]"
+            video_output = '[outv]'
             inputs = ['-i', video_path, '-i', watermark_path]
             filter_complex = scale_filter + ';' + watermark_filter
         else:
@@ -921,9 +921,10 @@ def convert_to_vertical_with_ffmpeg(video_path, output_path, watermark_path=None
         # Build FFMPEG command
         cmd = [
             'ffmpeg',
+            '-hide_banner',
             *inputs,
             '-filter_complex', filter_complex,
-            '-map', video_output if watermark_path else '[v]',
+            '-map', video_output,
             '-map', '0:a?',  # Copy audio if it exists
             '-c:v', 'libx264',
             '-c:a', 'aac',
@@ -947,8 +948,29 @@ def convert_to_vertical_with_ffmpeg(video_path, output_path, watermark_path=None
             logging.info(f"Successfully converted to vertical {ratio_name} format")
             return True, f"Video successfully converted to vertical {ratio_name} format"
         else:
-            logging.error(f"FFMPEG error: {result.stderr}")
-            return False, f"Video conversion failed: {result.stderr}"
+            # Strip only the leading banner lines from stderr
+            stderr_text = result.stderr.strip() if result.stderr else ""
+            stderr_lines = stderr_text.split('\n') if stderr_text else []
+            
+            # Remove only actual banner lines (starting with specific prefixes)
+            error_lines = []
+            for line in stderr_lines:
+                # Skip known banner prefixes but keep real error messages
+                if line.startswith('ffmpeg version') or \
+                   line.startswith('built with') or \
+                   (line.startswith('configuration:') and '--' in line) or \
+                   (line.strip().startswith('lib') and '=' in line and 'version' in line.lower()):
+                    continue
+                error_lines.append(line)
+            
+            error_msg = '\n'.join(error_lines).strip()
+            
+            # If stderr has no useful content after filtering, include stdout
+            if not error_msg:
+                error_msg = result.stdout.strip() if result.stdout else "Unknown ffmpeg error occurred"
+            
+            logging.error(f"FFMPEG error (returncode {result.returncode}): {error_msg}")
+            return False, f"Video conversion failed: {error_msg}"
             
     except subprocess.TimeoutExpired:
         logging.error("Video conversion timed out")
