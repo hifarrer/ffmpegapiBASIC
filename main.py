@@ -41,15 +41,15 @@ app.config["SQLALCHEMY_ENGINE_OPTIONS"] = {
 
 # URL building configuration for async jobs
 # Use localhost for development, production domain for production
-# Force localhost for Replit development environment
-if app.debug or os.environ.get('ENVIRONMENT') == 'development' or os.environ.get('REPLIT_DB_URL'):
+# Check if we're in production deployment
+if os.environ.get('REPLIT_DEPLOYMENT'):
+    # Production environment - don't set SERVER_NAME to allow external requests
+    # Flask will use the request's host header
+    app.config['PREFERRED_URL_SCHEME'] = 'https'
+else:
     # Development environment - use localhost
     app.config['SERVER_NAME'] = 'localhost:5000'
     app.config['PREFERRED_URL_SCHEME'] = 'http'
-else:
-    # Production environment
-    app.config['SERVER_NAME'] = os.environ.get('SERVER_NAME', 'ffmpegapi.net')
-    app.config['PREFERRED_URL_SCHEME'] = os.environ.get('PREFERRED_URL_SCHEME', 'https')
 app.config['APPLICATION_ROOT'] = '/'
 
 # In production, use /tmp which is the only writable directory
