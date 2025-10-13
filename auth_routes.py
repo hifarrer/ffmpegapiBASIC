@@ -73,13 +73,69 @@ def logout():
 @login_required
 def dashboard():
     api_keys = [key for key in current_user.api_keys if key.is_active]
-    return render_template('dashboard.html', api_keys=api_keys)
+    
+    # Get user's subscription plan
+    user_subscription = UserSubscription.query.filter_by(
+        user_id=current_user.id, 
+        status='active'
+    ).first()
+    
+    # Check if user is on free plan
+    is_free_plan = True  # Default to free plan if no subscription
+    plan_name = 'Free'
+    if user_subscription and user_subscription.plan:
+        plan_name = user_subscription.plan.name
+        # Consider plan as "free" if named "Free" or has $0 monthly price
+        monthly_price = user_subscription.plan.monthly_price
+        is_free_plan = (
+            user_subscription.plan.name.lower() == 'free' or 
+            (monthly_price is not None and float(monthly_price) == 0.0)
+        )
+    
+    # Determine if user can create more API keys
+    can_create_more_keys = True
+    if is_free_plan and len(api_keys) >= 1:
+        can_create_more_keys = False
+    
+    return render_template('dashboard.html', 
+                         api_keys=api_keys, 
+                         is_free_plan=is_free_plan,
+                         plan_name=plan_name,
+                         can_create_more_keys=can_create_more_keys)
 
 @auth.route('/generate-api-key', methods=['GET', 'POST'])
 @login_required
 def generate_api_key():
     form = ApiKeyForm()
     if form.validate_on_submit():
+        # Check user's subscription plan
+        user_subscription = UserSubscription.query.filter_by(
+            user_id=current_user.id, 
+            status='active'
+        ).first()
+        
+        # Count active API keys
+        active_keys = ApiKey.query.filter_by(
+            user_id=current_user.id, 
+            is_active=True
+        ).count()
+        
+        # Check if user is on free plan
+        is_free_plan = True  # Default to free plan if no subscription
+        if user_subscription and user_subscription.plan:
+            # Consider plan as "free" if it's named "Free" or has $0 monthly price
+            monthly_price = user_subscription.plan.monthly_price
+            is_free_plan = (
+                user_subscription.plan.name.lower() == 'free' or 
+                (monthly_price is not None and float(monthly_price) == 0.0)
+            )
+        
+        # Enforce limit for free users
+        if is_free_plan and active_keys >= 1:
+            flash('Free plan users can only have 1 API key. Please upgrade to a paid plan to create multiple API keys.', 'warning')
+            return redirect(url_for('auth.dashboard'))
+        
+        # Generate API key
         api_key = current_user.generate_api_key(form.name.data)
         flash(f'New API key generated: {api_key.key}', 'success')
         return redirect(url_for('auth.dashboard'))
