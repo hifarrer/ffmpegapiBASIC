@@ -1,7 +1,7 @@
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import UserMixin
 from werkzeug.security import generate_password_hash, check_password_hash
-from datetime import datetime
+from datetime import datetime, timedelta
 import secrets
 import string
 import json
@@ -16,6 +16,9 @@ class User(UserMixin, db.Model):
     password_hash = db.Column(db.String(256))
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     active = db.Column(db.Boolean, default=True)
+    email_verified = db.Column(db.Boolean, default=False)
+    verification_token = db.Column(db.String(100), unique=True)
+    verification_token_expiry = db.Column(db.DateTime)
     
     # Relationship with API keys
     api_keys = db.relationship('ApiKey', backref='user', lazy=True, cascade='all, delete-orphan')
@@ -25,6 +28,23 @@ class User(UserMixin, db.Model):
     
     def check_password(self, password):
         return check_password_hash(self.password_hash, password)
+    
+    def generate_verification_token(self):
+        """Generate a new email verification token"""
+        self.verification_token = secrets.token_urlsafe(32)
+        self.verification_token_expiry = datetime.utcnow() + timedelta(hours=24)
+        db.session.commit()
+        return self.verification_token
+    
+    def verify_email(self, token):
+        """Verify email with the provided token"""
+        if self.verification_token == token and self.verification_token_expiry and self.verification_token_expiry > datetime.utcnow():
+            self.email_verified = True
+            self.verification_token = None
+            self.verification_token_expiry = None
+            db.session.commit()
+            return True
+        return False
     
     def generate_api_key(self, name="Default"):
         """Generate a new API key for this user"""
