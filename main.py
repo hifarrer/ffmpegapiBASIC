@@ -290,39 +290,58 @@ def get_resend_credentials():
     """Get Resend API credentials from Replit connector"""
     try:
         hostname = os.environ.get('REPLIT_CONNECTORS_HOSTNAME')
+        logging.info(f"Hostname: {hostname}")
         
         # Get authentication token
         x_replit_token = None
+        has_repl_identity = bool(os.environ.get('REPL_IDENTITY'))
+        has_web_repl_renewal = bool(os.environ.get('WEB_REPL_RENEWAL'))
+        
+        logging.info(f"REPL_IDENTITY exists: {has_repl_identity}")
+        logging.info(f"WEB_REPL_RENEWAL exists: {has_web_repl_renewal}")
+        
         if os.environ.get('REPL_IDENTITY'):
             x_replit_token = 'repl ' + os.environ.get('REPL_IDENTITY')
+            logging.info("Using REPL_IDENTITY for authentication")
         elif os.environ.get('WEB_REPL_RENEWAL'):
             x_replit_token = 'depl ' + os.environ.get('WEB_REPL_RENEWAL')
+            logging.info("Using WEB_REPL_RENEWAL for authentication")
         
         if not x_replit_token or not hostname:
-            logging.error("Missing Replit connector credentials")
+            logging.error(f"Missing Replit connector credentials - hostname: {hostname}, token exists: {bool(x_replit_token)}")
             return None, None
         
         # Fetch connection settings
+        url = f'https://{hostname}/api/v2/connection?include_secrets=true&connector_names=resend'
+        logging.info(f"Fetching credentials from: {url}")
+        
         response = requests.get(
-            f'https://{hostname}/api/v2/connection?include_secrets=true&connector_names=resend',
+            url,
             headers={
                 'Accept': 'application/json',
                 'X-Replit-Token': x_replit_token
             }
         )
         
+        logging.info(f"Response status: {response.status_code}")
+        
         if response.status_code != 200:
             logging.error(f"Failed to fetch Resend credentials: {response.status_code} - {response.text}")
             return None, None
         
         data = response.json()
+        logging.info(f"Response data keys: {list(data.keys())}")
+        
         items = data.get('items', [])
+        logging.info(f"Number of items: {len(items)}")
         
         if not items:
-            logging.error("No Resend connection found")
+            logging.error("No Resend connection found in response")
             return None, None
         
         settings = items[0].get('settings', {})
+        logging.info(f"Settings keys: {list(settings.keys())}")
+        
         api_key = settings.get('api_key')
         from_email = settings.get('from_email')
         
@@ -330,10 +349,11 @@ def get_resend_credentials():
             logging.error("Resend API key not found in connection settings")
             return None, None
         
+        logging.info(f"Successfully fetched Resend credentials. From email: {from_email}")
         return api_key, from_email
         
     except Exception as e:
-        logging.error(f"Error getting Resend credentials: {str(e)}")
+        logging.error(f"Error getting Resend credentials: {str(e)}", exc_info=True)
         return None, None
 
 def get_video_dimensions(video_path):
