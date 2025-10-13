@@ -505,25 +505,7 @@ All endpoints return consistent error responses:
 
 ---
 
-## Rate Limits
 
-Rate limits depend on your subscription plan:
-
-| Plan | Requests/Month | Rate Limit |
-|------|----------------|------------|
-| Free | 100 | 10 req/min |
-| Basic | 1,000 | 30 req/min |
-| Pro | 10,000 | 60 req/min |
-| Enterprise | Custom | Custom |
-
-**Rate Limit Headers:**
-```
-X-RateLimit-Limit: 30
-X-RateLimit-Remaining: 25
-X-RateLimit-Reset: 1697212800
-```
-
----
 
 ## AI Agent Integration Guide
 

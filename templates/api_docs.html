@@ -85,6 +85,7 @@
                         <div class="card-body">
                             <nav class="nav flex-column">
                                 <a class="toc-link" href="#overview">Overview</a>
+                                <a class="toc-link" href="#ai-tools">AI Tools</a>
                                 <a class="toc-link" href="#authentication">Authentication</a>
                                 <a class="toc-link" href="#async-processing">Async Processing</a>
                                 <a class="toc-link" href="#endpoints">API Endpoints</a>
@@ -188,6 +189,23 @@
                     <div class="alert alert-info mt-4">
                         <i class="fas fa-lightbulb me-2"></i>
                         <strong>Base URL:</strong> <code>https://ffmpegapi.net/api/</code>
+                    </div>
+                </section>
+
+                <!-- AI Tools -->
+                <section id="ai-tools" class="mb-5">
+                    <h2><i class="fas fa-robot me-2"></i>AI Tools</h2>
+                    <p>If you want to use AI Tools like Cursor, you can download this README file to your project and ask your AI agent to use it as reference.</p>
+                    
+                    <div class="text-center mt-4">
+                        <a href="{{ url_for('download_readme') }}" class="btn btn-primary btn-lg" download>
+                            <i class="fas fa-download me-2"></i>Download README.md
+                        </a>
+                    </div>
+                    
+                    <div class="alert alert-info mt-4">
+                        <i class="fas fa-info-circle me-2"></i>
+                        <strong>Tip:</strong> This README contains all API endpoints, parameters, curl examples, and sample responses for easy integration with AI coding assistants.
                     </div>
                 </section>
 

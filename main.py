@@ -1057,6 +1057,22 @@ def api_docs():
     """API documentation page - no login required"""
     return render_template('api_docs.html')
 
+@app.route('/download-readme')
+def download_readme():
+    """Download README.md file for AI agent integration"""
+    try:
+        readme_path = os.path.join(os.path.dirname(__file__), 'README.md')
+        return send_file(
+            readme_path,
+            as_attachment=True,
+            download_name='FFMPEG_API_README.md',
+            mimetype='text/markdown'
+        )
+    except Exception as e:
+        logging.error(f"Error downloading README: {str(e)}")
+        flash('Could not download README file', 'error')
+        return redirect(url_for('api_docs'))
+
 @app.route('/contact', methods=['GET', 'POST'])
 def contact():
     """Contact page with email sending functionality"""

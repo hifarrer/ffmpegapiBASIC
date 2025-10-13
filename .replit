@@ -33,6 +33,10 @@ waitForPort = 5000
 localPort = 5000
 externalPort = 80
 
+[[ports]]
+localPort = 44477
+externalPort = 3000
+
 [agent]
 integrations = ["python_database:1.0.0", "resend:1.0.0"]
 
