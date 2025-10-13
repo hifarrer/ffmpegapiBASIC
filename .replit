@@ -1,4 +1,4 @@
-modules = ["python-3.11", "postgresql-16"]
+modules = ["python-3.11", "postgresql-16", "nodejs-20", "python3"]
 
 [nix]
 channel = "stable-25_05"
@@ -33,8 +33,12 @@ waitForPort = 5000
 localPort = 5000
 externalPort = 80
 
+[[ports]]
+localPort = 35885
+externalPort = 3000
+
 [agent]
-integrations = ["python_database==1.0.0"]
+integrations = ["python_database:1.0.0", "resend:1.0.0"]
 
 [objectStorage]
 defaultBucketID = "replit-objstore-f5b03aa7-16fd-4875-bde8-f3c7e478bcd7"

@@ -633,6 +633,9 @@ dependencies = [
     { name = "psycopg2-binary" },
     { name = "pyjwt" },
     { name = "replit-object-storage" },
+    { name = "requests" },
+    { name = "resend" },
+    { name = "sqlalchemy" },
     { name = "stripe" },
     { name = "werkzeug" },
     { name = "wtforms" },
@@ -652,6 +655,9 @@ requires-dist = [
     { name = "psycopg2-binary", specifier = ">=2.9.10" },
     { name = "pyjwt", specifier = ">=2.10.1" },
     { name = "replit-object-storage", specifier = ">=1.0.2" },
+    { name = "requests", specifier = ">=2.32.5" },
+    { name = "resend", specifier = ">=2.16.0" },
+    { name = "sqlalchemy", specifier = ">=2.0.43" },
     { name = "stripe", specifier = ">=12.4.0" },
     { name = "werkzeug", specifier = ">=3.1.3" },
     { name = "wtforms", specifier = ">=3.2.1" },
@@ -696,6 +702,19 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/42/f2/05f29bc3913aea15eb670be136045bf5c5bbf4b99ecb839da9b422bb2c85/requests-oauthlib-2.0.0.tar.gz", hash = "sha256:b3dffaebd884d8cd778494369603a9e7b58d29111bf6b41bdc2dcd87203af4e9", size = 55650 }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/3b/5d/63d4ae3b9daea098d5d6f5da83984853c1bbacd5dc826764b249fe119d24/requests_oauthlib-2.0.0-py2.py3-none-any.whl", hash = "sha256:7dd8a5c40426b779b0868c404bdef9768deccf22749cde15852df527e6269b36", size = 24179 },
+]
+
+[[package]]
+name = "resend"
+version = "2.16.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "requests" },
+    { name = "typing-extensions" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/ff/22/3e940eee2e2ccca0a04dcf1c694efd9f615bea9b1104d1fa5ff35f379f3c/resend-2.16.0.tar.gz", hash = "sha256:2f00d1300aa26309291860c345bd796800ab4cd7a2ce76004b5be1d5a5f0af86", size = 16946 }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/c1/06/c2c0b3aee1891e85e6ff35606739b8a8e5b94c0c25a95a5efa17437173ad/resend-2.16.0-py2.py3-none-any.whl", hash = "sha256:ae14dd6825a93c60483bd29d149b9ae7e0af8c3c686b694fb3158b51f7526447", size = 25571 },
 ]
 
 [[package]]

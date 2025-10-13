@@ -5,6 +5,7 @@ import uuid
 import tempfile
 import threading
 import json
+import requests
 from datetime import datetime, timedelta
 from functools import wraps
 from flask import Flask, render_template, request, jsonify, send_from_directory, url_for, flash, redirect, Response, send_file
@@ -15,6 +16,7 @@ from werkzeug.utils import secure_filename
 from werkzeug.exceptions import RequestEntityTooLarge
 from werkzeug.middleware.proxy_fix import ProxyFix
 import mimetypes
+import resend
 
 from models import db, User, ApiKey, SubscriptionPlan, StripeSettings, UserSubscription, SiteSettings, Job, SITE_DEFAULT_API_KEY
 from forms import RegistrationForm, LoginForm, ApiKeyForm
@@ -283,6 +285,56 @@ def download_file_from_url(url, output_path, file_type="file"):
     except Exception as e:
         logging.error(f"Failed to download {file_type} from {url}: {str(e)}")
         return False, f"Failed to download {file_type}: {str(e)}"
+
+def get_resend_credentials():
+    """Get Resend API credentials from Replit connector"""
+    try:
+        hostname = os.environ.get('REPLIT_CONNECTORS_HOSTNAME')
+        
+        # Get authentication token
+        x_replit_token = None
+        if os.environ.get('REPL_IDENTITY'):
+            x_replit_token = 'repl ' + os.environ.get('REPL_IDENTITY')
+        elif os.environ.get('WEB_REPL_RENEWAL'):
+            x_replit_token = 'depl ' + os.environ.get('WEB_REPL_RENEWAL')
+        
+        if not x_replit_token or not hostname:
+            logging.error("Missing Replit connector credentials")
+            return None, None
+        
+        # Fetch connection settings
+        response = requests.get(
+            f'https://{hostname}/api/v2/connection?include_secrets=true&connector_names=resend',
+            headers={
+                'Accept': 'application/json',
+                'X-Replit-Token': x_replit_token
+            }
+        )
+        
+        if response.status_code != 200:
+            logging.error(f"Failed to fetch Resend credentials: {response.status_code} - {response.text}")
+            return None, None
+        
+        data = response.json()
+        items = data.get('items', [])
+        
+        if not items:
+            logging.error("No Resend connection found")
+            return None, None
+        
+        settings = items[0].get('settings', {})
+        api_key = settings.get('api_key')
+        from_email = settings.get('from_email')
+        
+        if not api_key:
+            logging.error("Resend API key not found in connection settings")
+            return None, None
+        
+        return api_key, from_email
+        
+    except Exception as e:
+        logging.error(f"Error getting Resend credentials: {str(e)}")
+        return None, None
 
 def get_video_dimensions(video_path):
     """Get video dimensions using ffprobe"""
@@ -1004,6 +1056,68 @@ def dashboard():
 def api_docs():
     """API documentation page - no login required"""
     return render_template('api_docs.html')
+
+@app.route('/contact', methods=['GET', 'POST'])
+def contact():
+    """Contact page with email sending functionality"""
+    if request.method == 'POST':
+        try:
+            # Get form data
+            name = request.form.get('name', '').strip()
+            email = request.form.get('email', '').strip()
+            subject = request.form.get('subject', '').strip()
+            message = request.form.get('message', '').strip()
+            
+            # Validate form data
+            if not all([name, email, subject, message]):
+                flash('All fields are required', 'error')
+                return render_template('contact.html')
+            
+            # Get Resend credentials
+            api_key, from_email = get_resend_credentials()
+            
+            if not api_key:
+                flash('Email service is not configured. Please contact the administrator.', 'error')
+                return render_template('contact.html')
+            
+            # Use configured from_email or fallback
+            sender_email = from_email if from_email else 'noreply@ffmpegapi.net'
+            
+            # Initialize Resend client
+            resend.api_key = api_key
+            
+            # Prepare email content
+            email_subject = f"Contact Form: {subject}"
+            email_html = f"""
+            <h2>New Contact Form Submission</h2>
+            <p><strong>From:</strong> {name} ({email})</p>
+            <p><strong>Subject:</strong> {subject}</p>
+            <p><strong>Message:</strong></p>
+            <p>{message.replace(chr(10), '<br>')}</p>
+            """
+            
+            # Send email using Resend
+            params = {
+                "from": sender_email,
+                "to": ["info@ffmpegapi.net"],
+                "subject": email_subject,
+                "html": email_html,
+                "reply_to": email
+            }
+            
+            response = resend.Emails.send(params)
+            
+            logging.info(f"Contact email sent successfully. Response: {response}")
+            flash('Thank you for your message! We will get back to you soon.', 'success')
+            return redirect(url_for('contact'))
+            
+        except Exception as e:
+            logging.error(f"Error sending contact email: {str(e)}")
+            flash('Sorry, there was an error sending your message. Please try again later.', 'error')
+            return render_template('contact.html')
+    
+    # GET request - show form
+    return render_template('contact.html')
 
 @app.route('/api/merge_image_audio', methods=['POST'])
 @require_api_key
