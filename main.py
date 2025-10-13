@@ -319,7 +319,7 @@ def get_resend_credentials():
             url,
             headers={
                 'Accept': 'application/json',
-                'X-Replit-Token': x_replit_token
+                'X_REPLIT_TOKEN': x_replit_token
             }
         )
         
