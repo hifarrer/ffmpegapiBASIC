@@ -1059,13 +1059,13 @@ def api_docs():
 
 @app.route('/download-readme')
 def download_readme():
-    """Download README.md file for AI agent integration"""
+    """Download README_FFMPEGAPI.md file for AI agent integration"""
     try:
-        readme_path = os.path.join(os.path.dirname(__file__), 'README.md')
+        readme_path = os.path.join(os.path.dirname(__file__), 'README_FFMPEGAPI.md')
         return send_file(
             readme_path,
             as_attachment=True,
-            download_name='FFMPEG_API_README.md',
+            download_name='README_FFMPEGAPI.md',
             mimetype='text/markdown'
         )
     except Exception as e:
