@@ -3,8 +3,118 @@ from flask_login import login_user, logout_user, login_required, current_user
 from models import db, User, ApiKey, SubscriptionPlan, UserSubscription
 from forms import RegistrationForm, LoginForm, ApiKeyForm
 from datetime import datetime, timedelta
+import logging
+import resend
+import requests
+import os
 
 auth = Blueprint('auth', __name__)
+
+def get_resend_credentials():
+    """Get Resend API credentials from Replit connector"""
+    try:
+        hostname = os.environ.get('REPLIT_CONNECTORS_HOSTNAME')
+        
+        # Get authentication token
+        x_replit_token = None
+        if os.environ.get('REPL_IDENTITY'):
+            x_replit_token = 'repl ' + os.environ.get('REPL_IDENTITY')
+        elif os.environ.get('WEB_REPL_RENEWAL'):
+            x_replit_token = 'depl ' + os.environ.get('WEB_REPL_RENEWAL')
+        
+        if not x_replit_token or not hostname:
+            logging.error("Missing Replit connector credentials")
+            return None, None
+        
+        # Fetch connection settings
+        response = requests.get(
+            f'https://{hostname}/api/v2/connection?include_secrets=true&connector_names=resend',
+            headers={
+                'Accept': 'application/json',
+                'X_REPLIT_TOKEN': x_replit_token
+            }
+        )
+        
+        if response.status_code != 200:
+            logging.error(f"Failed to fetch Resend credentials: {response.status_code}")
+            return None, None
+        
+        data = response.json()
+        items = data.get('items', [])
+        
+        if not items:
+            logging.error("No Resend connection found")
+            return None, None
+        
+        settings = items[0].get('settings', {})
+        api_key = settings.get('api_key')
+        from_email = settings.get('from_email')
+        
+        if not api_key:
+            logging.error("Resend API key not found")
+            return None, None
+        
+        return api_key, from_email
+        
+    except Exception as e:
+        logging.error(f"Error getting Resend credentials: {str(e)}")
+        return None, None
+
+def send_verification_email(user_email, username, verification_token):
+    """Send email verification email using Resend"""
+    try:
+        # Get Resend credentials
+        api_key, from_email = get_resend_credentials()
+        
+        if not api_key:
+            logging.error("Cannot send verification email - Resend not configured")
+            return False
+        
+        # Use configured from_email or fallback
+        sender_email = from_email if from_email else 'noreply@ffmpegapi.net'
+        
+        # Initialize Resend client
+        resend.api_key = api_key
+        
+        # Build verification URL
+        verification_url = url_for('auth.verify_email', token=verification_token, _external=True)
+        
+        # Prepare email content
+        email_subject = "Verify your FFMPEG API account"
+        email_html = f"""
+        <h2>Welcome to FFMPEG API, {username}!</h2>
+        <p>Thank you for registering. Please verify your email address to activate your account.</p>
+        <p>Click the button below to verify your email:</p>
+        <p style="margin: 30px 0;">
+            <a href="{verification_url}" 
+               style="background-color: #007bff; color: white; padding: 12px 30px; 
+                      text-decoration: none; border-radius: 5px; display: inline-block;">
+                Verify Email Address
+            </a>
+        </p>
+        <p>Or copy and paste this link into your browser:</p>
+        <p><a href="{verification_url}">{verification_url}</a></p>
+        <p>This verification link will expire in 24 hours.</p>
+        <p>If you didn't create an account with FFMPEG API, please ignore this email.</p>
+        <hr style="margin: 30px 0; border: none; border-top: 1px solid #eee;">
+        <p style="color: #666; font-size: 12px;">FFMPEG API - Video Processing Made Easy</p>
+        """
+        
+        # Send email
+        params = {
+            "from": sender_email,
+            "to": [user_email],
+            "subject": email_subject,
+            "html": email_html
+        }
+        
+        email = resend.Emails.send(params)
+        logging.info(f"Verification email sent to {user_email}")
+        return True
+        
+    except Exception as e:
+        logging.error(f"Error sending verification email: {str(e)}", exc_info=True)
+        return False
 
 @auth.route('/register', methods=['GET', 'POST'])
 def register():
@@ -17,11 +127,23 @@ def register():
         user.username = form.username.data
         user.email = form.email.data
         user.set_password(form.password.data)
+        user.email_verified = False
         
         db.session.add(user)
         db.session.commit()
         
-        # Generate initial API key for new user
+        # Generate verification token
+        token = user.generate_verification_token()
+        
+        # Send verification email
+        email_sent = send_verification_email(user.email, user.username, token)
+        
+        if email_sent:
+            flash('Registration successful! Please check your email to verify your account.', 'success')
+        else:
+            flash('Registration successful! However, we could not send the verification email. Please contact support.', 'warning')
+        
+        # Generate initial API key for new user (will be usable after verification)
         user.generate_api_key("My First API Key")
         
         # Assign free plan to new user
@@ -39,10 +161,53 @@ def register():
             db.session.add(subscription)
             db.session.commit()
         
-        flash('Registration successful! You can now log in.', 'success')
         return redirect(url_for('auth.login'))
     
     return render_template('register.html', form=form)
+
+@auth.route('/verify-email/<token>')
+def verify_email(token):
+    """Verify user email with token"""
+    user = User.query.filter_by(verification_token=token).first()
+    
+    if not user:
+        flash('Invalid verification link.', 'danger')
+        return redirect(url_for('auth.login'))
+    
+    if user.email_verified:
+        flash('Your email is already verified. You can log in.', 'info')
+        return redirect(url_for('auth.login'))
+    
+    if user.verify_email(token):
+        flash('Your email has been verified! You can now log in.', 'success')
+        return redirect(url_for('auth.login'))
+    else:
+        flash('Verification link has expired. Please request a new one.', 'danger')
+        return redirect(url_for('auth.resend_verification'))
+
+@auth.route('/resend-verification', methods=['GET', 'POST'])
+def resend_verification():
+    """Resend verification email"""
+    if request.method == 'POST':
+        email = request.form.get('email')
+        user = User.query.filter_by(email=email).first()
+        
+        if user and not user.email_verified:
+            token = user.generate_verification_token()
+            email_sent = send_verification_email(user.email, user.username, token)
+            
+            if email_sent:
+                flash('Verification email has been sent. Please check your inbox.', 'success')
+            else:
+                flash('Could not send verification email. Please try again later.', 'danger')
+        elif user and user.email_verified:
+            flash('Your email is already verified.', 'info')
+        else:
+            flash('No account found with that email address.', 'danger')
+        
+        return redirect(url_for('auth.login'))
+    
+    return render_template('resend_verification.html')
 
 @auth.route('/login', methods=['GET', 'POST'])
 def login():
@@ -54,6 +219,10 @@ def login():
         user = User.query.filter_by(username=form.username.data).first()
         
         if user and user.check_password(form.password.data):
+            if not user.email_verified:
+                flash('Please verify your email address before logging in. Check your inbox for the verification link.', 'warning')
+                return render_template('login.html', form=form, show_resend=True, user_email=user.email)
+            
             login_user(user, remember=form.remember_me.data)
             next_page = request.args.get('next')
             return redirect(next_page) if next_page else redirect(url_for('dashboard'))
