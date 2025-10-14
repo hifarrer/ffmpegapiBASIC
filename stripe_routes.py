@@ -127,6 +127,11 @@ def subscription_success():
         # Retrieve checkout session
         checkout_session = stripe.checkout.Session.retrieve(session_id)
         
+        # Initialize tracking data
+        transaction_value = 1.0
+        transaction_id = session_id
+        plan_name = 'Premium Plan'
+        
         if checkout_session.payment_status == 'paid':
             # Get subscription details
             subscription_id = checkout_session.subscription
@@ -149,7 +154,8 @@ def subscription_success():
                         user_subscription.api_calls_used = 0
                 
                 metadata = checkout_session.metadata or {}
-                user_subscription.plan_id = int(metadata.get('plan_id', 0))
+                plan_id = int(metadata.get('plan_id', 0))
+                user_subscription.plan_id = plan_id
                 user_subscription.stripe_subscription_id = subscription.id
                 user_subscription.stripe_customer_id = str(subscription.customer)
                 user_subscription.status = str(subscription.status)
@@ -157,10 +163,22 @@ def subscription_success():
                 user_subscription.current_period_start = datetime.fromtimestamp(int(subscription.get('current_period_start', 0)))
                 user_subscription.current_period_end = datetime.fromtimestamp(int(subscription.get('current_period_end', 0)))
                 user_subscription.api_calls_used = 0  # Reset usage
+                
+                # Get plan details for conversion tracking
+                plan = SubscriptionPlan.query.get(plan_id)
+                if plan:
+                    plan_name = plan.name
+                    # Get transaction value from checkout session
+                    if checkout_session.amount_total:
+                        transaction_value = checkout_session.amount_total / 100.0  # Stripe uses cents
             
             db.session.commit()
             
-            flash('Subscription activated successfully! Welcome to your new plan.', 'success')
+            # Render success page with conversion tracking
+            return render_template('subscription_success.html',
+                                   transaction_value=transaction_value,
+                                   transaction_id=transaction_id,
+                                   plan_name=plan_name)
         else:
             flash('Payment was not completed. Please try again.', 'warning')
             
