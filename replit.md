@@ -24,6 +24,10 @@ This is a comprehensive web-based video processing tool that provides seven main
 
 **Replit App Storage Integration**: Persistent cloud storage using Replit's App Storage (Google Cloud Storage backed) for all processed videos. Files are stored in the `ffmpeg-videos` bucket and served through the `/api/storage/` endpoint, ensuring downloads work reliably in production even with container restarts.
 
+**SEO Optimization**: Comprehensive search engine optimization implemented across all public pages including meta tags (title, description, keywords, canonical URLs), Open Graph and Twitter Card tags for social media sharing, structured data with JSON-LD Schema markup (Organization, SoftwareApplication, Product schemas for pricing plans), sitemap.xml for search engine crawling, and robots.txt for crawler directives. All pages optimized for search visibility and social media engagement.
+
+**Email Verification**: New user registration requires email verification before account access. Users receive verification emails via Resend integration with 24-hour token expiration. Resend verification option available on login page for unverified accounts.
+
 The application features an accordion interface for easy access to all three tools, built with Flask for the backend and vanilla JavaScript for the frontend, using Bootstrap's dark theme for a professional appearance.
 
 ## User Preferences
