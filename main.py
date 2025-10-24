@@ -1934,6 +1934,62 @@ def plans():
     """Plans page - alias for pricing"""
     return redirect(url_for('pricing'))
 
+@app.route('/sitemap.xml')
+def sitemap():
+    """Generate sitemap.xml for search engines"""
+    pages = []
+    
+    # Static pages with priority and changefreq
+    static_pages = [
+        {'loc': url_for('index', _external=True), 'priority': '1.0', 'changefreq': 'daily'},
+        {'loc': url_for('api_docs', _external=True), 'priority': '0.9', 'changefreq': 'weekly'},
+        {'loc': url_for('pricing', _external=True), 'priority': '0.9', 'changefreq': 'weekly'},
+        {'loc': url_for('contact', _external=True), 'priority': '0.7', 'changefreq': 'monthly'},
+        {'loc': url_for('auth.login', _external=True), 'priority': '0.6', 'changefreq': 'monthly'},
+        {'loc': url_for('auth.register', _external=True), 'priority': '0.6', 'changefreq': 'monthly'},
+    ]
+    
+    for page in static_pages:
+        pages.append(page)
+    
+    # Build XML
+    sitemap_xml = ['<?xml version="1.0" encoding="UTF-8"?>']
+    sitemap_xml.append('<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">')
+    
+    for page in pages:
+        sitemap_xml.append('  <url>')
+        sitemap_xml.append(f'    <loc>{page["loc"]}</loc>')
+        sitemap_xml.append(f'    <priority>{page["priority"]}</priority>')
+        sitemap_xml.append(f'    <changefreq>{page["changefreq"]}</changefreq>')
+        sitemap_xml.append('  </url>')
+    
+    sitemap_xml.append('</urlset>')
+    
+    response = Response('\n'.join(sitemap_xml), mimetype='application/xml')
+    return response
+
+@app.route('/robots.txt')
+def robots():
+    """Generate robots.txt for search engine crawlers"""
+    robots_txt = [
+        'User-agent: *',
+        'Allow: /',
+        'Allow: /docs',
+        'Allow: /pricing',
+        'Allow: /contact',
+        'Disallow: /dashboard',
+        'Disallow: /admin',
+        'Disallow: /profile',
+        'Disallow: /api/',
+        'Disallow: /download/',
+        'Disallow: /storage/',
+        '',
+        f'Sitemap: {url_for("sitemap", _external=True)}',
+    ]
+    
+    response = Response('\n'.join(robots_txt), mimetype='text/plain')
+    return response
+
 @app.route('/subscribe-free', methods=['POST'])
 @login_required
 def subscribe_free():
