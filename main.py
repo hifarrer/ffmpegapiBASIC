@@ -2176,15 +2176,17 @@ def safe_update_job_status(job, status, error_message=None):
         except (OperationalError, PendingRollbackError) as db_error:
             logging.warning(f"Database error updating job {job.job_id} status (attempt {attempt + 1}/{max_retries}): {str(db_error)}")
             db.session.rollback()
+            db.session.remove()  # Remove stale connection from pool
             if attempt == max_retries - 1:
                 logging.error(f"Failed to update job {job.job_id} status after {max_retries} attempts")
                 return False
-            # Wait a bit before retrying
+            # Wait a bit before retrying with fresh connection
             import time
-            time.sleep(0.5)
+            time.sleep(1.0)  # Increased wait time for connection recovery
         except Exception as e:
             logging.error(f"Unexpected error updating job {job.job_id} status: {str(e)}")
             db.session.rollback()
+            db.session.remove()
             return False
     return False
 
@@ -2207,15 +2209,17 @@ def safe_set_result_data(job_id, result_data):
         except (OperationalError, PendingRollbackError) as db_error:
             logging.warning(f"Database error setting result data for job {job_id} (attempt {attempt + 1}/{max_retries}): {str(db_error)}")
             db.session.rollback()
+            db.session.remove()  # Remove stale connection from pool
             if attempt == max_retries - 1:
                 logging.error(f"Failed to set result data for job {job_id} after {max_retries} attempts")
                 return False
-            # Wait a bit before retrying
+            # Wait a bit before retrying with fresh connection
             import time
-            time.sleep(0.5)
+            time.sleep(1.0)  # Increased wait time for connection recovery
         except Exception as e:
             logging.error(f"Unexpected error setting result data for job {job_id}: {str(e)}")
             db.session.rollback()
+            db.session.remove()
             return False
     return False
 
@@ -2240,15 +2244,17 @@ def safe_update_job_status_by_id(job_id, status, error_message=None):
         except (OperationalError, PendingRollbackError) as db_error:
             logging.warning(f"Database error updating job {job_id} status (attempt {attempt + 1}/{max_retries}): {str(db_error)}")
             db.session.rollback()
+            db.session.remove()  # Remove stale connection from pool
             if attempt == max_retries - 1:
                 logging.error(f"Failed to update job {job_id} status after {max_retries} attempts")
                 return False
-            # Wait a bit before retrying
+            # Wait a bit before retrying with fresh connection
             import time
-            time.sleep(0.5)
+            time.sleep(1.0)  # Increased wait time for connection recovery
         except Exception as e:
             logging.error(f"Unexpected error updating job {job_id} status: {str(e)}")
             db.session.rollback()
+            db.session.remove()
             return False
     return False
 

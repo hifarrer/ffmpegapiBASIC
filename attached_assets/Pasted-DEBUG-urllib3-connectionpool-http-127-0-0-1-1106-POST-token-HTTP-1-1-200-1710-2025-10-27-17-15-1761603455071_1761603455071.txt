@@ -1,0 +1,56 @@
+DEBUG:urllib3.connectionpool:http://127.0.0.1:1106 "POST /token HTTP/1.1" 200 1710
+2025-10-27 17:15:10.90
+2ff65137
+User
+DEBUG:urllib3.connectionpool:Starting new HTTPS connection (1): storage.googleapis.com:443
+2025-10-27 17:15:10.96
+2ff65137
+User
+DEBUG:urllib3.connectionpool:https://storage.googleapis.com:443 "POST /upload/storage/v1/b/replit-objstore-f5b03aa7-16fd-4875-bde8-f3c7e478bcd7/o?uploadType=resumable HTTP/1.1" 200 0
+2025-10-27 17:15:11.17
+2ff65137
+User
+DEBUG:urllib3.connectionpool:https://storage.googleapis.com:443 "PUT /upload/storage/v1/b/replit-objstore-f5b03aa7-16fd-4875-bde8-f3c7e478bcd7/o?uploadType=resumable&upload_id=AOCedOGspdxugxPuIF3bYGZudrf_2etx1_BWr14iPCBheTU1c0DuYq3xqUDSZVWxMWShAkJ4fD8xrqiU_HWzm0HL8pYirY5Q9ru8V0AH_3kjbo8 HTTP/1.1" 200 1116
+2025-10-27 17:15:11.17
+2ff65137
+User
+INFO:root:Successfully uploaded 710506cd-3829-48d8-90ad-e8a9f6ca6b4c_merged_videos.mp4 to Replit App Storage
+2025-10-27 17:15:11.17
+2ff65137
+User
+INFO:root:File will be accessible at: https://ffmpegapi.net/api/storage/710506cd-3829-48d8-90ad-e8a9f6ca6b4c_merged_videos.mp4
+2025-10-27 17:15:11.17
+2ff65137
+User
+INFO:root:Cleaned up file: /tmp/outputs/710506cd-3829-48d8-90ad-e8a9f6ca6b4c_merged_videos.mp4
+2025-10-27 17:15:11.17
+2ff65137
+User
+WARNING:root:Database error setting result data for job 65d69fbd-6b07-4a1d-8d2d-ebda1102a4d8 (attempt 1/3): (psycopg2.OperationalError) SSL connection has been closed unexpectedly
+2025-10-27 17:15:11.17
+2ff65137
+User
+2025-10-27 17:15:11.17
+2ff65137
+User
+[SQL: SELECT jobs.id AS jobs_id, jobs.job_id AS jobs_job_id, jobs.user_id AS jobs_user_id, jobs.job_type AS jobs_job_type, jobs.status AS jobs_status, jobs.input_data AS jobs_input_data, jobs.result_data AS jobs_result_data, jobs.error_message AS jobs_error_message, jobs.created_at AS jobs_created_at, jobs.updated_at AS jobs_updated_at
+2025-10-27 17:15:11.17
+2ff65137
+User
+FROM jobs
+2025-10-27 17:15:11.17
+2ff65137
+User
+WHERE jobs.job_id = %(job_id_1)s
+2025-10-27 17:15:11.17
+2ff65137
+User
+LIMIT %(param_1)s]
+2025-10-27 17:15:11.17
+2ff65137
+User
+[parameters: {'job_id_1': '65d69fbd-6b07-4a1d-8d2d-ebda1102a4d8', 'param_1': 1}]
+2025-10-27 17:15:11.17
+2ff65137
+User
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
