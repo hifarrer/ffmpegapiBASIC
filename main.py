@@ -420,6 +420,10 @@ def merge_videos_with_ffmpeg(video_paths, output_path, audio_path=None, dimensio
     """Merge multiple videos using FFMPEG"""
     temp_list_path = None
     normalized_videos = []
+    target_width = None
+    target_height = None
+    
+    logging.info(f"merge_videos_with_ffmpeg called with dimensions parameter: {dimensions}")
     
     try:
         # First, normalize all videos to have the same properties
@@ -459,10 +463,12 @@ def merge_videos_with_ffmpeg(video_paths, output_path, audio_path=None, dimensio
                 # Automatically determine target dimensions from first video
                 if i == 0:
                     # Get dimensions of first video to use as target
+                    logging.info(f"Detecting dimensions from first video: {video_path}")
                     success, first_dims = get_video_dimensions(video_path)
                     if not success:
                         return False, f"Could not analyze first video dimensions: {first_dims}"
                     target_width, target_height = first_dims
+                    logging.info(f"Detected dimensions from first video: {first_dims}")
                     logging.info(f"Using target dimensions from first video: {target_width}x{target_height}")
                 
                 # Scale and normalize to ensure consistent dimensions
