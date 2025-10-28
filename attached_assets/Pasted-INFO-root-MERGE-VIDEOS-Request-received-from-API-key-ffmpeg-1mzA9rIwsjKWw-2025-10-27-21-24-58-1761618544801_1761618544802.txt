@@ -1,0 +1,37 @@
+INFO:root:[MERGE_VIDEOS] Request received from API key: ffmpeg_1mzA9rIwsjKWw...
+2025-10-27 21:24:58.86
+93fc5734
+User
+INFO:root:[MERGE_VIDEOS] Headers: {'Host': 'ffmpegapi.net', 'User-Agent': 'axios/1.12.2', 'Content-Length': '432', 'Accept': 'application/json, text/plain, */*', 'Accept-Encoding': 'gzip, compress, deflate, br', 'Content-Type': 'application/json', 'Server-Timing': 'depproxy;dur=1761618297624,pid1req;dur=1761618297667', 'Traceparent': '00-25925502d466d05fff06f8ec60ab4987-6105cbde95a95ec3-01', 'Via': '1.1 google', 'X-Api-Key': 'ffmpeg_1mzA9rIwsjKWwezvotLvkxbkIcSIIEkV', 'X-Cloud-Trace-Context': '25925502d466d05fff06f8ec60ab4987/6991218153416646339;o=1', 'X-Forwarded-For': '54.188.71.94, 34.111.179.208, 35.191.74.169,34.136.134.81', 'X-Forwarded-Host': 'ffmpegapi.net', 'X-Forwarded-Proto': 'https', 'X-Replit-User-Bio': '', 'X-Replit-User-Id': '', 'X-Replit-User-Name': '', 'X-Replit-User-Profile-Image': '', 'X-Replit-User-Roles': '', 'X-Replit-User-Teams': '', 'X-Replit-User-Url': ''}
+2025-10-27 21:24:58.86
+93fc5734
+User
+INFO:root:[MERGE_VIDEOS] JSON data: {'video_urls': ['https://d2p7pge43lyniu.cloudfront.net/output/7a47dcd9-9b95-4719-b75d-5d6d9d1da691-u1_ccfca7d1-bb5c-4938-83ae-ebf653ec4602.mp4', 'https://d2p7pge43lyniu.cloudfront.net/output/9fc00544-163b-4b6d-83eb-ad9054a59793-u1_7bc51bdd-6719-4519-a506-e2eed2308974.mp4'], 'audio_url': 'https://res.cloudinary.com/dqemas8ht/video/upload/v1761618061/podcast-service/audio/audio_1761618061100.mp3', 'dimensions': '1920x1080', 'async': True}
+2025-10-27 21:24:58.86
+93fc5734
+User
+INFO:root:[MERGE_VIDEOS] Form data: {}
+2025-10-27 21:24:59.67
+93fc5734
+User
+INFO:root:Downloading video from: https://d2p7pge43lyniu.cloudfront.net/output/7a47dcd9-9b95-4719-b75d-5d6d9d1da691-u1_ccfca7d1-bb5c-4938-83ae-ebf653ec4602.mp4
+2025-10-27 21:25:00.18
+93fc5734
+User
+INFO:root:Downloading video from: https://d2p7pge43lyniu.cloudfront.net/output/9fc00544-163b-4b6d-83eb-ad9054a59793-u1_7bc51bdd-6719-4519-a506-e2eed2308974.mp4
+2025-10-27 21:25:03.14
+93fc5734
+User
+INFO:root:Downloading video from: https://res.cloudinary.com/dqemas8ht/video/upload/v1761618061/podcast-service/audio/audio_1761618061100.mp3
+2025-10-27 21:25:03.33
+93fc5734
+User
+INFO:root:merge_videos_with_ffmpeg called with dimensions parameter: 1920x1080
+2025-10-27 21:25:03.33
+93fc5734
+User
+INFO:root:Normalizing and scaling video 1 to 1920x1080
+2025-10-27 21:25:41.76
+93fc5734
+User
+INFO:root:Normalizing and scaling video 2 to 1920x1080
