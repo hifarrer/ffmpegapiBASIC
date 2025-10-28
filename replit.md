@@ -55,7 +55,7 @@ Preferred communication style: Simple, everyday language.
 
 **File Processing Pipeline**
 - **Image & Audio Processing**: Client-side file validation, server-side MIME type validation, FFMPEG video creation with image loop and audio sync
-- **Video URL Processing**: URL validation, video downloading from external sources, FFMPEG concatenation with optional audio replacement, aspect ratio validation
+- **Video URL Processing**: URL validation, video downloading from external sources, FFMPEG concatenation with optional audio replacement, aspect ratio validation, intelligent normalization optimization (skips re-encoding when all videos have identical properties for faster processing)
 - **Picture-in-Picture Processing**: Dual video download, FFMPEG overlay composition with customizable positioning and scaling
 - **Subtitle Processing**: ASS subtitle file validation, FFMPEG subtitle burn-in with style preservation
 - **Audio Splitting**: Audio file analysis, duration calculation, FFMPEG segment extraction with MP3 encoding
@@ -63,6 +63,12 @@ Preferred communication style: Simple, everyday language.
 - **Vertical Conversion**: Automatic aspect ratio detection (3:4 vs 9:16), FFMPEG scaling and padding with black bars, optional watermark overlay at top right corner (20% of video width, 20px padding)
 - Temporary file storage during processing with automatic cleanup
 - Comprehensive error handling and progress tracking
+
+**Performance Optimizations**
+- **FFMPEG Encoding Speed**: Uses 'veryfast' preset for 2-3x faster processing while maintaining CRF 23 quality
+- **Intelligent Normalization**: Automatically detects when videos have identical properties (dimensions, framerate, codec, pixel format, audio settings) and skips re-encoding for significantly faster merging
+- **Smart Video Analysis**: Comprehensive video property detection using ffprobe to determine when normalization can be safely skipped
+- **Database Connection Resilience**: Automatic retry mechanism with session cleanup for long-running video processing jobs to handle database connection timeouts gracefully
 
 **Security Measures**
 - File extension and MIME type validation
