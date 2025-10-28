@@ -387,6 +387,98 @@ def get_video_dimensions(video_path):
         logging.error(f"Error getting video dimensions: {str(e)}")
         return False, f"Error analyzing video: {str(e)}"
 
+def get_video_properties(video_path):
+    """Get comprehensive video properties using ffprobe"""
+    try:
+        cmd = [
+            'ffprobe',
+            '-v', 'quiet',
+            '-print_format', 'json',
+            '-show_streams',
+            '-show_format',
+            video_path
+        ]
+        
+        result = subprocess.run(cmd, capture_output=True, text=True, timeout=30)
+        
+        if result.returncode == 0:
+            import json
+            data = json.loads(result.stdout)
+            streams = data.get('streams', [])
+            
+            properties = {
+                'width': None,
+                'height': None,
+                'fps': None,
+                'video_codec': None,
+                'audio_codec': None,
+                'audio_sample_rate': None,
+                'audio_channels': None,
+                'pixel_format': None
+            }
+            
+            # Get video stream properties
+            for stream in streams:
+                if stream.get('codec_type') == 'video':
+                    properties['width'] = stream.get('width')
+                    properties['height'] = stream.get('height')
+                    properties['video_codec'] = stream.get('codec_name')
+                    properties['pixel_format'] = stream.get('pix_fmt')
+                    
+                    # Calculate FPS from r_frame_rate
+                    fps_str = stream.get('r_frame_rate', '0/1')
+                    if '/' in fps_str:
+                        num, den = fps_str.split('/')
+                        if int(den) > 0:
+                            properties['fps'] = round(int(num) / int(den), 2)
+                
+                elif stream.get('codec_type') == 'audio':
+                    properties['audio_codec'] = stream.get('codec_name')
+                    properties['audio_sample_rate'] = stream.get('sample_rate')
+                    properties['audio_channels'] = stream.get('channels')
+            
+            return True, properties
+        
+        return False, "Could not get video properties"
+        
+    except Exception as e:
+        logging.error(f"Error getting video properties: {str(e)}")
+        return False, f"Error analyzing video: {str(e)}"
+
+def check_videos_identical(video_paths):
+    """Check if all videos have identical properties (no normalization needed)"""
+    if len(video_paths) < 2:
+        return True, "Only one video, no comparison needed"
+    
+    all_properties = []
+    
+    # Get properties for all videos
+    for i, video_path in enumerate(video_paths):
+        success, props = get_video_properties(video_path)
+        if not success:
+            return False, f"Could not analyze video {i+1}: {props}"
+        all_properties.append(props)
+        logging.info(f"Video {i+1} properties: {props['width']}x{props['height']}, {props['fps']}fps, codec: {props['video_codec']}, audio: {props['audio_codec']}")
+    
+    # Compare all videos to the first one
+    first_props = all_properties[0]
+    for i, props in enumerate(all_properties[1:], 1):
+        # Check critical properties that require normalization if different
+        if (props['width'] != first_props['width'] or
+            props['height'] != first_props['height'] or
+            props['fps'] != first_props['fps'] or
+            props['video_codec'] != first_props['video_codec'] or
+            props['pixel_format'] != first_props['pixel_format'] or
+            props['audio_codec'] != first_props['audio_codec'] or
+            props['audio_sample_rate'] != first_props['audio_sample_rate'] or
+            props['audio_channels'] != first_props['audio_channels']):
+            
+            logging.info(f"Videos have different properties - normalization required")
+            return False, "Videos have different properties and need normalization"
+    
+    logging.info(f"All videos have identical properties - skipping normalization for faster processing")
+    return True, "All videos are identical"
+
 def check_video_compatibility(video_paths):
     """Check if all videos have compatible dimensions"""
     dimensions = []
@@ -422,87 +514,105 @@ def merge_videos_with_ffmpeg(video_paths, output_path, audio_path=None, dimensio
     normalized_videos = []
     target_width = None
     target_height = None
+    skip_normalization = False
     
     logging.info(f"merge_videos_with_ffmpeg called with dimensions parameter: {dimensions}")
     
     try:
-        # First, normalize all videos to have the same properties
-        # This prevents freezing at transitions
-        for i, video_path in enumerate(video_paths):
-            normalized_path = f"{video_path}_normalized.mp4"
-            
-            # Build normalization command
-            if dimensions:
-                try:
-                    width, height = dimensions.split('x')
-                    width = int(width)
-                    height = int(height)
-                except:
-                    return False, "Invalid dimensions format. Use format like '864x480'"
-                
-                # Scale and normalize
-                normalize_cmd = [
-                    'ffmpeg',
-                    '-i', video_path,
-                    '-vf', f'scale={width}:{height}:force_original_aspect_ratio=decrease,pad={width}:{height}:(ow-iw)/2:(oh-ih)/2,setsar=1,fps=30,format=yuv420p',
-                    '-c:v', 'libx264',
-                    '-c:a', 'aac',
-                    '-ar', '48000',  # Audio sample rate
-                    '-ac', '2',  # Audio channels (stereo)
-                    '-preset', 'veryfast',
-                    '-crf', '23',
-                    '-g', '30',  # Set keyframe interval
-                    '-keyint_min', '30',  # Minimum keyframe interval
-                    '-sc_threshold', '0',  # Disable scene change detection
-                    '-video_track_timescale', '30000',  # Set video timescale
-                    '-y',
-                    normalized_path
-                ]
-                logging.info(f"Normalizing and scaling video {i+1} to {width}x{height}")
+        # Check if videos are identical and we can skip normalization for faster processing
+        if not dimensions:
+            identical, message = check_videos_identical(video_paths)
+            if identical:
+                skip_normalization = True
+                videos_to_merge = video_paths
+                logging.info("Videos are identical - skipping normalization step")
             else:
-                # Automatically determine target dimensions from first video
-                if i == 0:
-                    # Get dimensions of first video to use as target
-                    logging.info(f"Detecting dimensions from first video: {video_path}")
-                    success, first_dims = get_video_dimensions(video_path)
-                    if not success:
-                        return False, f"Could not analyze first video dimensions: {first_dims}"
-                    target_width, target_height = first_dims
-                    logging.info(f"Detected dimensions from first video: {first_dims}")
-                    logging.info(f"Using target dimensions from first video: {target_width}x{target_height}")
-                
-                # Scale and normalize to ensure consistent dimensions
-                normalize_cmd = [
-                    'ffmpeg',
-                    '-i', video_path,
-                    '-vf', f'scale={target_width}:{target_height}:force_original_aspect_ratio=decrease,pad={target_width}:{target_height}:(ow-iw)/2:(oh-ih)/2,setsar=1,fps=30,format=yuv420p',
-                    '-c:v', 'libx264',
-                    '-c:a', 'aac',
-                    '-ar', '48000',  # Audio sample rate
-                    '-ac', '2',  # Audio channels (stereo)
-                    '-preset', 'veryfast',
-                    '-crf', '23',
-                    '-g', '30',  # Set keyframe interval
-                    '-keyint_min', '30',  # Minimum keyframe interval
-                    '-sc_threshold', '0',  # Disable scene change detection
-                    '-video_track_timescale', '30000',  # Set video timescale
-                    '-y',
-                    normalized_path
-                ]
-                logging.info(f"Normalizing and scaling video {i+1} to {target_width}x{target_height}")
-            
-            result = subprocess.run(normalize_cmd, capture_output=True, text=True, timeout=300)
-            
-            if result.returncode != 0:
-                # Cleanup normalized videos
-                for path in normalized_videos:
-                    cleanup_file(path)
-                return False, f"Failed to normalize video {i+1}: {result.stderr}"
-            
-            normalized_videos.append(normalized_path)
+                # Videos have different properties, normalization required
+                logging.info(f"Videos require normalization: {message}")
         
-        # Use normalized videos for concatenation
-        videos_to_merge = normalized_videos
+        # Normalize videos if needed (different properties or custom dimensions requested)
+        if not skip_normalization:
+            # First, normalize all videos to have the same properties
+            # This prevents freezing at transitions
+            for i, video_path in enumerate(video_paths):
+                normalized_path = f"{video_path}_normalized.mp4"
+                
+                # Build normalization command
+                if dimensions:
+                    try:
+                        width, height = dimensions.split('x')
+                        width = int(width)
+                        height = int(height)
+                    except:
+                        return False, "Invalid dimensions format. Use format like '864x480'"
+                    
+                    # Scale and normalize
+                    normalize_cmd = [
+                        'ffmpeg',
+                        '-i', video_path,
+                        '-vf', f'scale={width}:{height}:force_original_aspect_ratio=decrease,pad={width}:{height}:(ow-iw)/2:(oh-ih)/2,setsar=1,fps=30,format=yuv420p',
+                        '-c:v', 'libx264',
+                        '-c:a', 'aac',
+                        '-ar', '48000',  # Audio sample rate
+                        '-ac', '2',  # Audio channels (stereo)
+                        '-preset', 'veryfast',
+                        '-crf', '23',
+                        '-g', '30',  # Set keyframe interval
+                        '-keyint_min', '30',  # Minimum keyframe interval
+                        '-sc_threshold', '0',  # Disable scene change detection
+                        '-video_track_timescale', '30000',  # Set video timescale
+                        '-y',
+                        normalized_path
+                    ]
+                    logging.info(f"Normalizing and scaling video {i+1} to {width}x{height}")
+                else:
+                    # Automatically determine target dimensions from first video
+                    if i == 0:
+                        # Get dimensions of first video to use as target
+                        logging.info(f"Detecting dimensions from first video: {video_path}")
+                        success, first_dims = get_video_dimensions(video_path)
+                        if not success:
+                            return False, f"Could not analyze first video dimensions: {first_dims}"
+                        target_width, target_height = first_dims
+                        logging.info(f"Detected dimensions from first video: {first_dims}")
+                        logging.info(f"Using target dimensions from first video: {target_width}x{target_height}")
+                    
+                    # Scale and normalize to ensure consistent dimensions
+                    normalize_cmd = [
+                        'ffmpeg',
+                        '-i', video_path,
+                        '-vf', f'scale={target_width}:{target_height}:force_original_aspect_ratio=decrease,pad={target_width}:{target_height}:(ow-iw)/2:(oh-ih)/2,setsar=1,fps=30,format=yuv420p',
+                        '-c:v', 'libx264',
+                        '-c:a', 'aac',
+                        '-ar', '48000',  # Audio sample rate
+                        '-ac', '2',  # Audio channels (stereo)
+                        '-preset', 'veryfast',
+                        '-crf', '23',
+                        '-g', '30',  # Set keyframe interval
+                        '-keyint_min', '30',  # Minimum keyframe interval
+                        '-sc_threshold', '0',  # Disable scene change detection
+                        '-video_track_timescale', '30000',  # Set video timescale
+                        '-y',
+                        normalized_path
+                    ]
+                    logging.info(f"Normalizing and scaling video {i+1} to {target_width}x{target_height}")
+                
+                result = subprocess.run(normalize_cmd, capture_output=True, text=True, timeout=300)
+                
+                if result.returncode != 0:
+                    # Cleanup normalized videos
+                    for path in normalized_videos:
+                        cleanup_file(path)
+                    return False, f"Failed to normalize video {i+1}: {result.stderr}"
+                
+                normalized_videos.append(normalized_path)
+            
+            # Use normalized videos for concatenation
+            videos_to_merge = normalized_videos
+        
+        # Safety check: ensure videos_to_merge is defined
+        if 'videos_to_merge' not in locals() or not videos_to_merge:
+            return False, "Internal error: No videos available for merging"
         
         # Use concat filter instead of concat demuxer for better compatibility
         # Build input arguments
