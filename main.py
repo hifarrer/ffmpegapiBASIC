@@ -445,7 +445,7 @@ def merge_videos_with_ffmpeg(video_paths, output_path, audio_path=None, dimensio
                     '-c:a', 'aac',
                     '-ar', '48000',  # Audio sample rate
                     '-ac', '2',  # Audio channels (stereo)
-                    '-preset', 'medium',
+                    '-preset', 'veryfast',
                     '-crf', '23',
                     '-g', '30',  # Set keyframe interval
                     '-keyint_min', '30',  # Minimum keyframe interval
@@ -474,7 +474,7 @@ def merge_videos_with_ffmpeg(video_paths, output_path, audio_path=None, dimensio
                     '-c:a', 'aac',
                     '-ar', '48000',  # Audio sample rate
                     '-ac', '2',  # Audio channels (stereo)
-                    '-preset', 'medium',
+                    '-preset', 'veryfast',
                     '-crf', '23',
                     '-g', '30',  # Set keyframe interval
                     '-keyint_min', '30',  # Minimum keyframe interval
@@ -533,7 +533,7 @@ def merge_videos_with_ffmpeg(video_paths, output_path, audio_path=None, dimensio
                     '-map', f'{num_videos}:a:0',  # Use only external audio
                     '-c:v', 'libx264',
                     '-c:a', 'aac',
-                    '-preset', 'medium',
+                    '-preset', 'veryfast',
                     '-crf', '23',
                     '-b:a', '192k',
                     '-y',
@@ -552,7 +552,7 @@ def merge_videos_with_ffmpeg(video_paths, output_path, audio_path=None, dimensio
                     '-map', f'{num_videos}:a',
                     '-c:v', 'libx264',
                     '-c:a', 'aac',
-                    '-preset', 'medium',
+                    '-preset', 'veryfast',
                     '-crf', '23',
                     '-b:a', '192k',
                     '-y',
@@ -584,7 +584,7 @@ def merge_videos_with_ffmpeg(video_paths, output_path, audio_path=None, dimensio
                     '-map', '[outa]',
                     '-c:v', 'libx264',
                     '-c:a', 'aac',
-                    '-preset', 'medium',
+                    '-preset', 'veryfast',
                     '-crf', '23',
                     '-y',
                     output_path
@@ -599,7 +599,7 @@ def merge_videos_with_ffmpeg(video_paths, output_path, audio_path=None, dimensio
                     '-filter_complex', filter_complex,
                     '-map', '[outv]',
                     '-c:v', 'libx264',
-                    '-preset', 'medium',
+                    '-preset', 'veryfast',
                     '-crf', '23',
                     '-y',
                     output_path
@@ -687,7 +687,7 @@ def merge_videos_filter_complex(video_paths, output_path, audio_path=None):
                 '-map', f'{num_videos}:a',  # Map the custom audio file
                 '-c:v', 'libx264',
                 '-c:a', 'aac',
-                '-preset', 'medium',
+                '-preset', 'veryfast',
                 '-crf', '23',
                 '-g', '30',
                 '-keyint_min', '30',
@@ -706,7 +706,7 @@ def merge_videos_filter_complex(video_paths, output_path, audio_path=None):
                 '-map', '[outa]',
                 '-c:v', 'libx264',
                 '-c:a', 'aac',
-                '-preset', 'medium',
+                '-preset', 'veryfast',
                 '-crf', '23',
                 '-g', '30',
                 '-keyint_min', '30',
@@ -759,7 +759,7 @@ def merge_videos_filter_complex(video_paths, output_path, audio_path=None):
                     '-i', temp_list_path,
                     '-c:v', 'libx264',
                     '-c:a', 'aac',
-                    '-preset', 'fast',
+                    '-preset', 'veryfast',
                     '-y',
                     output_path
                 ]
@@ -815,7 +815,7 @@ def create_picture_in_picture_with_ffmpeg(main_video_path, pip_video_path, outpu
             '-i', pip_video_path,    # Input 1: pip video
             '-filter_complex', f'[1]scale={scale}[pip];[0][pip]overlay={overlay_position}:eof_action=pass',
             '-c:v', 'libx264',
-            '-preset', 'fast',
+            '-preset', 'veryfast',
             '-y'
         ]
         
