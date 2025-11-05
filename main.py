@@ -2050,6 +2050,45 @@ def plans():
     """Plans page - alias for pricing"""
     return redirect(url_for('pricing'))
 
+@app.route('/blog')
+def blog():
+    """Blog listing page"""
+    # Define blog articles (could be moved to database in the future)
+    articles = [
+        {
+            'slug': 'ffmpeg-api-guide',
+            'title': 'Complete Guide to FFMPEG API: Video Processing Made Simple',
+            'description': 'Discover how FFMPEG API simplifies video merging, audio processing, subtitle addition, and format conversion with easy-to-use REST endpoints.',
+            'date': 'November 2025',
+            'author': 'FFMPEG API Team',
+            'image': 'https://images.unsplash.com/photo-1536240478700-b869070f9279?w=800',
+            'keywords': 'ffmpeg api, video processing api, video merger api, audio processing, subtitle api'
+        }
+    ]
+    return render_template('blog.html', articles=articles)
+
+@app.route('/blog/<slug>')
+def blog_article(slug):
+    """Individual blog article page"""
+    # Define articles (could be moved to database in the future)
+    articles = {
+        'ffmpeg-api-guide': {
+            'title': 'Complete Guide to FFMPEG API: Video Processing Made Simple',
+            'description': 'Discover how FFMPEG API simplifies video merging, audio processing, subtitle addition, and format conversion with easy-to-use REST endpoints.',
+            'date': 'November 2025',
+            'author': 'FFMPEG API Team',
+            'image': 'https://images.unsplash.com/photo-1536240478700-b869070f9279?w=800',
+            'keywords': 'ffmpeg api, video processing api, video merger api, audio processing, subtitle api, ffmpeg rest api, video api service',
+            'content_file': 'blog_ffmpeg_api_guide.html'
+        }
+    }
+    
+    article = articles.get(slug)
+    if not article:
+        return render_template('404.html'), 404
+    
+    return render_template('blog_article.html', article=article)
+
 @app.route('/sitemap.xml')
 def sitemap():
     """Generate sitemap.xml for search engines"""

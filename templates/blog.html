@@ -1,0 +1,132 @@
+{% extends "base.html" %}
+
+{% block title %}Blog - FFMPEG API | Video Processing Insights & Guides{% endblock %}
+
+{% block extra_css %}
+<style>
+    .blog-card {
+        transition: transform 0.2s;
+        height: 100%;
+    }
+    .blog-card:hover {
+        transform: translateY(-5px);
+    }
+    .blog-img {
+        height: 200px;
+        object-fit: cover;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- SEO Meta Tags -->
+<meta name="description" content="Explore FFMPEG API blog for video processing guides, tutorials, and best practices. Learn about video merging, audio processing, and API integration.">
+<meta name="keywords" content="ffmpeg api blog, video processing guides, video merger tutorials, ffmpeg rest api, video api documentation">
+<link rel="canonical" href="https://ffmpegapi.net/blog">
+
+<!-- Open Graph Tags -->
+<meta property="og:title" content="Blog - FFMPEG API | Video Processing Insights & Guides">
+<meta property="og:description" content="Explore FFMPEG API blog for video processing guides, tutorials, and best practices.">
+<meta property="og:url" content="https://ffmpegapi.net/blog">
+<meta property="og:type" content="website">
+<meta property="og:image" content="https://images.unsplash.com/photo-1536240478700-b869070f9279?w=1200">
+
+<!-- Twitter Card Tags -->
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Blog - FFMPEG API | Video Processing Insights & Guides">
+<meta name="twitter:description" content="Explore FFMPEG API blog for video processing guides, tutorials, and best practices.">
+<meta name="twitter:image" content="https://images.unsplash.com/photo-1536240478700-b869070f9279?w=1200">
+
+<div class="container py-5">
+    <!-- Hero Section -->
+    <div class="text-center mb-5">
+        <h1 class="display-4 fw-bold mb-3">
+            <i class="fas fa-blog me-3"></i>FFMPEG API Blog
+        </h1>
+        <p class="lead text-muted">
+            Video Processing Guides, Tutorials & Best Practices
+        </p>
+    </div>
+
+    <!-- Articles Grid -->
+    <div class="row g-4">
+        {% for article in articles %}
+        <div class="col-md-6 col-lg-4">
+            <div class="card blog-card h-100 shadow">
+                <img src="{{ article.image }}" class="card-img-top blog-img" alt="{{ article.title }}">
+                <div class="card-body d-flex flex-column">
+                    <h5 class="card-title">{{ article.title }}</h5>
+                    <p class="card-text text-muted flex-grow-1">{{ article.description }}</p>
+                    <div class="mt-3">
+                        <small class="text-muted">
+                            <i class="fas fa-calendar me-2"></i>{{ article.date }}
+                            <i class="fas fa-user ms-3 me-2"></i>{{ article.author }}
+                        </small>
+                    </div>
+                    <a href="{{ url_for('blog_article', slug=article.slug) }}" class="btn btn-primary mt-3">
+                        Read More <i class="fas fa-arrow-right ms-2"></i>
+                    </a>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+
+    <!-- SEO Content Section -->
+    <div class="row mt-5">
+        <div class="col-lg-10 mx-auto">
+            <div class="card bg-dark">
+                <div class="card-body">
+                    <h2 class="h4 mb-3">Why FFMPEG API?</h2>
+                    <p class="text-muted">
+                        Our blog provides comprehensive guides and tutorials on video processing using FFMPEG API. 
+                        Learn how to merge videos, process audio, add subtitles, and convert video formats programmatically. 
+                        Perfect for developers building video applications, content management systems, and media processing pipelines.
+                    </p>
+                    <div class="d-flex flex-wrap gap-2 mt-3">
+                        <span class="badge bg-primary">Video Merging</span>
+                        <span class="badge bg-primary">Audio Processing</span>
+                        <span class="badge bg-primary">Subtitle Integration</span>
+                        <span class="badge bg-primary">Format Conversion</span>
+                        <span class="badge bg-primary">REST API</span>
+                        <span class="badge bg-primary">Video Automation</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Schema.org Markup for SEO -->
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "Blog",
+  "name": "FFMPEG API Blog",
+  "description": "Video processing guides, tutorials and best practices using FFMPEG API",
+  "url": "https://ffmpegapi.net/blog",
+  "publisher": {
+    "@type": "Organization",
+    "name": "FFMPEG API",
+    "url": "https://ffmpegapi.net"
+  },
+  "blogPost": [
+    {% for article in articles %}
+    {
+      "@type": "BlogPosting",
+      "headline": "{{ article.title }}",
+      "description": "{{ article.description }}",
+      "url": "https://ffmpegapi.net/blog/{{ article.slug }}",
+      "datePublished": "2025-11-01",
+      "author": {
+        "@type": "Organization",
+        "name": "{{ article.author }}"
+      },
+      "image": "{{ article.image }}",
+      "keywords": "{{ article.keywords }}"
+    }{% if not loop.last %},{% endif %}
+    {% endfor %}
+  ]
+}
+</script>
+{% endblock %}
