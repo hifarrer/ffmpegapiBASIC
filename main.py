@@ -2056,6 +2056,15 @@ def blog():
     # Define blog articles (could be moved to database in the future)
     articles = [
         {
+            'slug': 'best-tools-vibe-coding-2025',
+            'title': 'Best Tools for Vibe Coding 2025: AI-Powered Developer Workflow',
+            'description': 'Explore the best vibe coding tools in 2025 including Cursor, Claude, GitHub Copilot, and FFMPEG API for building modern applications faster.',
+            'date': 'November 2025',
+            'author': 'FFMPEG API Team',
+            'image': '',
+            'keywords': 'vibe coding, cursor ai, claude ai, github copilot, ai coding tools 2025, developer tools'
+        },
+        {
             'slug': 'best-video-editor-api-2025',
             'title': 'Best Video Editor API 2025: Top Features for Developers',
             'description': 'Discover the best video editor API of 2025 with powerful features like video merging, picture-in-picture, subtitle burning, and vertical video conversion for mobile platforms.',
@@ -2081,6 +2090,15 @@ def blog_article(slug):
     """Individual blog article page"""
     # Define articles (could be moved to database in the future)
     articles = {
+        'best-tools-vibe-coding-2025': {
+            'title': 'Best Tools for Vibe Coding 2025: AI-Powered Developer Workflow',
+            'description': 'Explore the best vibe coding tools in 2025 including Cursor, Claude, GitHub Copilot, and FFMPEG API for building modern applications faster.',
+            'date': 'November 2025',
+            'author': 'FFMPEG API Team',
+            'image': '',
+            'keywords': 'vibe coding, vibe coding tools, cursor ai, claude ai, github copilot, ai coding tools 2025, developer tools, ai pair programming, code assistant, developer productivity tools, best coding tools 2025',
+            'content_file': 'blog_vibe_coding_tools.html'
+        },
         'best-video-editor-api-2025': {
             'title': 'Best Video Editor API 2025: Top Features for Developers',
             'description': 'Discover the best video editor API of 2025 with powerful features like video merging, picture-in-picture, subtitle burning, and vertical video conversion for mobile platforms.',
@@ -2118,6 +2136,7 @@ def sitemap():
         {'loc': url_for('api_docs', _external=True), 'priority': '0.9', 'changefreq': 'weekly'},
         {'loc': url_for('pricing', _external=True), 'priority': '0.9', 'changefreq': 'weekly'},
         {'loc': url_for('blog', _external=True), 'priority': '0.8', 'changefreq': 'weekly'},
+        {'loc': url_for('blog_article', slug='best-tools-vibe-coding-2025', _external=True), 'priority': '0.8', 'changefreq': 'monthly'},
         {'loc': url_for('blog_article', slug='best-video-editor-api-2025', _external=True), 'priority': '0.8', 'changefreq': 'monthly'},
         {'loc': url_for('blog_article', slug='ffmpeg-api-guide', _external=True), 'priority': '0.8', 'changefreq': 'monthly'},
         {'loc': url_for('contact', _external=True), 'priority': '0.7', 'changefreq': 'monthly'},
