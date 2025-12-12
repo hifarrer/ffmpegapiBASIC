@@ -97,8 +97,8 @@ app.register_blueprint(auth, url_prefix='/auth')
 from admin_routes import admin_bp
 app.register_blueprint(admin_bp)
 
-# Register Stripe blueprint
-app.register_blueprint(stripe_bp)
+# Register Stripe blueprint with /api prefix to match Stripe webhook URL
+app.register_blueprint(stripe_bp, url_prefix='/api/stripe')
 
 # Create tables and default data
 with app.app_context():

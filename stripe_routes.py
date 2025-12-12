@@ -5,7 +5,7 @@ from datetime import datetime, timedelta
 from models import db, User, SubscriptionPlan, StripeSettings, UserSubscription
 from flask_login import login_required, current_user
 
-stripe_bp = Blueprint('stripe', __name__, url_prefix='/stripe')
+stripe_bp = Blueprint('stripe', __name__)
 
 def get_stripe_config():
     """Get current Stripe configuration"""
