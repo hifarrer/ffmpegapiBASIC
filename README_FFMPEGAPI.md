@@ -325,6 +325,63 @@ curl -X POST "https://ffmpegapi.net/api/split_audio" \
 
 ---
 
+### 5b. Split Audio by Segments
+
+**Endpoint:** `POST /api/split_audio_segments`
+
+**Description:** Splits an audio file into segments of a specified duration. Unlike the standard split audio endpoint which divides into equal parts, this endpoint creates segments of a fixed duration. For example, a 66-second audio with `segment_duration` of 10 seconds will produce 6 segments of 10 seconds each and 1 final segment of 6 seconds.
+
+**Request Body:**
+```json
+{
+  "audio_url": "https://example.com/podcast.mp3",
+  "segment_duration": 10,
+  "async": false
+}
+```
+
+**Parameters:**
+- `audio_url` (required): URL of the audio file to split
+- `segment_duration` (required): Duration of each segment in seconds (1-3600). Default is 30 seconds.
+- `async` (optional): Set to `true` for asynchronous processing
+
+**curl Example:**
+```bash
+curl -X POST "https://ffmpegapi.net/api/split_audio_segments" \
+  -H "X-API-Key: your_api_key_here" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "audio_url": "https://example.com/long_podcast.mp3",
+    "segment_duration": 10
+  }'
+```
+
+**Success Response:**
+```json
+{
+  "success": true,
+  "message": "Audio successfully split into 7 segments",
+  "segment_duration": 10,
+  "total_segments": 7,
+  "segments": [
+    {
+      "segment": "segment_01.mp3",
+      "download_url": "https://ffmpegapi.net/download/abc123/segment_01.mp3"
+    },
+    {
+      "segment": "segment_02.mp3",
+      "download_url": "https://ffmpegapi.net/download/abc123/segment_02.mp3"
+    },
+    {
+      "segment": "segment_03.mp3",
+      "download_url": "https://ffmpegapi.net/download/abc123/segment_03.mp3"
+    }
+  ]
+}
+```
+
+---
+
 ### 6. Trim Audio
 
 **Endpoint:** `POST /api/trim_audio`
