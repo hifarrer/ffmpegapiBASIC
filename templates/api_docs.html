@@ -115,6 +115,7 @@
                                 <a class="toc-link ms-3" href="#picture-in-picture">Picture in Picture</a>
                                 <a class="toc-link ms-3" href="#add-subtitles">Add Subtitles</a>
                                 <a class="toc-link ms-3" href="#split-audio">Split Audio</a>
+                                <a class="toc-link ms-3" href="#split-audio-segments">Split Audio by Segments</a>
                                 <a class="toc-link ms-3" href="#trim-audio">Trim Audio</a>
                                 <a class="toc-link ms-3" href="#convert-to-vertical">Convert to Vertical</a>
                                 <a class="toc-link ms-3" href="#job-status">Job Status</a>
@@ -816,6 +817,121 @@
   -d '{
     "audio_url": "https://example.com/long_audio.mp3",
     "parts": 8,
+    "async": true
+  }'</code></pre>
+                                </div>
+
+                                <div class="code-block p-3">
+                                    <pre><code class="language-json">{
+  "success": true,
+  "job_id": "550e8400-e29b-41d4-a716-446655440000",
+  "status": "pending",
+  "message": "Job submitted for async processing. Use /api/job/{job_id}/status to check progress.",
+  "status_url": "https://ffmpegapi.net/api/job/550e8400-e29b-41d4-a716-446655440000/status"
+}</code></pre>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Split Audio by Segments -->
+                    <div id="split-audio-segments" class="api-endpoint">
+                        <div class="card">
+                            <div class="card-header">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <h4 class="mb-0">Split Audio by Segments</h4>
+                                    <span class="method-badge method-post">POST</span>
+                                </div>
+                                <code class="text-muted">/api/split_audio_segments</code>
+                            </div>
+                            <div class="card-body">
+                                <p>Split an audio file into segments of a specified duration. Unlike the standard split audio endpoint which divides into equal parts, this endpoint creates segments of a fixed duration. For example, a 66-second audio with <code>segment_duration</code> of 10 seconds will produce 6 segments of 10 seconds each and 1 final segment of 6 seconds.</p>
+                                
+                                <h6>Request Format</h6>
+                                <p><strong>Content-Type:</strong> <code>application/json</code></p>
+                                
+                                <h6>Parameters</h6>
+                                <div class="table-responsive">
+                                    <table class="table table-sm">
+                                        <thead>
+                                            <tr>
+                                                <th>Parameter</th>
+                                                <th>Type</th>
+                                                <th>Required</th>
+                                                <th>Description</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <tr>
+                                                <td><code>audio_url</code></td>
+                                                <td>String</td>
+                                                <td>Yes</td>
+                                                <td>URL of the audio file to split (MP3, WAV, AAC, etc.)</td>
+                                            </tr>
+                                            <tr>
+                                                <td><code>segment_duration</code></td>
+                                                <td>Number</td>
+                                                <td>Yes</td>
+                                                <td>Duration of each segment in seconds (1-3600). Default: 30</td>
+                                            </tr>
+                                            <tr>
+                                                <td><code>async</code></td>
+                                                <td>Boolean</td>
+                                                <td>No</td>
+                                                <td>Process asynchronously (default: false)</td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+
+                                <h6>Request Example</h6>
+                                <div class="code-block p-3">
+                                    <pre><code class="language-bash">curl -X POST "https://ffmpegapi.net/api/split_audio_segments" \
+  -H "Content-Type: application/json" \
+  -H "X-API-Key: your_api_key_here" \
+  -d '{
+    "audio_url": "https://example.com/audio.mp3",
+    "segment_duration": 10
+  }'</code></pre>
+                                </div>
+
+                                <h6>Response Example</h6>
+                                <div class="code-block p-3">
+                                    <pre><code class="language-json">{
+  "success": true,
+  "message": "Audio successfully split into 7 segments",
+  "segment_duration": 10,
+  "total_segments": 7,
+  "segments": [
+    {
+      "segment": "segment_01.mp3",
+      "download_url": "https://ffmpegapi.net/download/uuid/segment_01.mp3"
+    },
+    {
+      "segment": "segment_02.mp3", 
+      "download_url": "https://ffmpegapi.net/download/uuid/segment_02.mp3"
+    },
+    {
+      "segment": "segment_03.mp3",
+      "download_url": "https://ffmpegapi.net/download/uuid/segment_03.mp3"
+    }
+  ]
+}</code></pre>
+                                </div>
+
+                                <div class="alert alert-info">
+                                    <i class="fas fa-info-circle me-2"></i>
+                                    <strong>Note:</strong> The last segment may be shorter than the specified duration if the audio length is not evenly divisible by the segment duration. For example, a 66-second audio with 10-second segments will have 6 full segments and 1 segment of 6 seconds.
+                                </div>
+
+                                <h6>Async Processing Example</h6>
+                                <div class="code-block p-3">
+                                    <pre><code class="language-bash">curl -X POST "https://ffmpegapi.net/api/split_audio_segments" \
+  -H "Content-Type: application/json" \
+  -H "X-API-Key: your_api_key_here" \
+  -d '{
+    "audio_url": "https://example.com/long_audio.mp3",
+    "segment_duration": 30,
     "async": true
   }'</code></pre>
                                 </div>
