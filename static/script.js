@@ -7,6 +7,7 @@ class VideoMerger {
         this.initializePipTab();
         this.initializeSubtitlesTab();
         this.initializeSplitAudioTab();
+        this.initializeSplitAudioSegmentsTab();
         this.initializeTrimAudioTab();
         this.initializeConvertVerticalTab();
     }
@@ -974,6 +975,164 @@ class VideoMerger {
 
     hideSplitAudioResult() {
         this.splitAudioResultContainer.style.display = 'none';
+    }
+
+    // Split Audio by Segments Tab Methods
+    initializeSplitAudioSegmentsTab() {
+        this.splitAudioSegmentsForm = document.getElementById('splitAudioSegmentsForm');
+        this.splitAudioSegmentsSubmitBtn = document.getElementById('splitAudioSegmentsSubmitBtn');
+        this.splitAudioSegmentsProgressContainer = document.getElementById('splitAudioSegmentsProgressContainer');
+        this.splitAudioSegmentsAlertContainer = document.getElementById('splitAudioSegmentsAlertContainer');
+        this.splitAudioSegmentsResultContainer = document.getElementById('splitAudioSegmentsResultContainer');
+        this.splitAudioSegmentsResetBtn = document.getElementById('splitAudioSegmentsResetBtn');
+        this.splitAudioSegmentsParts = [];
+
+        // Event listeners for Split Audio by Segments tab
+        this.splitAudioSegmentsForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            this.handleSplitAudioSegmentsSubmit();
+        });
+
+        document.getElementById('segmentAudioUrl').addEventListener('input', () => {
+            this.validateSplitAudioSegmentsForm();
+        });
+
+        document.getElementById('segmentDuration').addEventListener('input', () => {
+            this.validateSplitAudioSegmentsForm();
+        });
+
+        const downloadAllBtn = document.getElementById('splitAudioSegmentsDownloadAllBtn');
+        if (downloadAllBtn) {
+            downloadAllBtn.addEventListener('click', () => {
+                this.downloadAllAudioSegments();
+            });
+        }
+
+        this.splitAudioSegmentsResetBtn.addEventListener('click', () => {
+            this.resetSplitAudioSegmentsForm();
+        });
+
+        // Initial validation
+        this.validateSplitAudioSegmentsForm();
+    }
+
+    validateSplitAudioSegmentsForm() {
+        const audioUrl = document.getElementById('segmentAudioUrl').value;
+        const segmentDuration = document.getElementById('segmentDuration').value;
+        
+        const isValidUrl = this.isValidUrl(audioUrl);
+        const isValidDuration = segmentDuration >= 1 && segmentDuration <= 3600;
+        
+        this.splitAudioSegmentsSubmitBtn.disabled = !isValidUrl || !isValidDuration;
+    }
+
+    async handleSplitAudioSegmentsSubmit() {
+        this.showSplitAudioSegmentsProgress();
+        this.hideSplitAudioSegmentsAlert();
+        this.hideSplitAudioSegmentsResult();
+
+        const formData = new FormData(this.splitAudioSegmentsForm);
+        const data = {
+            audio_url: formData.get('audio_url'),
+            segment_duration: parseFloat(formData.get('segment_duration'))
+        };
+
+        try {
+            const response = await fetch('/api/split_audio_segments', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-API-Key': window.API_KEY
+                },
+                body: JSON.stringify(data)
+            });
+
+            const result = await response.json();
+            this.hideSplitAudioSegmentsProgress();
+
+            if (result.success) {
+                this.splitAudioSegmentsParts = result.segments;
+                document.getElementById('splitSegmentsCount').textContent = result.total_segments;
+                document.getElementById('splitSegmentDuration').textContent = result.segment_duration;
+                this.displaySplitAudioSegments(result.segments);
+                this.showSplitAudioSegmentsResult();
+                this.showSplitAudioSegmentsAlert('success', `Audio successfully split into ${result.total_segments} segments!`);
+            } else {
+                this.showSplitAudioSegmentsAlert('danger', `Error: ${result.error}`);
+            }
+        } catch (error) {
+            this.hideSplitAudioSegmentsProgress();
+            this.showSplitAudioSegmentsAlert('danger', `Network error: ${error.message}`);
+        }
+    }
+
+    displaySplitAudioSegments(segments) {
+        const container = document.getElementById('splitAudioSegmentsParts');
+        container.innerHTML = segments.map((segment, index) => `
+            <div class="d-flex align-items-center justify-content-between border rounded p-2 mb-2">
+                <div>
+                    <strong>Segment ${index + 1}:</strong> ${segment.segment}
+                </div>
+                <a href="${segment.download_url}" class="btn btn-sm btn-outline-success" download>
+                    <i class="fas fa-download me-1"></i>Download
+                </a>
+            </div>
+        `).join('');
+    }
+
+    downloadAllAudioSegments() {
+        this.splitAudioSegmentsParts.forEach((segment, index) => {
+            setTimeout(() => {
+                const link = document.createElement('a');
+                link.href = segment.download_url;
+                link.download = segment.segment;
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+            }, index * 500);
+        });
+    }
+
+    resetSplitAudioSegmentsForm() {
+        this.splitAudioSegmentsForm.reset();
+        document.getElementById('segmentDuration').value = 30;
+        this.hideSplitAudioSegmentsProgress();
+        this.hideSplitAudioSegmentsAlert();
+        this.hideSplitAudioSegmentsResult();
+        this.splitAudioSegmentsParts = [];
+        this.validateSplitAudioSegmentsForm();
+    }
+
+    showSplitAudioSegmentsProgress() {
+        this.splitAudioSegmentsProgressContainer.style.display = 'block';
+        this.splitAudioSegmentsSubmitBtn.disabled = true;
+    }
+
+    hideSplitAudioSegmentsProgress() {
+        this.splitAudioSegmentsProgressContainer.style.display = 'none';
+        this.splitAudioSegmentsSubmitBtn.disabled = false;
+    }
+
+    showSplitAudioSegmentsAlert(type, message) {
+        this.splitAudioSegmentsAlertContainer.innerHTML = `
+            <div class="alert alert-${type} alert-dismissible fade show" role="alert">
+                <i class="fas fa-${this.getAlertIcon(type)} me-2"></i>
+                ${message}
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+        `;
+    }
+
+    hideSplitAudioSegmentsAlert() {
+        this.splitAudioSegmentsAlertContainer.innerHTML = '';
+    }
+
+    showSplitAudioSegmentsResult() {
+        this.splitAudioSegmentsResultContainer.style.display = 'block';
+    }
+
+    hideSplitAudioSegmentsResult() {
+        this.splitAudioSegmentsResultContainer.style.display = 'none';
     }
 
     // Trim Audio Tab Methods

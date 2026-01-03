@@ -606,6 +606,98 @@
                         </div>
                     </div>
 
+                    <!-- Split Audio by Segments Accordion Item -->
+                    <div class="accordion-item">
+                        <h2 class="accordion-header" id="splitAudioSegmentsHeading">
+                            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" 
+                                    data-bs-target="#splitAudioSegmentsCollapse" aria-expanded="false" aria-controls="splitAudioSegmentsCollapse">
+                                <i class="fas fa-clock me-2"></i>
+                                Split Audio by Segments
+                            </button>
+                        </h2>
+                        <div id="splitAudioSegmentsCollapse" class="accordion-collapse collapse" 
+                             aria-labelledby="splitAudioSegmentsHeading" data-bs-parent="#videoProcessingAccordion">
+                            <div class="accordion-body">
+                                <p class="text-muted mb-4">
+                                    <i class="fas fa-info-circle me-1"></i>
+                                    Split audio into segments of a fixed duration. For example, a 66-second audio with 10-second segments will produce 6 segments of 10 seconds and 1 final segment of 6 seconds.
+                                </p>
+                                <form id="splitAudioSegmentsForm">
+                                    <div class="row">
+                                        <div class="col-md-8 mb-4">
+                                            <label for="segmentAudioUrl" class="form-label">
+                                                <i class="fas fa-music me-2"></i>
+                                                Audio File URL
+                                            </label>
+                                            <input type="url" class="form-control" id="segmentAudioUrl" name="audio_url" 
+                                                   placeholder="https://example.com/audio.mp3" required>
+                                            <div class="form-text">URL of the audio file to split (MP3, WAV, AAC, etc.)</div>
+                                        </div>
+                                        <div class="col-md-4 mb-4">
+                                            <label for="segmentDuration" class="form-label">
+                                                <i class="fas fa-clock me-2"></i>
+                                                Segment Duration (seconds)
+                                            </label>
+                                            <input type="number" class="form-control" id="segmentDuration" name="segment_duration" 
+                                                   value="30" min="1" max="3600" step="0.1" required>
+                                            <div class="form-text">Duration of each segment (1-3600 seconds)</div>
+                                        </div>
+                                    </div>
+
+                                    <div class="d-grid">
+                                        <button type="submit" class="btn btn-primary btn-lg" id="splitAudioSegmentsSubmitBtn">
+                                            <i class="fas fa-clock me-2"></i>
+                                            Split Audio by Segments
+                                        </button>
+                                    </div>
+                                </form>
+
+                                <!-- Progress Bar -->
+                                <div id="splitAudioSegmentsProgressContainer" class="mt-4" style="display: none;">
+                                    <div class="d-flex align-items-center mb-2">
+                                        <div class="spinner-border spinner-border-sm me-2" role="status">
+                                            <span class="visually-hidden">Loading...</span>
+                                        </div>
+                                        <span>Downloading and splitting audio into segments...</span>
+                                    </div>
+                                    <div class="progress">
+                                        <div class="progress-bar progress-bar-striped progress-bar-animated" 
+                                             role="progressbar" style="width: 100%"></div>
+                                    </div>
+                                </div>
+
+                                <!-- Alert Messages -->
+                                <div id="splitAudioSegmentsAlertContainer" class="mt-4"></div>
+
+                                <!-- Results -->
+                                <div id="splitAudioSegmentsResultContainer" class="mt-4" style="display: none;">
+                                    <div class="card">
+                                        <div class="card-header">
+                                            <h5 class="card-title mb-0">
+                                                <i class="fas fa-check-circle text-success me-2"></i>
+                                                Audio Split Successfully
+                                            </h5>
+                                        </div>
+                                        <div class="card-body">
+                                            <p class="card-text">Your audio has been split into <span id="splitSegmentsCount"></span> segments of <span id="splitSegmentDuration"></span> seconds each.</p>
+                                            <div id="splitAudioSegmentsParts" class="mb-3"></div>
+                                            <div class="d-flex gap-2 flex-wrap">
+                                                <button id="splitAudioSegmentsDownloadAllBtn" class="btn btn-success">
+                                                    <i class="fas fa-download me-2"></i>
+                                                    Download All Segments
+                                                </button>
+                                                <button id="splitAudioSegmentsResetBtn" class="btn btn-outline-primary">
+                                                    <i class="fas fa-plus me-2"></i>
+                                                    Split Another Audio
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
                     <!-- Add Subtitles Accordion Item -->
                     <div class="accordion-item">
                         <h2 class="accordion-header" id="subtitlesHeading">
