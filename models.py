@@ -74,10 +74,21 @@ class ApiKey(db.Model):
     usage_count = db.Column(db.Integer, default=0)
     
     def mark_used(self):
-        """Mark this API key as used"""
-        self.last_used = datetime.utcnow()
-        self.usage_count += 1
-        db.session.commit()
+        """Mark this API key as used with retry logic for stale connections"""
+        from sqlalchemy.exc import OperationalError
+        max_retries = 3
+        for attempt in range(max_retries):
+            try:
+                self.last_used = datetime.utcnow()
+                self.usage_count += 1
+                db.session.commit()
+                return
+            except OperationalError as e:
+                db.session.rollback()
+                if attempt < max_retries - 1:
+                    db.session.remove()
+                    continue
+                raise e
     
     def __repr__(self):
         return f'<ApiKey {self.name}>'

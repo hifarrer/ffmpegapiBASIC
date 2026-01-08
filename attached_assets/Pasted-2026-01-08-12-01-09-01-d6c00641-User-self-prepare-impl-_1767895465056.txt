@@ -1,0 +1,152 @@
+2026-01-08 12:01:09.01
+d6c00641
+User
+self._prepare_impl()
+2026-01-08 12:01:09.01
+d6c00641
+User
+^^^^^^^^^^^^^^^^^^^^^^^
+2026-01-08 12:01:09.01
+d6c00641
+User
+return self._proxied.commit()
+2026-01-08 12:01:09.01
+d6c00641
+User
+File "/home/runner/workspace/.pythonlibs/lib/python3.11/site-packages/sqlalchemy/orm/session.py", line 2032, in commit
+2026-01-08 12:01:09.01
+d6c00641
+User
+response = self.full_dispatch_request()
+2026-01-08 12:01:09.01
+d6c00641
+User
+ret_value = fn(self, *arg, **kw)
+2026-01-08 12:01:09.01
+d6c00641
+User
+rv = self.dispatch_request()
+2026-01-08 12:01:09.01
+d6c00641
+User
+File "/home/runner/workspace/.pythonlibs/lib/python3.11/site-packages/sqlalchemy/engine/default.py", line 951, in do_execute
+2026-01-08 12:01:09.01
+d6c00641
+User
+psycopg2.OperationalError: SSL connection has been closed unexpectedly
+2026-01-08 12:01:09.01
+d6c00641
+User
+key_record.mark_used()
+2026-01-08 12:01:09.01
+d6c00641
+User
+File "/home/runner/workspace/.pythonlibs/lib/python3.11/site-packages/sqlalchemy/orm/scoping.py", line 599, in commit
+2026-01-08 12:01:09.01
+d6c00641
+User
+^^^^^^^^^^^^^^^^^^^^
+2026-01-08 12:01:09.01
+d6c00641
+User
+_emit_update_statements(
+2026-01-08 12:01:09.01
+d6c00641
+User
+Traceback (most recent call last):
+2026-01-08 12:01:09.01
+d6c00641
+User
+File "/home/runner/workspace/.pythonlibs/lib/python3.11/site-packages/sqlalchemy/engine/base.py", line 1967, in _exec_single_context
+2026-01-08 12:01:09.01
+d6c00641
+User
+File "/home/runner/workspace/models.py", line 80, in mark_used
+2026-01-08 12:01:09.01
+d6c00641
+User
+File "/home/runner/workspace/.pythonlibs/lib/python3.11/site-packages/sqlalchemy/orm/state_changes.py", line 137, in _go
+2026-01-08 12:01:09.01
+d6c00641
+User
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+2026-01-08 12:01:09.01
+d6c00641
+User
+ERROR:main:Exception on /api/merge_videos [POST]
+2026-01-08 12:01:09.01
+d6c00641
+User
+File "/home/runner/workspace/.pythonlibs/lib/python3.11/site-packages/sqlalchemy/orm/persistence.py", line 85, in save_obj
+2026-01-08 12:01:09.01
+d6c00641
+User
+File "", line 2, in commit
+2026-01-08 12:01:09.01
+d6c00641
+User
+File "/home/runner/workspace/.pythonlibs/lib/python3.11/site-packages/sqlalchemy/orm/session.py", line 1313, in commit
+2026-01-08 12:01:09.01
+d6c00641
+User
+File "/home/runner/workspace/.pythonlibs/lib/python3.11/site-packages/flask/app.py", line 902, in dispatch_request
+2026-01-08 12:01:09.01
+d6c00641
+User
+self._flush(objects)
+2026-01-08 12:01:09.01
+d6c00641
+User
+File "/home/runner/workspace/.pythonlibs/lib/python3.11/site-packages/sqlalchemy/orm/unitofwork.py", line 642, in execute
+2026-01-08 12:01:09.01
+d6c00641
+User
+File "/home/runner/workspace/main.py", line 192, in decorated_function
+2026-01-08 12:01:09.01
+d6c00641
+User
+^^^^^^^^^^^^^^^^^^^^
+2026-01-08 12:01:09.01
+d6c00641
+User
+raise exc_value.with_traceback(exc_tb)
+2026-01-08 12:01:09.01
+d6c00641
+User
+File "/home/runner/workspace/.pythonlibs/lib/python3.11/site-packages/sqlalchemy/orm/unitofwork.py", line 466, in execute
+2026-01-08 12:01:09.01
+d6c00641
+User
+self.dialect.do_execute(
+2026-01-08 12:01:09.01
+d6c00641
+User
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+2026-01-08 12:01:09.01
+d6c00641
+User
+File "/home/runner/workspace/.pythonlibs/lib/python3.11/site-packages/sqlalchemy/orm/session.py", line 1288, in _prepare_impl
+2026-01-08 12:01:09.01
+d6c00641
+User
+util.preloaded.orm_persistence.save_obj(
+2026-01-08 12:01:09.01
+d6c00641
+User
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+2026-01-08 12:01:09.01
+d6c00641
+User
+File "/home/runner/workspace/.pythonlibs/lib/python3.11/site-packages/sqlalchemy/util/langhelpers.py", line 224, in __exit__
+2026-01-08 12:01:09.01
+d6c00641
+User
+The above exception was the direct cause of the following exception:
+2026-01-08 12:01:09.01
+d6c00641
+User
+File "/home/runner/workspace/.pythonlibs/lib/python3.11/site-packages/flask/app.py", line 917, in full_dispatch_request
+2026-01-08 12:01:09.01
+d6c00641
+User
+^^^^^^^^^^^^^^^^^^^^^^
