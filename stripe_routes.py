@@ -257,7 +257,9 @@ def stripe_webhook():
     
     # Handle the event
     try:
-        if event['type'] == 'customer.subscription.created':
+        if event['type'] == 'checkout.session.completed':
+            handle_checkout_session_completed(event['data']['object'])
+        elif event['type'] == 'customer.subscription.created':
             handle_subscription_created(event['data']['object'])
         elif event['type'] == 'customer.subscription.updated':
             handle_subscription_updated(event['data']['object'])
@@ -276,14 +278,210 @@ def stripe_webhook():
     
     return jsonify({'status': 'success'})
 
+def find_plan_by_price_id(price_id):
+    """Look up SubscriptionPlan by Stripe price ID (monthly or yearly)"""
+    if not price_id:
+        return None, None
+    
+    plan = SubscriptionPlan.query.filter(
+        (SubscriptionPlan.stripe_monthly_price_id == price_id) |
+        (SubscriptionPlan.stripe_yearly_price_id == price_id)
+    ).first()
+    
+    if plan:
+        billing_cycle = 'yearly' if plan.stripe_yearly_price_id == price_id else 'monthly'
+        return plan, billing_cycle
+    return None, None
+
+def get_price_id_from_subscription(subscription):
+    """Extract the price ID from a Stripe subscription object"""
+    try:
+        items = subscription.get('items', {}).get('data', [])
+        if items:
+            return items[0].get('price', {}).get('id')
+    except Exception as e:
+        logging.error(f"Error extracting price ID from subscription: {e}")
+    return None
+
+def handle_checkout_session_completed(session):
+    """Handle checkout.session.completed webhook - PRIMARY handler for plan upgrades"""
+    logging.info(f"Checkout session completed: {session['id']}")
+    
+    # Only process subscription mode checkouts
+    if session.get('mode') != 'subscription':
+        logging.info(f"Skipping non-subscription checkout: {session['id']}")
+        return
+    
+    # Check payment status
+    if session.get('payment_status') != 'paid':
+        logging.warning(f"Checkout session {session['id']} not paid yet: {session.get('payment_status')}")
+        return
+    
+    subscription_id = session.get('subscription')
+    if not subscription_id:
+        logging.error(f"No subscription ID in checkout session: {session['id']}")
+        return
+    
+    # Retrieve full subscription details from Stripe
+    settings = StripeSettings.get_settings()
+    if settings and settings.secret_key:
+        stripe.api_key = settings.secret_key
+    
+    try:
+        subscription = stripe.Subscription.retrieve(subscription_id)
+    except Exception as e:
+        logging.error(f"Failed to retrieve subscription {subscription_id}: {e}")
+        return
+    
+    # Get metadata from checkout session
+    metadata = session.get('metadata', {})
+    user_id = metadata.get('user_id')
+    plan_id = metadata.get('plan_id')
+    billing_cycle = metadata.get('billing_cycle', 'monthly')
+    
+    # Fallback: derive plan from subscription price_id if metadata is missing
+    if not plan_id:
+        price_id = get_price_id_from_subscription(subscription)
+        plan, derived_billing_cycle = find_plan_by_price_id(price_id)
+        if plan:
+            plan_id = plan.id
+            billing_cycle = derived_billing_cycle
+            logging.info(f"Derived plan_id={plan_id} and billing_cycle={billing_cycle} from price_id={price_id}")
+        else:
+            logging.error(f"Could not determine plan from session or subscription. Price ID: {price_id}")
+            return
+    
+    # If user_id missing from metadata, try to find via customer email
+    if not user_id:
+        customer_id = session.get('customer')
+        if customer_id:
+            try:
+                customer = stripe.Customer.retrieve(customer_id)
+                customer_email = customer.get('email')
+                if customer_email:
+                    user = User.query.filter_by(email=customer_email).first()
+                    if user:
+                        user_id = user.id
+                        logging.info(f"Derived user_id={user_id} from customer email={customer_email}")
+            except Exception as e:
+                logging.error(f"Failed to lookup user from customer: {e}")
+    
+    if not user_id:
+        logging.error(f"Could not determine user_id for checkout session: {session['id']}")
+        return
+    
+    try:
+        user_id = int(user_id)
+        plan_id = int(plan_id)
+    except (ValueError, TypeError) as e:
+        logging.error(f"Invalid user_id or plan_id format: {e}")
+        return
+    
+    # Check if this subscription already exists (idempotency)
+    existing_by_stripe_id = UserSubscription.query.filter_by(
+        stripe_subscription_id=subscription.id
+    ).first()
+    
+    if existing_by_stripe_id:
+        # Already processed, just update
+        user_subscription = existing_by_stripe_id
+        logging.info(f"Subscription {subscription.id} already exists, updating")
+    else:
+        # Find by user_id or create new
+        user_subscription = UserSubscription.query.filter_by(user_id=user_id).first()
+        if not user_subscription:
+            user_subscription = UserSubscription()
+            user_subscription.user_id = user_id
+            db.session.add(user_subscription)
+            logging.info(f"Created new subscription record for user {user_id}")
+        else:
+            logging.info(f"Updating existing subscription record for user {user_id}")
+    
+    # Update subscription details
+    user_subscription.plan_id = plan_id
+    user_subscription.stripe_subscription_id = subscription.id
+    user_subscription.stripe_customer_id = str(session.get('customer', subscription.customer))
+    user_subscription.status = str(subscription.status)
+    user_subscription.billing_cycle = billing_cycle
+    user_subscription.current_period_start = datetime.fromtimestamp(int(subscription.get('current_period_start', 0)))
+    user_subscription.current_period_end = datetime.fromtimestamp(int(subscription.get('current_period_end', 0)))
+    user_subscription.api_calls_used = 0  # Reset usage for new plan
+    
+    db.session.commit()
+    logging.info(f"Successfully upgraded user {user_id} to plan {plan_id} via webhook")
+
 def handle_subscription_created(subscription):
-    """Handle subscription created webhook"""
+    """Handle subscription created webhook - BACKUP handler if checkout.session.completed fails"""
     logging.info(f"Subscription created: {subscription['id']}")
-    # Subscription is usually handled in the success callback
-    # This is mainly for logging and backup handling
+    
+    # Check if this subscription already exists in our database
+    existing = UserSubscription.query.filter_by(
+        stripe_subscription_id=subscription['id']
+    ).first()
+    
+    if existing:
+        logging.info(f"Subscription {subscription['id']} already exists, skipping")
+        return
+    
+    # Try to find user by customer ID
+    customer_id = subscription.get('customer')
+    if not customer_id:
+        logging.warning(f"No customer ID in subscription: {subscription['id']}")
+        return
+    
+    # Derive plan and billing_cycle from subscription price
+    price_id = get_price_id_from_subscription(subscription)
+    plan, billing_cycle = find_plan_by_price_id(price_id)
+    
+    if not plan:
+        logging.warning(f"Could not determine plan from price_id {price_id} for subscription {subscription['id']}")
+    
+    # Look up user by stripe_customer_id in existing subscriptions
+    user_subscription = UserSubscription.query.filter_by(
+        stripe_customer_id=customer_id
+    ).first()
+    
+    # If not found by customer ID, try to find user via Stripe customer email
+    if not user_subscription:
+        settings = StripeSettings.get_settings()
+        if settings and settings.secret_key:
+            stripe.api_key = settings.secret_key
+        try:
+            customer = stripe.Customer.retrieve(customer_id)
+            customer_email = customer.get('email')
+            if customer_email:
+                user = User.query.filter_by(email=customer_email).first()
+                if user:
+                    # Create new subscription record for this user
+                    user_subscription = UserSubscription()
+                    user_subscription.user_id = user.id
+                    user_subscription.stripe_customer_id = customer_id
+                    db.session.add(user_subscription)
+                    logging.info(f"Created new subscription record for user {user.id} via customer email")
+        except Exception as e:
+            logging.error(f"Failed to lookup customer {customer_id}: {e}")
+    
+    if user_subscription:
+        # Update subscription with all details including plan
+        user_subscription.stripe_subscription_id = subscription['id']
+        user_subscription.status = str(subscription.get('status', 'active'))
+        user_subscription.current_period_start = datetime.fromtimestamp(int(subscription.get('current_period_start', 0)))
+        user_subscription.current_period_end = datetime.fromtimestamp(int(subscription.get('current_period_end', 0)))
+        
+        # Set plan_id and billing_cycle if we successfully derived them
+        if plan:
+            user_subscription.plan_id = plan.id
+            user_subscription.billing_cycle = billing_cycle
+            user_subscription.api_calls_used = 0  # Reset usage for new plan
+            logging.info(f"Set plan_id={plan.id} and billing_cycle={billing_cycle} for subscription")
+        
+        db.session.commit()
+        logging.info(f"Updated subscription for customer {customer_id}")
+    else:
+        logging.warning(f"Could not find user for customer {customer_id} - subscription may need manual review")
 
 def handle_subscription_updated(subscription):
-    """Handle subscription updated webhook"""
+    """Handle subscription updated webhook - also handles plan changes"""
     user_subscription = UserSubscription.query.filter_by(
         stripe_subscription_id=subscription['id']
     ).first()
@@ -292,6 +490,17 @@ def handle_subscription_updated(subscription):
         user_subscription.status = str(subscription['status'])
         user_subscription.current_period_start = datetime.fromtimestamp(int(subscription.get('current_period_start', 0)))
         user_subscription.current_period_end = datetime.fromtimestamp(int(subscription.get('current_period_end', 0)))
+        
+        # Check if plan changed (e.g., user upgraded/downgraded via Stripe portal)
+        price_id = get_price_id_from_subscription(subscription)
+        if price_id:
+            plan, billing_cycle = find_plan_by_price_id(price_id)
+            if plan and user_subscription.plan_id != plan.id:
+                logging.info(f"Plan change detected: {user_subscription.plan_id} -> {plan.id}")
+                user_subscription.plan_id = plan.id
+                user_subscription.billing_cycle = billing_cycle
+                user_subscription.api_calls_used = 0  # Reset usage for new plan
+        
         db.session.commit()
         logging.info(f"Updated subscription {subscription['id']} status to {subscription['status']}")
 
