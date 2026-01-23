@@ -39,6 +39,9 @@ app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 app.config["SQLALCHEMY_ENGINE_OPTIONS"] = {
     'pool_pre_ping': True,
     "pool_recycle": 300,
+    "pool_size": 10,
+    "max_overflow": 20,
+    "pool_timeout": 60,
 }
 
 # URL building configuration for async jobs
@@ -2589,6 +2592,10 @@ def process_job_async(job_id):
         except Exception as e:
             logging.error(f"Error processing job {job_id}: {str(e)}")
             safe_update_job_status_by_id(job_id, 'failed', str(e))
+        finally:
+            # Always release the database connection back to the pool
+            # This is critical for background threads to prevent pool exhaustion
+            db.session.remove()
 
 def process_merge_image_audio_job(job, input_data):
     """Process merge_image_audio job"""
