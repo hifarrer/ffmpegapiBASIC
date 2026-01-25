@@ -167,6 +167,7 @@ def check_video_compatibility(video_paths):
 
 def merge_videos_with_ffmpeg(video_paths, output_path, audio_path=None):
     """Merge multiple videos using FFMPEG"""
+    temp_list_path = None
     try:
         # First, let's try the simple concat approach
         temp_list_path = f"{output_path}.txt"
@@ -195,7 +196,7 @@ def merge_videos_with_ffmpeg(video_paths, output_path, audio_path=None):
             ]
             
             logging.info(f"Running FFMPEG concat command: {' '.join(temp_cmd)}")
-            result = subprocess.run(temp_cmd, capture_output=True, text=True, timeout=600)
+            result = subprocess.run(temp_cmd, capture_output=True, text=True, timeout=1800)  # 30 minutes for large videos
             
             if result.returncode != 0:
                 # If concat fails, try the filter_complex approach
@@ -237,7 +238,7 @@ def merge_videos_with_ffmpeg(video_paths, output_path, audio_path=None):
             ]
             
             logging.info(f"Running FFMPEG concat command: {' '.join(cmd)}")
-            result = subprocess.run(cmd, capture_output=True, text=True, timeout=600)
+            result = subprocess.run(cmd, capture_output=True, text=True, timeout=1800)  # 30 minutes for large videos
             
             if result.returncode != 0:
                 # If concat fails, try the filter_complex approach
@@ -256,11 +257,13 @@ def merge_videos_with_ffmpeg(video_paths, output_path, audio_path=None):
             
     except subprocess.TimeoutExpired:
         logging.error("Video merge processing timed out")
-        cleanup_file(temp_list_path)
+        if temp_list_path:
+            cleanup_file(temp_list_path)
         return False, "Video merge processing timed out"
     except Exception as e:
         logging.error(f"Video merge processing error: {str(e)}")
-        cleanup_file(temp_list_path)
+        if temp_list_path:
+            cleanup_file(temp_list_path)
         return False, f"Video merge error: {str(e)}"
 
 def merge_videos_filter_complex(video_paths, output_path, audio_path=None):
@@ -316,7 +319,7 @@ def merge_videos_filter_complex(video_paths, output_path, audio_path=None):
             ]
         
         logging.info(f"Running FFMPEG filter_complex command: {' '.join(cmd)}")
-        result = subprocess.run(cmd, capture_output=True, text=True, timeout=900)  # Longer timeout for complex processing
+        result = subprocess.run(cmd, capture_output=True, text=True, timeout=1800)  # 30 minutes for large/high-res videos
         
         if result.returncode == 0:
             logging.info("Video merge with filter_complex completed successfully")
@@ -421,8 +424,8 @@ def merge_image_audio():
 
         # Generate unique filenames
         unique_id = str(uuid.uuid4())
-        image_filename = f"{unique_id}_{secure_filename(image_file.filename)}"
-        audio_filename = f"{unique_id}_{secure_filename(audio_file.filename)}"
+        image_filename = f"{unique_id}_{secure_filename(image_file.filename or 'image')}"
+        audio_filename = f"{unique_id}_{secure_filename(audio_file.filename or 'audio')}"
         output_filename = f"{unique_id}_output.mp4"
 
         # Save uploaded files
@@ -541,7 +544,7 @@ def merge_videos():
             
             # Handle optional audio file
             if audio_file:
-                audio_filename = f"{unique_id}_{secure_filename(audio_file.filename)}"
+                audio_filename = f"{unique_id}_{secure_filename(audio_file.filename or 'audio')}"
                 audio_path = os.path.join(UPLOAD_FOLDER, audio_filename)
                 audio_file.save(audio_path)
                 temp_files_to_cleanup.append(audio_path)
