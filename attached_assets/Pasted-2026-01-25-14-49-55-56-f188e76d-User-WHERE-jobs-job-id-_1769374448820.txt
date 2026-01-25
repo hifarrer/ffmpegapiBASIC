@@ -1,0 +1,116 @@
+2026-01-25 14:49:55.56
+f188e76d
+User
+WHERE jobs.job_id = %(job_id_1)s
+2026-01-25 14:49:55.56
+f188e76d
+User
+WARNING:root:Database error updating job 3f16b218-1286-4f8f-8c4b-7809b41dadae status (attempt 1/3): (psycopg2.OperationalError) SSL connection has been closed unexpectedly
+2026-01-25 14:49:59.61
+f188e76d
+User
+INFO:root:Successfully updated job b7424505-7151-40db-ad78-09aef7bb846e status to failed
+2026-01-25 14:49:59.80
+f188e76d
+User
+INFO:root:Cleaned up file: /tmp/uploads/4e4f60b2-6731-460c-8e97-b164ea580085_video_1.mp4
+2026-01-25 14:49:59.80
+f188e76d
+User
+INFO:root:Cleaned up file: /tmp/uploads/4e4f60b2-6731-460c-8e97-b164ea580085_video_0.mp4
+2026-01-25 14:49:59.80
+f188e76d
+User
+ERROR:root:Video merge processing timed out
+2026-01-25 14:49:59.85
+f188e76d
+User
+INFO:root:Cleaned up file: /tmp/uploads/4e4f60b2-6731-460c-8e97-b164ea580085_video_2.mp4
+2026-01-25 14:49:59.85
+f188e76d
+User
+LIMIT %(param_1)s]
+2026-01-25 14:49:59.85
+f188e76d
+User
+WARNING:root:Database error updating job 99fa8f7c-be9b-46c9-a0d6-cca456adc93f status (attempt 1/3): (psycopg2.OperationalError) SSL connection has been closed unexpectedly
+2026-01-25 14:49:59.85
+f188e76d
+User
+[parameters: {'job_id_1': '99fa8f7c-be9b-46c9-a0d6-cca456adc93f', 'param_1': 1}]
+2026-01-25 14:49:59.85
+f188e76d
+User
+INFO:root:Cleaned up file: /tmp/uploads/4e4f60b2-6731-460c-8e97-b164ea580085_audio.mp3
+2026-01-25 14:49:59.85
+f188e76d
+User
+WHERE jobs.job_id = %(job_id_1)s
+2026-01-25 14:49:59.85
+f188e76d
+User
+FROM jobs
+2026-01-25 14:49:59.85
+f188e76d
+User
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+2026-01-25 14:49:59.85
+f188e76d
+User
+[SQL: SELECT jobs.id AS jobs_id, jobs.job_id AS jobs_job_id, jobs.user_id AS jobs_user_id, jobs.job_type AS jobs_job_type, jobs.status AS jobs_status, jobs.input_data AS jobs_input_data, jobs.result_data AS jobs_result_data, jobs.error_message AS jobs_error_message, jobs.created_at AS jobs_created_at, jobs.updated_at AS jobs_updated_at
+2026-01-25 14:50:01.10
+f188e76d
+User
+INFO:root:Successfully updated job 99fa8f7c-be9b-46c9-a0d6-cca456adc93f status to failed
+2026-01-25 14:50:02.58
+f188e76d
+User
+ERROR:root:Video merge processing timed out
+2026-01-25 14:50:02.58
+f188e76d
+User
+INFO:root:Cleaned up file: /tmp/uploads/3686a5a3-56b5-47dd-be2a-637d090f9e11_video_0.mp4
+2026-01-25 14:50:02.59
+f188e76d
+User
+INFO:root:Cleaned up file: /tmp/uploads/3686a5a3-56b5-47dd-be2a-637d090f9e11_video_1.mp4
+2026-01-25 14:50:02.63
+f188e76d
+User
+INFO:root:Cleaned up file: /tmp/uploads/3686a5a3-56b5-47dd-be2a-637d090f9e11_video_2.mp4
+2026-01-25 14:50:02.63
+f188e76d
+User
+INFO:root:Cleaned up file: /tmp/uploads/3686a5a3-56b5-47dd-be2a-637d090f9e11_audio.mp3
+2026-01-25 14:50:02.66
+f188e76d
+User
+WHERE jobs.job_id = %(job_id_1)s
+2026-01-25 14:50:02.66
+f188e76d
+User
+WARNING:root:Database error updating job 790c9f3f-9a48-4954-bc0b-36cd1d840dc8 status (attempt 1/3): (psycopg2.OperationalError) SSL connection has been closed unexpectedly
+2026-01-25 14:50:02.66
+f188e76d
+User
+FROM jobs
+2026-01-25 14:50:02.66
+f188e76d
+User
+LIMIT %(param_1)s]
+2026-01-25 14:50:02.66
+f188e76d
+User
+[parameters: {'job_id_1': '790c9f3f-9a48-4954-bc0b-36cd1d840dc8', 'param_1': 1}]
+2026-01-25 14:50:02.66
+f188e76d
+User
+[SQL: SELECT jobs.id AS jobs_id, jobs.job_id AS jobs_job_id, jobs.user_id AS jobs_user_id, jobs.job_type AS jobs_job_type, jobs.status AS jobs_status, jobs.input_data AS jobs_input_data, jobs.result_data AS jobs_result_data, jobs.error_message AS jobs_error_message, jobs.created_at AS jobs_created_at, jobs.updated_at AS jobs_updated_at
+2026-01-25 14:50:02.66
+f188e76d
+User
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+2026-01-25 14:50:03.90
+f188e76d
+User
+INFO:root:Successfully updated job 790c9f3f-9a48-4954-bc0b-36cd1d840dc8 status to failed
