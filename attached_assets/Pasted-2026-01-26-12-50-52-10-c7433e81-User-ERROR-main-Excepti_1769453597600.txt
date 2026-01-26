@@ -1,0 +1,112 @@
+2026-01-26 12:50:52.10
+c7433e81
+User
+ERROR:main:Exception on /api/merge_videos [POST]
+2026-01-26 12:50:52.10
+c7433e81
+User
+^^^^^^^^^^^^^^^^^^^
+2026-01-26 12:50:52.10
+c7433e81
+User
+File "/home/runner/workspace/.pythonlibs/lib/python3.11/site-packages/sqlalchemy/orm/session.py", line 1189, in _connection_for_bind
+2026-01-26 12:50:52.10
+c7433e81
+User
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+2026-01-26 12:50:52.10
+c7433e81
+User
+File "/home/runner/workspace/.pythonlibs/lib/python3.11/site-packages/sqlalchemy/engine/base.py", line 3301, in raw_connection
+2026-01-26 12:50:52.10
+c7433e81
+User
+return self.limit(1)._iter().first() # type: ignore
+2026-01-26 12:50:52.10
+c7433e81
+User
+File "/home/runner/workspace/.pythonlibs/lib/python3.11/site-packages/sqlalchemy/engine/base.py", line 3277, in connect
+2026-01-26 12:50:52.10
+c7433e81
+User
+^^^^^^^^^^^^^^
+2026-01-26 12:50:52.10
+c7433e81
+User
+File "/home/runner/workspace/.pythonlibs/lib/python3.11/site-packages/sqlalchemy/orm/session.py", line 2241, in _execute_internal
+2026-01-26 12:50:52.10
+c7433e81
+User
+conn = self._connection_for_bind(bind)
+2026-01-26 12:50:52.10
+c7433e81
+User
+return self.pool.connect()
+2026-01-26 12:50:52.10
+c7433e81
+User
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+2026-01-26 12:50:52.10
+c7433e81
+User
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+2026-01-26 12:50:52.10
+c7433e81
+User
+File "/home/runner/workspace/.pythonlibs/lib/python3.11/site-packages/flask/app.py", line 917, in full_dispatch_request
+2026-01-26 12:50:52.10
+c7433e81
+User
+raise exc.TimeoutError(
+2026-01-26 12:50:52.10
+c7433e81
+User
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+2026-01-26 12:50:52.10
+c7433e81
+User
+Traceback (most recent call last):
+2026-01-26 12:50:52.10
+c7433e81
+User
+File "/home/runner/workspace/.pythonlibs/lib/python3.11/site-packages/flask/app.py", line 902, in dispatch_request
+2026-01-26 12:50:52.10
+c7433e81
+User
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+2026-01-26 12:50:52.10
+c7433e81
+User
+File "/home/runner/workspace/.pythonlibs/lib/python3.11/site-packages/sqlalchemy/pool/base.py", line 711, in checkout
+2026-01-26 12:50:52.10
+c7433e81
+User
+File "/home/runner/workspace/.pythonlibs/lib/python3.11/site-packages/sqlalchemy/engine/base.py", line 143, in __init__
+2026-01-26 12:50:52.10
+c7433e81
+User
+File "/home/runner/workspace/.pythonlibs/lib/python3.11/site-packages/flask/app.py", line 919, in full_dispatch_request
+2026-01-26 12:50:52.10
+c7433e81
+User
+ret_value = fn(self, *arg, **kw)
+2026-01-26 12:50:52.10
+c7433e81
+User
+File "", line 2, in _connection_for_bind
+2026-01-26 12:50:52.10
+c7433e81
+User
+File "/home/runner/workspace/.pythonlibs/lib/python3.11/site-packages/sqlalchemy/orm/state_changes.py", line 137, in _go
+2026-01-26 12:50:54.13
+c7433e81
+User
+INFO:root:Normalizing and scaling video 3 to 854x480
+2026-01-26 12:50:56.08
+c7433e81
+User
+INFO:root:Running FFMPEG concat filter command: ffmpeg -i /tmp/uploads/46508450-1373-4e3c-9671-f28c8f5cc217_video_0.mp4_normalized.mp4 -i /tmp/uploads/46508450-1373-4e3c-9671-f28c8f5cc217_video_1.mp4_normalized.mp4 -i /tmp/uploads/46508450-1373-4e3c-9671-f28c8f5cc217_video_2.mp4_normalized.mp4 -i /tmp/uploads/46508450-1373-4e3c-9671-f28c8f5cc217_audio.mp3 -filter_complex [0:v:0][1:v:0][2:v:0]concat=n=3:v=1:a=0[outv] -map [outv] -map 3:a:0 -c:v libx264 -c:a aac -preset veryfast -crf 23 -b:a 192k -y /tmp/outputs/46508450-1373-4e3c-9671-f28c8f5cc217_merged_videos.mp4
+2026-01-26 12:51:00.11
+c7433e81
+User
+INFO:root:Running FFMPEG concat filter command: ffmpeg -i /tmp/uploads/d23f0736-c6c2-4ab9-b316-4f853a90591d_video_0.mp4_normalized.mp4 -i /tmp/uploads/d23f0736-c6c2-4ab9-b316-4f853a90591d_video_1.mp4_normalized.mp4 -i /tmp/uploads/d23f0736-c6c2-4ab9-b316-4f853a90591d_video_2.mp4_normalized.mp4 -i /tmp/uploads/d23f0736-c6c2-4ab9-b316-4f853a90591d_audio.mp3 -filter_complex [0:v:0][1:v:0][2:v:0]concat=n=3:v=1:a=0[outv] -map [outv] -map 3:a:0 -c:v libx264 -c:a aac -preset veryfast -crf 23 -b:a 192k -y /tmp/outputs/d23f0736-c6c2-4ab9-b316-4f853a90591d_merged_videos.mp4

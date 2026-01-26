@@ -39,9 +39,9 @@ app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 app.config["SQLALCHEMY_ENGINE_OPTIONS"] = {
     'pool_pre_ping': True,
     "pool_recycle": 300,
-    "pool_size": 10,
-    "max_overflow": 20,
-    "pool_timeout": 60,
+    "pool_size": 20,  # Increased for concurrent video processing
+    "max_overflow": 40,  # Increased for burst traffic
+    "pool_timeout": 120,  # Increased to handle connection pool exhaustion
 }
 
 # URL building configuration for async jobs
@@ -1536,6 +1536,9 @@ def merge_image_audio():
         os.makedirs(OUTPUT_FOLDER, exist_ok=True)
         logging.info(f"Output path: {output_path}")
 
+        # Release database connection before long FFMPEG processing to prevent pool exhaustion
+        db.session.close()
+        
         # Create video using FFMPEG
         success, message = create_video_with_ffmpeg(image_path, audio_path, output_path)
         
@@ -1764,6 +1767,9 @@ def merge_videos():
             output_filename = f"{request_id}_merged_videos.mp4"
             output_path = os.path.join(OUTPUT_FOLDER, output_filename)
             
+            # Release database connection before long FFMPEG processing to prevent pool exhaustion
+            db.session.close()
+            
             # Merge videos using FFMPEG
             success, message = merge_videos_with_ffmpeg(downloaded_videos, output_path, audio_path, dimensions)
             
@@ -1990,6 +1996,9 @@ def picture_in_picture():
         # Generate output filename
         output_filename = f"{request_id}_pip_output.mp4"
         output_path = os.path.join(OUTPUT_FOLDER, output_filename)
+        
+        # Release database connection before long FFMPEG processing to prevent pool exhaustion
+        db.session.close()
         
         # Create picture-in-picture video using FFMPEG
         success, message = create_picture_in_picture_with_ffmpeg(
@@ -2879,6 +2888,9 @@ def process_picture_in_picture_job(job, input_data):
         # Generate output filename
         output_filename = f"{request_id}_pip_output.mp4"
         output_path = os.path.join(OUTPUT_FOLDER, output_filename)
+        
+        # Release database connection before long FFMPEG processing to prevent pool exhaustion
+        db.session.close()
         
         # Create picture-in-picture video using FFMPEG
         success, message = create_picture_in_picture_with_ffmpeg(
