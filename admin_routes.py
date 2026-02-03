@@ -4,7 +4,7 @@ from werkzeug.security import check_password_hash, generate_password_hash
 from functools import wraps
 import logging
 from datetime import datetime, timedelta
-from models import User, ApiKey, SubscriptionPlan, StripeSettings, UserSubscription, SiteSettings, db
+from models import User, ApiKey, SubscriptionPlan, StripeSettings, UserSubscription, SiteSettings, ApiLog, db
 import os
 
 admin_bp = Blueprint('admin', __name__, url_prefix='/admin')
@@ -582,3 +582,120 @@ def subscriptions_management():
         return render_template('admin/subscriptions.html', 
                              subscriptions=None, 
                              stats={})
+
+@admin_bp.route('/api-logs')
+@admin_required
+def api_logs():
+    """API request logs page"""
+    try:
+        page = request.args.get('page', 1, type=int)
+        per_page = 50
+        
+        # Filter parameters
+        username_filter = request.args.get('username', '').strip()
+        endpoint_filter = request.args.get('endpoint', '').strip()
+        status_filter = request.args.get('status', '')
+        date_from = request.args.get('date_from', '')
+        date_to = request.args.get('date_to', '')
+        
+        # Build query
+        query = ApiLog.query
+        
+        if username_filter:
+            query = query.filter(ApiLog.username.ilike(f'%{username_filter}%'))
+        
+        if endpoint_filter:
+            query = query.filter(ApiLog.endpoint.ilike(f'%{endpoint_filter}%'))
+        
+        if status_filter:
+            if status_filter == 'success':
+                query = query.filter(ApiLog.status_code < 400)
+            elif status_filter == 'error':
+                query = query.filter(ApiLog.status_code >= 400)
+        
+        if date_from:
+            try:
+                from_date = datetime.strptime(date_from, '%Y-%m-%d')
+                query = query.filter(ApiLog.created_at >= from_date)
+            except ValueError:
+                pass
+        
+        if date_to:
+            try:
+                to_date = datetime.strptime(date_to, '%Y-%m-%d') + timedelta(days=1)
+                query = query.filter(ApiLog.created_at < to_date)
+            except ValueError:
+                pass
+        
+        # Get paginated results
+        logs = query.order_by(ApiLog.created_at.desc()).paginate(
+            page=page, per_page=per_page, error_out=False
+        )
+        
+        # Get statistics
+        stats = {
+            'total_requests': ApiLog.query.count(),
+            'successful_requests': ApiLog.query.filter(ApiLog.status_code < 400).count(),
+            'failed_requests': ApiLog.query.filter(ApiLog.status_code >= 400).count(),
+            'today_requests': ApiLog.query.filter(
+                ApiLog.created_at >= datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
+            ).count()
+        }
+        
+        # Get unique endpoints for filter dropdown
+        endpoints = db.session.query(ApiLog.endpoint).distinct().order_by(ApiLog.endpoint).all()
+        unique_endpoints = [e[0] for e in endpoints]
+        
+        return render_template('admin/api_logs.html', 
+                             logs=logs, 
+                             stats=stats,
+                             unique_endpoints=unique_endpoints,
+                             filters={
+                                 'username': username_filter,
+                                 'endpoint': endpoint_filter,
+                                 'status': status_filter,
+                                 'date_from': date_from,
+                                 'date_to': date_to
+                             })
+        
+    except Exception as e:
+        logging.error(f"Error loading API logs: {str(e)}")
+        flash('Error loading API logs', 'danger')
+        return render_template('admin/api_logs.html', 
+                             logs=None, 
+                             stats={},
+                             unique_endpoints=[],
+                             filters={})
+
+@admin_bp.route('/api-logs/<int:log_id>')
+@admin_required
+def api_log_detail(log_id):
+    """View detailed API log entry"""
+    try:
+        log = ApiLog.query.get_or_404(log_id)
+        return render_template('admin/api_log_detail.html', log=log)
+    except Exception as e:
+        logging.error(f"Error loading API log detail: {str(e)}")
+        flash('Error loading log detail', 'danger')
+        return redirect(url_for('admin.api_logs'))
+
+@admin_bp.route('/api-logs/clear', methods=['POST'])
+@admin_required
+def clear_old_api_logs():
+    """Clear API logs older than specified days"""
+    try:
+        days = request.form.get('days', 30, type=int)
+        if days < 1:
+            days = 1
+        
+        cutoff_date = datetime.now() - timedelta(days=days)
+        deleted = ApiLog.query.filter(ApiLog.created_at < cutoff_date).delete()
+        db.session.commit()
+        
+        flash(f'Successfully deleted {deleted} log entries older than {days} days', 'success')
+    except Exception as e:
+        logging.error(f"Error clearing API logs: {str(e)}")
+        db.session.rollback()
+        flash('Error clearing logs', 'danger')
+    
+    return redirect(url_for('admin.api_logs'))

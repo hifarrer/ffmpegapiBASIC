@@ -303,5 +303,107 @@ class Job(db.Model):
     def __repr__(self):
         return f'<Job {self.job_id} - {self.job_type} - {self.status}>'
 
+class ApiLog(db.Model):
+    __tablename__ = 'api_logs'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)
+    username = db.Column(db.String(80), nullable=True)
+    api_key_id = db.Column(db.Integer, db.ForeignKey('api_key.id'), nullable=True)
+    endpoint = db.Column(db.String(255), nullable=False)
+    method = db.Column(db.String(10), nullable=False)
+    request_data = db.Column(db.Text)
+    response_data = db.Column(db.Text)
+    status_code = db.Column(db.Integer)
+    error_message = db.Column(db.Text)
+    ip_address = db.Column(db.String(45))
+    user_agent = db.Column(db.String(500))
+    processing_time_ms = db.Column(db.Integer)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    user = db.relationship('User', backref='api_logs')
+    api_key = db.relationship('ApiKey', backref='api_logs')
+    
+    def set_request_data(self, data):
+        """Set request data as JSON string, sanitizing sensitive info"""
+        if data:
+            sanitized = self._sanitize_data(data)
+            self.request_data = json.dumps(sanitized, default=str)
+    
+    def get_request_data(self):
+        """Get request data as Python object"""
+        if self.request_data:
+            try:
+                return json.loads(self.request_data)
+            except:
+                return self.request_data
+        return None
+    
+    def set_response_data(self, data):
+        """Set response data as JSON string"""
+        if data:
+            try:
+                if isinstance(data, str):
+                    self.response_data = data[:10000]
+                else:
+                    self.response_data = json.dumps(data, default=str)[:10000]
+            except:
+                self.response_data = str(data)[:10000]
+    
+    def get_response_data(self):
+        """Get response data as Python object"""
+        if self.response_data:
+            try:
+                return json.loads(self.response_data)
+            except:
+                return self.response_data
+        return None
+    
+    def _sanitize_data(self, data):
+        """Remove sensitive data like API keys from logs"""
+        if isinstance(data, dict):
+            sanitized = {}
+            for key, value in data.items():
+                if key.lower() in ['api_key', 'password', 'secret', 'token', 'authorization']:
+                    sanitized[key] = '[REDACTED]'
+                elif isinstance(value, (dict, list)):
+                    sanitized[key] = self._sanitize_data(value)
+                else:
+                    sanitized[key] = value
+            return sanitized
+        elif isinstance(data, list):
+            return [self._sanitize_data(item) for item in data]
+        return data
+    
+    @classmethod
+    def log_request(cls, endpoint, method, user_id=None, username=None, api_key_id=None,
+                   request_data=None, response_data=None, status_code=None, 
+                   error_message=None, ip_address=None, user_agent=None, processing_time_ms=None):
+        """Create a new API log entry"""
+        try:
+            log = cls()
+            log.endpoint = endpoint
+            log.method = method
+            log.user_id = user_id
+            log.username = username
+            log.api_key_id = api_key_id
+            log.set_request_data(request_data)
+            log.set_response_data(response_data)
+            log.status_code = status_code
+            log.error_message = error_message[:1000] if error_message else None
+            log.ip_address = ip_address
+            log.user_agent = user_agent[:500] if user_agent else None
+            log.processing_time_ms = processing_time_ms
+            
+            db.session.add(log)
+            db.session.commit()
+            return log
+        except Exception as e:
+            db.session.rollback()
+            return None
+    
+    def __repr__(self):
+        return f'<ApiLog {self.endpoint} - {self.status_code}>'
+
 # Default site API key - this will be created when the app starts
 SITE_DEFAULT_API_KEY = "ffmpeg_site_default_key_" + "".join(secrets.choice(string.ascii_letters + string.digits) for _ in range(24))

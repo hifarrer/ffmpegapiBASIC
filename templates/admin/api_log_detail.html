@@ -1,0 +1,156 @@
+{% extends "admin/base.html" %}
+
+{% block title %}API Log Detail{% endblock %}
+
+{% block content %}
+<div class="admin-header">
+    <div class="d-flex justify-content-between align-items-center">
+        <div>
+            <h1><i class="fas fa-file-alt me-2"></i>API Log Detail</h1>
+            <p class="mb-0">Log ID: {{ log.id }}</p>
+        </div>
+        <a href="{{ url_for('admin.api_logs') }}" class="btn btn-outline-light">
+            <i class="fas fa-arrow-left me-2"></i>Back to Logs
+        </a>
+    </div>
+</div>
+
+<div class="row">
+    <!-- Basic Info Card -->
+    <div class="col-md-6 mb-4">
+        <div class="card h-100">
+            <div class="card-header">
+                <i class="fas fa-info-circle me-2"></i>Request Information
+            </div>
+            <div class="card-body">
+                <table class="table table-borderless">
+                    <tr>
+                        <th width="35%">Endpoint:</th>
+                        <td><code>{{ log.endpoint }}</code></td>
+                    </tr>
+                    <tr>
+                        <th>Method:</th>
+                        <td>
+                            <span class="badge {% if log.method == 'GET' %}bg-info{% elif log.method == 'POST' %}bg-primary{% elif log.method == 'DELETE' %}bg-danger{% else %}bg-secondary{% endif %}">
+                                {{ log.method }}
+                            </span>
+                        </td>
+                    </tr>
+                    <tr>
+                        <th>Status Code:</th>
+                        <td>
+                            {% if log.status_code %}
+                                {% if log.status_code < 400 %}
+                                    <span class="badge bg-success">{{ log.status_code }} Success</span>
+                                {% elif log.status_code < 500 %}
+                                    <span class="badge bg-warning text-dark">{{ log.status_code }} Client Error</span>
+                                {% else %}
+                                    <span class="badge bg-danger">{{ log.status_code }} Server Error</span>
+                                {% endif %}
+                            {% else %}
+                                <span class="text-muted">-</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    <tr>
+                        <th>Processing Time:</th>
+                        <td>
+                            {% if log.processing_time_ms %}
+                                <span class="{% if log.processing_time_ms > 5000 %}text-danger{% elif log.processing_time_ms > 1000 %}text-warning{% else %}text-success{% endif %}">
+                                    {{ log.processing_time_ms }}ms
+                                </span>
+                            {% else %}
+                                <span class="text-muted">-</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    <tr>
+                        <th>Date/Time:</th>
+                        <td>{{ log.created_at.strftime('%Y-%m-%d %H:%M:%S UTC') }}</td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- User Info Card -->
+    <div class="col-md-6 mb-4">
+        <div class="card h-100">
+            <div class="card-header">
+                <i class="fas fa-user me-2"></i>User Information
+            </div>
+            <div class="card-body">
+                <table class="table table-borderless">
+                    <tr>
+                        <th width="35%">Username:</th>
+                        <td>
+                            {% if log.username %}
+                                <span class="text-primary">{{ log.username }}</span>
+                            {% else %}
+                                <span class="text-muted">Anonymous</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    <tr>
+                        <th>User ID:</th>
+                        <td>{{ log.user_id or '-' }}</td>
+                    </tr>
+                    <tr>
+                        <th>API Key ID:</th>
+                        <td>{{ log.api_key_id or '-' }}</td>
+                    </tr>
+                    <tr>
+                        <th>IP Address:</th>
+                        <td><code>{{ log.ip_address or '-' }}</code></td>
+                    </tr>
+                    <tr>
+                        <th>User Agent:</th>
+                        <td><small class="text-muted">{{ log.user_agent or '-' }}</small></td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Request Data -->
+<div class="card mb-4">
+    <div class="card-header">
+        <i class="fas fa-upload me-2"></i>Request Data (JSON)
+    </div>
+    <div class="card-body">
+        {% if log.request_data %}
+            <pre class="bg-dark text-light p-3 rounded" style="max-height: 400px; overflow-y: auto;"><code>{{ log.request_data }}</code></pre>
+        {% else %}
+            <p class="text-muted mb-0">No request data available</p>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Response Data -->
+<div class="card mb-4">
+    <div class="card-header">
+        <i class="fas fa-download me-2"></i>Response Data
+    </div>
+    <div class="card-body">
+        {% if log.response_data %}
+            <pre class="bg-dark text-light p-3 rounded" style="max-height: 400px; overflow-y: auto;"><code>{{ log.response_data }}</code></pre>
+        {% else %}
+            <p class="text-muted mb-0">No response data available</p>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Error Message -->
+{% if log.error_message %}
+<div class="card mb-4 border-danger">
+    <div class="card-header bg-danger text-white">
+        <i class="fas fa-exclamation-triangle me-2"></i>Error Message
+    </div>
+    <div class="card-body">
+        <pre class="bg-dark text-danger p-3 rounded mb-0" style="max-height: 300px; overflow-y: auto;"><code>{{ log.error_message }}</code></pre>
+    </div>
+</div>
+{% endif %}
+
+{% endblock %}
