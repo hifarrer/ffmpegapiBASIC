@@ -18,7 +18,8 @@ from werkzeug.middleware.proxy_fix import ProxyFix
 import mimetypes
 import resend
 
-from models import db, User, ApiKey, SubscriptionPlan, StripeSettings, UserSubscription, SiteSettings, Job, SITE_DEFAULT_API_KEY
+from models import db, User, ApiKey, SubscriptionPlan, StripeSettings, UserSubscription, SiteSettings, Job, ApiLog, SITE_DEFAULT_API_KEY
+import time
 from forms import RegistrationForm, LoginForm, ApiKeyForm
 from auth_routes import auth
 from stripe_routes import stripe_bp
@@ -194,7 +195,117 @@ def require_api_key(f):
         # Mark API key as used
         key_record.mark_used()
         
+        # Store user info in request context for logging
+        request.api_user_id = user.id
+        request.api_username = user.username
+        request.api_key_id = key_record.id
+        
         return f(*args, **kwargs)
+    
+    return decorated_function
+
+def log_api_request(f):
+    """Decorator to log API requests and responses to the database"""
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        start_time = time.time()
+        
+        # Collect request data
+        endpoint = request.path
+        method = request.method
+        ip_address = request.headers.get('X-Forwarded-For', request.remote_addr)
+        if ip_address and ',' in ip_address:
+            ip_address = ip_address.split(',')[0].strip()
+        user_agent = request.headers.get('User-Agent', '')[:500]
+        
+        # Get user info from request context (set by require_api_key)
+        user_id = getattr(request, 'api_user_id', None)
+        username = getattr(request, 'api_username', None)
+        api_key_id = getattr(request, 'api_key_id', None)
+        
+        # Collect request data (form data, JSON, or query params)
+        request_data = {}
+        try:
+            if request.is_json:
+                request_data = request.get_json(silent=True) or {}
+            elif request.form:
+                request_data = {k: v for k, v in request.form.items() if k.lower() not in ['api_key', 'password', 'secret']}
+            if request.args:
+                args_data = {k: v for k, v in request.args.items() if k.lower() not in ['api_key', 'password', 'secret']}
+                request_data.update(args_data)
+            if request.files:
+                request_data['_files'] = [f.filename for f in request.files.values()]
+        except Exception as e:
+            request_data = {'_error': f'Could not parse request: {str(e)}'}
+        
+        response = None
+        response_data = None
+        status_code = None
+        error_message = None
+        
+        try:
+            # Execute the actual function
+            response = f(*args, **kwargs)
+            
+            # Handle tuple responses (response, status_code)
+            if isinstance(response, tuple):
+                response_obj, status_code = response[0], response[1] if len(response) > 1 else 200
+            else:
+                response_obj = response
+                status_code = getattr(response_obj, 'status_code', 200) if hasattr(response_obj, 'status_code') else 200
+            
+            # Extract response data
+            try:
+                if hasattr(response_obj, 'get_json'):
+                    response_data = response_obj.get_json()
+                elif hasattr(response_obj, 'data'):
+                    response_data = response_obj.data.decode('utf-8')[:5000]
+                else:
+                    response_data = str(response_obj)[:1000]
+            except Exception:
+                response_data = {'_note': 'Could not serialize response'}
+            
+            # Check for error in response
+            if isinstance(response_data, dict) and not response_data.get('success', True):
+                error_message = response_data.get('error', '')
+                
+        except Exception as e:
+            status_code = 500
+            error_message = str(e)
+            response_data = {'error': str(e)}
+            raise
+        
+        finally:
+            # Calculate processing time
+            processing_time_ms = int((time.time() - start_time) * 1000)
+            
+            # Log to database in a separate thread to avoid blocking
+            def save_log():
+                try:
+                    with app.app_context():
+                        ApiLog.log_request(
+                            endpoint=endpoint,
+                            method=method,
+                            user_id=user_id,
+                            username=username,
+                            api_key_id=api_key_id,
+                            request_data=request_data,
+                            response_data=response_data,
+                            status_code=status_code,
+                            error_message=error_message,
+                            ip_address=ip_address,
+                            user_agent=user_agent,
+                            processing_time_ms=processing_time_ms
+                        )
+                except Exception as log_error:
+                    logging.error(f"Failed to save API log: {str(log_error)}")
+            
+            # Run log saving in background thread
+            log_thread = threading.Thread(target=save_log)
+            log_thread.daemon = True
+            log_thread.start()
+        
+        return response
     
     return decorated_function
 
@@ -1359,6 +1470,7 @@ def contact():
 
 @app.route('/api/merge_image_audio', methods=['POST'])
 @require_api_key
+@log_api_request
 def merge_image_audio():
     """API endpoint to merge image and audio into video from URLs or files (sync/async)"""
     # Log full request details for debugging
@@ -1618,6 +1730,7 @@ def merge_image_audio():
 
 @app.route('/api/merge_videos', methods=['POST'])
 @require_api_key
+@log_api_request
 def merge_videos():
     """API endpoint to merge multiple videos from URLs (sync/async)"""
     # Log full request details for debugging
@@ -1907,6 +2020,7 @@ def merge_videos():
 
 @app.route('/api/picture_in_picture', methods=['POST'])
 @require_api_key
+@log_api_request
 def picture_in_picture():
     """API endpoint to create picture-in-picture video (sync/async)"""
     # Log full request details for debugging
@@ -3310,6 +3424,7 @@ def get_job_status(job_id):
 
 @app.route('/api/split_audio', methods=['POST'])
 @require_api_key
+@log_api_request
 def split_audio():
     """API endpoint to split audio into equal parts (sync/async)"""
     # Log full request details for debugging
@@ -3457,6 +3572,7 @@ def split_audio():
 
 @app.route('/api/split_audio_segments', methods=['POST'])
 @require_api_key
+@log_api_request
 def split_audio_segments():
     """API endpoint to split audio by segment duration (sync/async)"""
     # Log full request details for debugging
@@ -3741,6 +3857,7 @@ def trim_audio_with_ffmpeg(audio_path, output_path, desired_length, fade_duratio
 
 @app.route('/api/add_subtitles', methods=['POST'])
 @require_api_key
+@log_api_request
 def add_subtitles():
     """API endpoint to add subtitles to video"""
     # Log full request details for debugging
@@ -3894,6 +4011,7 @@ def add_subtitles():
 
 @app.route('/api/trim_audio', methods=['POST'])
 @require_api_key
+@log_api_request
 def trim_audio():
     """API endpoint to trim audio to desired length"""
     # Log full request details for debugging
@@ -4039,6 +4157,7 @@ def trim_audio():
 
 @app.route('/api/convert_to_vertical', methods=['POST'])
 @require_api_key
+@log_api_request
 def convert_to_vertical():
     """API endpoint to convert horizontal videos to vertical format (sync/async)"""
     # Log full request details for debugging
