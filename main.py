@@ -204,6 +204,20 @@ def require_api_key(f):
     
     return decorated_function
 
+def sanitize_sensitive_data(data, sensitive_keys=None):
+    """Recursively sanitize sensitive data from dictionaries and lists"""
+    if sensitive_keys is None:
+        sensitive_keys = {'api_key', 'password', 'secret', 'token', 'authorization', 'x-api-key'}
+    
+    if isinstance(data, dict):
+        return {
+            k: '[REDACTED]' if k.lower() in sensitive_keys else sanitize_sensitive_data(v, sensitive_keys)
+            for k, v in data.items()
+        }
+    elif isinstance(data, list):
+        return [sanitize_sensitive_data(item, sensitive_keys) for item in data]
+    return data
+
 def log_api_request(f):
     """Decorator to log API requests and responses to the database"""
     @wraps(f)
@@ -227,11 +241,12 @@ def log_api_request(f):
         request_data = {}
         try:
             if request.is_json:
-                request_data = request.get_json(silent=True) or {}
+                json_data = request.get_json(silent=True) or {}
+                request_data = sanitize_sensitive_data(json_data)
             elif request.form:
-                request_data = {k: v for k, v in request.form.items() if k.lower() not in ['api_key', 'password', 'secret']}
+                request_data = sanitize_sensitive_data(dict(request.form.items()))
             if request.args:
-                args_data = {k: v for k, v in request.args.items() if k.lower() not in ['api_key', 'password', 'secret']}
+                args_data = sanitize_sensitive_data(dict(request.args.items()))
                 request_data.update(args_data)
             if request.files:
                 request_data['_files'] = [f.filename for f in request.files.values()]
