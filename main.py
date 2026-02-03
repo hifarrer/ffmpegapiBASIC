@@ -2084,10 +2084,15 @@ def serve_from_storage(filename):
             }
         )
     except Exception as e:
-        logging.error(f"Error serving file from storage {filename}: {str(e)}")
+        # Don't log errors for poster images - these are optional video thumbnails
+        # that external clients may request but aren't always generated
+        if '-poster.jpg' in filename or '-poster.png' in filename:
+            logging.debug(f"Poster image not found (expected): {filename}")
+        else:
+            logging.error(f"Error serving file from storage {filename}: {str(e)}")
         return jsonify({
             'success': False,
-            'error': f'File not found or error accessing storage: {str(e)}'
+            'error': f'File not found or error accessing storage'
         }), 404
 
 @app.route('/download/<path:filename>')
