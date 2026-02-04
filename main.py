@@ -391,27 +391,103 @@ def create_video_with_ffmpeg(image_path, audio_path, output_path):
         logging.error(f"FFMPEG processing error: {str(e)}")
         return False, f"Video processing error: {str(e)}"
 
-def download_video_from_url(url, output_path):
-    """Download video from URL to local path"""
+def validate_url(url):
+    """Validate URL is safe to download from (not localhost, private IPs, etc.)"""
+    from urllib.parse import urlparse
+    import socket
+    import ipaddress
+    
+    if not url:
+        return False, "URL is empty"
+    
     try:
-        import urllib.request
-        logging.info(f"Downloading video from: {url}")
-        urllib.request.urlretrieve(url, output_path)
-        return True, "Video downloaded successfully"
+        parsed = urlparse(url)
+        
+        # Check scheme
+        if parsed.scheme not in ('http', 'https'):
+            return False, f"Invalid URL scheme: {parsed.scheme}. Only http and https are allowed."
+        
+        # Get hostname
+        hostname = parsed.hostname
+        if not hostname:
+            return False, "URL has no hostname"
+        
+        # Block localhost variations
+        localhost_names = {'localhost', '127.0.0.1', '::1', '0.0.0.0'}
+        if hostname.lower() in localhost_names:
+            return False, f"localhost URLs are not allowed: {hostname}"
+        
+        # Try to resolve the hostname
+        try:
+            ip_addresses = socket.getaddrinfo(hostname, None, socket.AF_UNSPEC, socket.SOCK_STREAM)
+            if not ip_addresses:
+                return False, f"Could not resolve hostname: {hostname}"
+            
+            # Check each resolved IP for private/local addresses
+            for addr_info in ip_addresses:
+                ip_str = addr_info[4][0]
+                try:
+                    ip_obj = ipaddress.ip_address(ip_str)
+                    if ip_obj.is_private or ip_obj.is_loopback or ip_obj.is_link_local:
+                        return False, f"URL resolves to private/local IP address: {ip_str}"
+                except ValueError:
+                    pass
+                    
+        except socket.gaierror as e:
+            return False, f"Could not resolve hostname '{hostname}': {str(e)}"
+        except socket.timeout:
+            return False, f"Timeout resolving hostname: {hostname}"
+        
+        return True, "URL is valid"
+        
     except Exception as e:
-        logging.error(f"Failed to download video from {url}: {str(e)}")
-        return False, f"Failed to download video: {str(e)}"
+        return False, f"Invalid URL format: {str(e)}"
 
-def download_file_from_url(url, output_path, file_type="file"):
-    """Download any file from URL to local path"""
+def download_with_timeout(url, output_path, timeout=60, file_type="file"):
+    """Download file from URL with timeout and proper error handling"""
+    
+    # First validate the URL
+    is_valid, validation_msg = validate_url(url)
+    if not is_valid:
+        logging.error(f"URL validation failed for {url}: {validation_msg}")
+        return False, validation_msg
+    
     try:
-        import urllib.request
         logging.info(f"Downloading {file_type} from: {url}")
-        urllib.request.urlretrieve(url, output_path)
+        
+        # Use requests with timeout for both connect and read
+        response = requests.get(url, timeout=(10, timeout), stream=True)
+        response.raise_for_status()
+        
+        # Download in chunks to handle large files
+        with open(output_path, 'wb') as f:
+            for chunk in response.iter_content(chunk_size=8192):
+                if chunk:
+                    f.write(chunk)
+        
+        logging.info(f"Successfully downloaded {file_type} to {output_path}")
         return True, f"{file_type.capitalize()} downloaded successfully"
+        
+    except requests.exceptions.Timeout:
+        logging.error(f"Timeout downloading {file_type} from {url}")
+        return False, f"Download timed out after {timeout} seconds"
+    except requests.exceptions.ConnectionError as e:
+        logging.error(f"Connection error downloading {file_type} from {url}: {str(e)}")
+        return False, f"Connection error: Could not connect to {url}"
+    except requests.exceptions.HTTPError as e:
+        logging.error(f"HTTP error downloading {file_type} from {url}: {str(e)}")
+        return False, f"HTTP error: {e.response.status_code} - {e.response.reason}"
     except Exception as e:
         logging.error(f"Failed to download {file_type} from {url}: {str(e)}")
         return False, f"Failed to download {file_type}: {str(e)}"
+
+def download_video_from_url(url, output_path):
+    """Download video from URL to local path"""
+    return download_with_timeout(url, output_path, timeout=120, file_type="video")
+
+def download_file_from_url(url, output_path, file_type="file"):
+    """Download any file from URL to local path"""
+    return download_with_timeout(url, output_path, timeout=60, file_type=file_type)
 
 def get_resend_credentials():
     """Get Resend API credentials from Replit connector"""
