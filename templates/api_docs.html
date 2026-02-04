@@ -116,6 +116,7 @@
                                 <a class="toc-link ms-3" href="#add-subtitles">Add Subtitles</a>
                                 <a class="toc-link ms-3" href="#split-audio">Split Audio</a>
                                 <a class="toc-link ms-3" href="#split-audio-segments">Split Audio by Segments</a>
+                                <a class="toc-link ms-3" href="#split-audio-time">Split Audio by Time</a>
                                 <a class="toc-link ms-3" href="#trim-audio">Trim Audio</a>
                                 <a class="toc-link ms-3" href="#convert-to-vertical">Convert to Vertical</a>
                                 <a class="toc-link ms-3" href="#job-status">Job Status</a>
@@ -932,6 +933,117 @@
   -d '{
     "audio_url": "https://example.com/long_audio.mp3",
     "segment_duration": 30,
+    "async": true
+  }'</code></pre>
+                                </div>
+
+                                <div class="code-block p-3">
+                                    <pre><code class="language-json">{
+  "success": true,
+  "job_id": "550e8400-e29b-41d4-a716-446655440000",
+  "status": "pending",
+  "message": "Job submitted for async processing. Use /api/job/{job_id}/status to check progress.",
+  "status_url": "https://ffmpegapi.net/api/job/550e8400-e29b-41d4-a716-446655440000/status"
+}</code></pre>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Split Audio by Time -->
+                    <div id="split-audio-time" class="api-endpoint">
+                        <div class="card">
+                            <div class="card-header">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <h4 class="mb-0">Split Audio by Time</h4>
+                                    <span class="method-badge method-post">POST</span>
+                                </div>
+                                <code class="text-muted">/api/split_audio_time</code>
+                            </div>
+                            <div class="card-body">
+                                <p>Extract a specific portion of an audio file by specifying start and end times in milliseconds. Perfect for creating precise audio clips from longer recordings.</p>
+                                
+                                <h6>Request Format</h6>
+                                <p><strong>Content-Type:</strong> <code>application/json</code></p>
+                                
+                                <h6>Parameters</h6>
+                                <div class="table-responsive">
+                                    <table class="table table-sm">
+                                        <thead>
+                                            <tr>
+                                                <th>Parameter</th>
+                                                <th>Type</th>
+                                                <th>Required</th>
+                                                <th>Description</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <tr>
+                                                <td><code>audio_url</code></td>
+                                                <td>String</td>
+                                                <td>Yes</td>
+                                                <td>URL of the audio file to split (MP3, WAV, AAC, etc.)</td>
+                                            </tr>
+                                            <tr>
+                                                <td><code>start_time</code></td>
+                                                <td>Number</td>
+                                                <td>Yes</td>
+                                                <td>Start time in milliseconds (must be non-negative)</td>
+                                            </tr>
+                                            <tr>
+                                                <td><code>end_time</code></td>
+                                                <td>Number</td>
+                                                <td>Yes</td>
+                                                <td>End time in milliseconds (must be greater than start_time)</td>
+                                            </tr>
+                                            <tr>
+                                                <td><code>async</code></td>
+                                                <td>Boolean</td>
+                                                <td>No</td>
+                                                <td>Process asynchronously (default: false)</td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+
+                                <h6>Request Example</h6>
+                                <div class="code-block p-3">
+                                    <pre><code class="language-bash">curl -X POST "https://ffmpegapi.net/api/split_audio_time" \
+  -H "Content-Type: application/json" \
+  -H "X-API-Key: your_api_key_here" \
+  -d '{
+    "audio_url": "https://example.com/audio.mp3",
+    "start_time": 5000,
+    "end_time": 30000
+  }'</code></pre>
+                                </div>
+
+                                <h6>Response Example</h6>
+                                <div class="code-block p-3">
+                                    <pre><code class="language-json">{
+  "success": true,
+  "message": "Audio successfully clipped from 5000ms to 30000ms",
+  "start_time_ms": 5000,
+  "end_time_ms": 30000,
+  "duration_ms": 25000,
+  "download_url": "https://ffmpegapi.net/download/uuid/audio_clip_5000_30000.mp3"
+}</code></pre>
+                                </div>
+
+                                <div class="alert alert-info">
+                                    <i class="fas fa-info-circle me-2"></i>
+                                    <strong>Note:</strong> Times are specified in milliseconds. For example, to extract audio from 5 seconds to 30 seconds, use start_time: 5000 and end_time: 30000.
+                                </div>
+
+                                <h6>Async Processing Example</h6>
+                                <div class="code-block p-3">
+                                    <pre><code class="language-bash">curl -X POST "https://ffmpegapi.net/api/split_audio_time" \
+  -H "Content-Type: application/json" \
+  -H "X-API-Key: your_api_key_here" \
+  -d '{
+    "audio_url": "https://example.com/long_audio.mp3",
+    "start_time": 60000,
+    "end_time": 120000,
     "async": true
   }'</code></pre>
                                 </div>

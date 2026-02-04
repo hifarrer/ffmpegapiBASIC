@@ -8,6 +8,7 @@ class VideoMerger {
         this.initializeSubtitlesTab();
         this.initializeSplitAudioTab();
         this.initializeSplitAudioSegmentsTab();
+        this.initializeSplitAudioTimeTab();
         this.initializeTrimAudioTab();
         this.initializeConvertVerticalTab();
     }
@@ -1133,6 +1134,136 @@ class VideoMerger {
 
     hideSplitAudioSegmentsResult() {
         this.splitAudioSegmentsResultContainer.style.display = 'none';
+    }
+
+    // Split Audio by Time Tab Methods
+    initializeSplitAudioTimeTab() {
+        this.splitAudioTimeForm = document.getElementById('splitAudioTimeForm');
+        this.splitAudioTimeSubmitBtn = document.getElementById('splitAudioTimeSubmitBtn');
+        this.splitAudioTimeProgressContainer = document.getElementById('splitAudioTimeProgressContainer');
+        this.splitAudioTimeAlertContainer = document.getElementById('splitAudioTimeAlertContainer');
+        this.splitAudioTimeResultContainer = document.getElementById('splitAudioTimeResultContainer');
+        this.splitAudioTimeDownloadBtn = document.getElementById('splitAudioTimeDownloadBtn');
+        this.splitAudioTimeResetBtn = document.getElementById('splitAudioTimeResetBtn');
+
+        // Event listeners for Split Audio by Time tab
+        this.splitAudioTimeForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            this.handleSplitAudioTimeSubmit();
+        });
+
+        document.getElementById('timeAudioUrl').addEventListener('input', () => {
+            this.validateSplitAudioTimeForm();
+        });
+
+        document.getElementById('startTimeMs').addEventListener('input', () => {
+            this.validateSplitAudioTimeForm();
+        });
+
+        document.getElementById('endTimeMs').addEventListener('input', () => {
+            this.validateSplitAudioTimeForm();
+        });
+
+        this.splitAudioTimeResetBtn.addEventListener('click', () => {
+            this.resetSplitAudioTimeForm();
+        });
+
+        // Initial validation
+        this.validateSplitAudioTimeForm();
+    }
+
+    validateSplitAudioTimeForm() {
+        const audioUrl = document.getElementById('timeAudioUrl').value;
+        const startTime = parseInt(document.getElementById('startTimeMs').value);
+        const endTime = parseInt(document.getElementById('endTimeMs').value);
+        
+        const isValidUrl = this.isValidUrl(audioUrl);
+        const isValidTimes = !isNaN(startTime) && !isNaN(endTime) && startTime >= 0 && endTime > startTime;
+        
+        this.splitAudioTimeSubmitBtn.disabled = !isValidUrl || !isValidTimes;
+    }
+
+    async handleSplitAudioTimeSubmit() {
+        this.showSplitAudioTimeProgress();
+        this.hideSplitAudioTimeAlert();
+        this.hideSplitAudioTimeResult();
+
+        const formData = new FormData(this.splitAudioTimeForm);
+        const data = {
+            audio_url: formData.get('audio_url'),
+            start_time: parseInt(formData.get('start_time')),
+            end_time: parseInt(formData.get('end_time'))
+        };
+
+        try {
+            const response = await fetch('/api/split_audio_time', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-API-Key': window.API_KEY
+                },
+                body: JSON.stringify(data)
+            });
+
+            const result = await response.json();
+
+            this.hideSplitAudioTimeProgress();
+
+            if (result.success) {
+                this.splitAudioTimeDownloadBtn.href = result.download_url;
+                document.getElementById('clipStartTime').textContent = result.start_time_ms;
+                document.getElementById('clipEndTime').textContent = result.end_time_ms;
+                document.getElementById('clipDuration').textContent = result.duration_ms;
+                this.showSplitAudioTimeResult();
+                this.showSplitAudioTimeAlert('success', result.message);
+            } else {
+                this.showSplitAudioTimeAlert('danger', result.error || 'Failed to split audio');
+            }
+        } catch (error) {
+            this.hideSplitAudioTimeProgress();
+            this.showSplitAudioTimeAlert('danger', `Error: ${error.message}`);
+        }
+    }
+
+    resetSplitAudioTimeForm() {
+        this.splitAudioTimeForm.reset();
+        document.getElementById('startTimeMs').value = '0';
+        document.getElementById('endTimeMs').value = '30000';
+        this.hideSplitAudioTimeAlert();
+        this.hideSplitAudioTimeResult();
+        this.validateSplitAudioTimeForm();
+    }
+
+    showSplitAudioTimeProgress() {
+        this.splitAudioTimeProgressContainer.style.display = 'block';
+        this.splitAudioTimeSubmitBtn.disabled = true;
+    }
+
+    hideSplitAudioTimeProgress() {
+        this.splitAudioTimeProgressContainer.style.display = 'none';
+        this.splitAudioTimeSubmitBtn.disabled = false;
+    }
+
+    showSplitAudioTimeAlert(type, message) {
+        this.splitAudioTimeAlertContainer.innerHTML = `
+            <div class="alert alert-${type} alert-dismissible fade show" role="alert">
+                <i class="fas fa-${this.getAlertIcon(type)} me-2"></i>
+                ${message}
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+        `;
+    }
+
+    hideSplitAudioTimeAlert() {
+        this.splitAudioTimeAlertContainer.innerHTML = '';
+    }
+
+    showSplitAudioTimeResult() {
+        this.splitAudioTimeResultContainer.style.display = 'block';
+    }
+
+    hideSplitAudioTimeResult() {
+        this.splitAudioTimeResultContainer.style.display = 'none';
     }
 
     // Trim Audio Tab Methods

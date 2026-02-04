@@ -698,6 +698,106 @@
                         </div>
                     </div>
 
+                    <!-- Split Audio by Time Accordion Item -->
+                    <div class="accordion-item">
+                        <h2 class="accordion-header" id="splitAudioTimeHeading">
+                            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" 
+                                    data-bs-target="#splitAudioTimeCollapse" aria-expanded="false" aria-controls="splitAudioTimeCollapse">
+                                <i class="fas fa-hourglass-half me-2"></i>
+                                Split Audio by Time
+                            </button>
+                        </h2>
+                        <div id="splitAudioTimeCollapse" class="accordion-collapse collapse" 
+                             aria-labelledby="splitAudioTimeHeading" data-bs-parent="#videoProcessingAccordion">
+                            <div class="accordion-body">
+                                <p class="text-muted mb-4">
+                                    <i class="fas fa-info-circle me-1"></i>
+                                    Extract a specific portion of audio by specifying start and end times in milliseconds. For example, to clip from 5 seconds to 30 seconds, use start_time: 5000 and end_time: 30000.
+                                </p>
+                                <form id="splitAudioTimeForm">
+                                    <div class="row">
+                                        <div class="col-md-6 mb-4">
+                                            <label for="timeAudioUrl" class="form-label">
+                                                <i class="fas fa-music me-2"></i>
+                                                Audio File URL
+                                            </label>
+                                            <input type="url" class="form-control" id="timeAudioUrl" name="audio_url" 
+                                                   placeholder="https://example.com/audio.mp3" required>
+                                            <div class="form-text">URL of the audio file to split (MP3, WAV, AAC, etc.)</div>
+                                        </div>
+                                        <div class="col-md-3 mb-4">
+                                            <label for="startTimeMs" class="form-label">
+                                                <i class="fas fa-play me-2"></i>
+                                                Start Time (ms)
+                                            </label>
+                                            <input type="number" class="form-control" id="startTimeMs" name="start_time" 
+                                                   value="0" min="0" step="100" required>
+                                            <div class="form-text">Start time in milliseconds</div>
+                                        </div>
+                                        <div class="col-md-3 mb-4">
+                                            <label for="endTimeMs" class="form-label">
+                                                <i class="fas fa-stop me-2"></i>
+                                                End Time (ms)
+                                            </label>
+                                            <input type="number" class="form-control" id="endTimeMs" name="end_time" 
+                                                   value="30000" min="1" step="100" required>
+                                            <div class="form-text">End time in milliseconds</div>
+                                        </div>
+                                    </div>
+
+                                    <div class="d-grid">
+                                        <button type="submit" class="btn btn-primary btn-lg" id="splitAudioTimeSubmitBtn">
+                                            <i class="fas fa-hourglass-half me-2"></i>
+                                            Split Audio by Time
+                                        </button>
+                                    </div>
+                                </form>
+
+                                <!-- Progress Bar -->
+                                <div id="splitAudioTimeProgressContainer" class="mt-4" style="display: none;">
+                                    <div class="d-flex align-items-center mb-2">
+                                        <div class="spinner-border spinner-border-sm me-2" role="status">
+                                            <span class="visually-hidden">Loading...</span>
+                                        </div>
+                                        <span>Downloading and extracting audio clip...</span>
+                                    </div>
+                                    <div class="progress">
+                                        <div class="progress-bar progress-bar-striped progress-bar-animated" 
+                                             role="progressbar" style="width: 100%"></div>
+                                    </div>
+                                </div>
+
+                                <!-- Alert Messages -->
+                                <div id="splitAudioTimeAlertContainer" class="mt-4"></div>
+
+                                <!-- Results -->
+                                <div id="splitAudioTimeResultContainer" class="mt-4" style="display: none;">
+                                    <div class="card">
+                                        <div class="card-header">
+                                            <h5 class="card-title mb-0">
+                                                <i class="fas fa-check-circle text-success me-2"></i>
+                                                Audio Clip Created Successfully
+                                            </h5>
+                                        </div>
+                                        <div class="card-body">
+                                            <p class="card-text">Your audio clip has been created from <span id="clipStartTime"></span>ms to <span id="clipEndTime"></span>ms (duration: <span id="clipDuration"></span>ms).</p>
+                                            <div class="d-flex gap-2 flex-wrap">
+                                                <a id="splitAudioTimeDownloadBtn" href="#" class="btn btn-success" download>
+                                                    <i class="fas fa-download me-2"></i>
+                                                    Download Audio Clip
+                                                </a>
+                                                <button id="splitAudioTimeResetBtn" class="btn btn-outline-primary">
+                                                    <i class="fas fa-plus me-2"></i>
+                                                    Create Another Clip
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
                     <!-- Add Subtitles Accordion Item -->
                     <div class="accordion-item">
                         <h2 class="accordion-header" id="subtitlesHeading">
