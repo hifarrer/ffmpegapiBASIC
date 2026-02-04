@@ -403,11 +403,14 @@
 
                                 <h6>Request Example</h6>
                                 <div class="code-block p-3">
-                                    <pre><code class="language-json">{
-  "image": "https://example.com/image.jpg",
-  "audio": "https://example.com/audio.mp3",
-  "async": true
-}</code></pre>
+                                    <pre><code class="language-bash">curl -X POST "https://ffmpegapi.net/api/merge_image_audio" \
+  -H "Content-Type: application/json" \
+  -H "X-API-Key: your_api_key_here" \
+  -d '{
+    "image": "https://example.com/image.jpg",
+    "audio": "https://example.com/audio.mp3",
+    "async": true
+  }'</code></pre>
                                 </div>
 
                                 <h6>Sync Response</h6>
@@ -504,18 +507,21 @@
 
                                 <h6>Request Example</h6>
                                 <div class="code-block p-3">
-                                    <pre><code class="language-json">{
-  "video_urls": [
-    "https://example.com/video1.mp4",
-    "https://example.com/video2.mp4",
-    "https://example.com/video3.mp4"
-  ],
-  "audio_url": "https://example.com/audio.mp3",
-  "subtitle_url": "https://example.com/subtitles.ass",
-  "watermark_url": "https://example.com/watermark.png",
-  "dimensions": "1920x1080",
-  "async": true
-}</code></pre>
+                                    <pre><code class="language-bash">curl -X POST "https://ffmpegapi.net/api/merge_videos" \
+  -H "Content-Type: application/json" \
+  -H "X-API-Key: your_api_key_here" \
+  -d '{
+    "video_urls": [
+      "https://example.com/video1.mp4",
+      "https://example.com/video2.mp4",
+      "https://example.com/video3.mp4"
+    ],
+    "audio_url": "https://example.com/audio.mp3",
+    "subtitle_url": "https://example.com/subtitles.ass",
+    "watermark_url": "https://example.com/watermark.png",
+    "dimensions": "1920x1080",
+    "async": true
+  }'</code></pre>
                                 </div>
 
                                 <h6>Sync Response</h6>
@@ -612,14 +618,17 @@
 
                                 <h6>Request Example</h6>
                                 <div class="code-block p-3">
-                                    <pre><code class="language-json">{
-  "main_video_url": "https://example.com/main-video.mp4",
-  "pip_video_url": "https://example.com/overlay-video.mp4",
-  "position": "top-right",
-  "scale": "iw/3:ih/3",
-  "audio_option": "video2",
-  "async": true
-}</code></pre>
+                                    <pre><code class="language-bash">curl -X POST "https://ffmpegapi.net/api/picture_in_picture" \
+  -H "Content-Type: application/json" \
+  -H "X-API-Key: your_api_key_here" \
+  -d '{
+    "main_video_url": "https://example.com/main-video.mp4",
+    "pip_video_url": "https://example.com/overlay-video.mp4",
+    "position": "top-right",
+    "scale": "iw/3:ih/3",
+    "audio_option": "video2",
+    "async": true
+  }'</code></pre>
                                 </div>
 
                                 <h6>Response</h6>
