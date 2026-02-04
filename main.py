@@ -1335,6 +1335,47 @@ def split_audio_by_segments_with_ffmpeg(audio_path, output_dir, segment_duration
         logging.error(f"Audio segment splitting error: {str(e)}")
         return False, f"Audio segment splitting error: {str(e)}", []
 
+def split_audio_by_time_with_ffmpeg(audio_path, output_dir, start_time_ms, end_time_ms):
+    """Split audio by start and end time in milliseconds using FFMPEG"""
+    try:
+        start_time_sec = start_time_ms / 1000.0
+        end_time_sec = end_time_ms / 1000.0
+        duration_sec = end_time_sec - start_time_sec
+        
+        if duration_sec <= 0:
+            return False, "End time must be greater than start time", None
+        
+        output_filename = f"audio_clip_{int(start_time_ms)}_{int(end_time_ms)}.mp3"
+        output_path = os.path.join(output_dir, output_filename)
+        
+        cmd = [
+            'ffmpeg',
+            '-i', audio_path,
+            '-ss', str(start_time_sec),
+            '-t', str(duration_sec),
+            '-c:a', 'mp3',
+            '-b:a', '192k',
+            '-y',
+            output_path
+        ]
+        
+        logging.info(f"Splitting audio by time: {' '.join(cmd)}")
+        result = subprocess.run(cmd, capture_output=True, text=True, timeout=300)
+        
+        if result.returncode == 0:
+            logging.info(f"Successfully created audio clip from {start_time_sec}s to {end_time_sec}s")
+            return True, f"Audio successfully clipped from {start_time_ms}ms to {end_time_ms}ms", output_filename
+        else:
+            logging.error(f"FFMPEG error: {result.stderr}")
+            return False, f"Failed to split audio: {result.stderr}", None
+        
+    except subprocess.TimeoutExpired:
+        logging.error("Audio time splitting timed out")
+        return False, "Audio time splitting processing timed out", None
+    except Exception as e:
+        logging.error(f"Audio time splitting error: {str(e)}")
+        return False, f"Audio time splitting error: {str(e)}", None
+
 def convert_to_vertical_with_ffmpeg(video_path, output_path, watermark_path=None):
     """Convert horizontal video to vertical format with automatic aspect ratio selection (3:4 or 9:16)"""
     try:
@@ -2780,6 +2821,8 @@ def process_job_async(job_id):
                 result = process_split_audio_job(job, input_data)
             elif job.job_type == 'split_audio_segments':
                 result = process_split_audio_segments_job(job, input_data)
+            elif job.job_type == 'split_audio_time':
+                result = process_split_audio_time_job(job, input_data)
             elif job.job_type == 'add_subtitles':
                 result = process_add_subtitles_job(job, input_data)
             elif job.job_type == 'convert_to_vertical':
@@ -3206,6 +3249,75 @@ def process_split_audio_job(job, input_data):
     except Exception as e:
         logging.error(f"Error in process_split_audio_job: {str(e)}")
         # Cleanup files on error
+        if audio_path and os.path.exists(audio_path):
+            cleanup_file(audio_path)
+        return {'success': False, 'error': f'Server error: {str(e)}'}
+
+def process_split_audio_time_job(job, input_data):
+    """Process split_audio_time job - splits audio by start and end time in milliseconds"""
+    audio_path = ""
+    try:
+        request_id = str(uuid.uuid4())
+        
+        if 'audio_url' not in input_data:
+            return {'success': False, 'error': 'audio_url is required'}
+        
+        audio_url = input_data['audio_url']
+        start_time_ms = input_data.get('start_time')
+        end_time_ms = input_data.get('end_time')
+        
+        if start_time_ms is None or end_time_ms is None:
+            return {'success': False, 'error': 'start_time and end_time are required (in milliseconds)'}
+        
+        if not isinstance(start_time_ms, (int, float)) or not isinstance(end_time_ms, (int, float)):
+            return {'success': False, 'error': 'start_time and end_time must be numbers (in milliseconds)'}
+        
+        if start_time_ms < 0 or end_time_ms < 0:
+            return {'success': False, 'error': 'start_time and end_time must be non-negative'}
+        
+        if end_time_ms <= start_time_ms:
+            return {'success': False, 'error': 'end_time must be greater than start_time'}
+        
+        audio_ext = audio_url.split('.')[-1].lower() if '.' in audio_url else 'mp3'
+        audio_filename = f"{request_id}_audio.{audio_ext}"
+        audio_path = os.path.join(UPLOAD_FOLDER, audio_filename)
+        output_dir = os.path.join(OUTPUT_FOLDER, request_id)
+        
+        os.makedirs(output_dir, exist_ok=True)
+        
+        success, message = download_file_from_url(audio_url, audio_path, "audio")
+        if not success:
+            cleanup_file(audio_path)
+            return {'success': False, 'error': message}
+        
+        success, message, output_filename = split_audio_by_time_with_ffmpeg(audio_path, output_dir, start_time_ms, end_time_ms)
+        
+        cleanup_file(audio_path)
+        
+        if success:
+            if os.environ.get('REPLIT_DEPLOYMENT'):
+                download_url = f"https://ffmpegapi.net/download/{request_id}/{output_filename}"
+            elif os.environ.get('REPLIT_DEV_DOMAIN'):
+                download_url = f"https://{os.environ['REPLIT_DEV_DOMAIN']}/download/{request_id}/{output_filename}"
+            else:
+                download_url = url_for('download_file', filename=f"{request_id}/{output_filename}", _external=True)
+            
+            return {
+                'success': True,
+                'message': message,
+                'start_time_ms': start_time_ms,
+                'end_time_ms': end_time_ms,
+                'duration_ms': end_time_ms - start_time_ms,
+                'download_url': download_url
+            }
+        else:
+            import shutil
+            if os.path.exists(output_dir):
+                shutil.rmtree(output_dir)
+            return {'success': False, 'error': message}
+            
+    except Exception as e:
+        logging.error(f"Error in process_split_audio_time_job: {str(e)}")
         if audio_path and os.path.exists(audio_path):
             cleanup_file(audio_path)
         return {'success': False, 'error': f'Server error: {str(e)}'}
@@ -3803,6 +3915,149 @@ def split_audio_segments():
             
     except Exception as e:
         logging.error(f"Split audio segments API error: {str(e)}")
+        return jsonify({
+            'success': False,
+            'error': f'Server error: {str(e)}'
+        }), 500
+
+@app.route('/api/split_audio_time', methods=['POST'])
+@log_api_request
+@require_api_key
+def split_audio_time():
+    """API endpoint to split audio by start and end time in milliseconds (sync/async)"""
+    api_key = request.headers.get('X-API-Key') or request.args.get('api_key')
+    logging.info(f"[SPLIT_AUDIO_TIME] Request received from API key: {api_key[:20]}...")
+    logging.info(f"[SPLIT_AUDIO_TIME] Headers: {dict(request.headers)}")
+    if request.is_json:
+        logging.info(f"[SPLIT_AUDIO_TIME] JSON data: {request.get_json()}")
+    logging.info(f"[SPLIT_AUDIO_TIME] Form data: {dict(request.form)}")
+    
+    try:
+        data = request.get_json()
+        async_processing = data.get('async', False) if data else False
+        
+        if async_processing:
+            api_key = request.headers.get('X-API-Key') or request.args.get('api_key')
+            key_record = ApiKey.query.filter_by(key=api_key, is_active=True).first()
+            
+            job = Job()
+            job.user_id = key_record.user_id
+            job.job_type = 'split_audio_time'
+            job.status = 'pending'
+            job.set_input_data(data)
+            
+            db.session.add(job)
+            db.session.commit()
+            
+            thread = threading.Thread(target=process_job_async, args=(job.job_id,))
+            thread.daemon = True
+            thread.start()
+            
+            return jsonify({
+                'success': True,
+                'job_id': job.job_id,
+                'status': 'pending',
+                'message': 'Job submitted for async processing. Use /api/job/{job_id}/status to check progress.',
+                'status_url': url_for('get_job_status', job_id=job.job_id, _external=True)
+            }), 202
+        
+        if not data:
+            data = request.get_json()
+        
+        if not data or 'audio_url' not in data:
+            return jsonify({
+                'success': False,
+                'error': 'audio_url is required'
+            }), 400
+        
+        audio_url = data['audio_url']
+        start_time_ms = data.get('start_time')
+        end_time_ms = data.get('end_time')
+        
+        if start_time_ms is None or end_time_ms is None:
+            return jsonify({
+                'success': False,
+                'error': 'start_time and end_time are required (in milliseconds)'
+            }), 400
+        
+        if not isinstance(start_time_ms, (int, float)) or not isinstance(end_time_ms, (int, float)):
+            return jsonify({
+                'success': False,
+                'error': 'start_time and end_time must be numbers (in milliseconds)'
+            }), 400
+        
+        if start_time_ms < 0 or end_time_ms < 0:
+            return jsonify({
+                'success': False,
+                'error': 'start_time and end_time must be non-negative'
+            }), 400
+        
+        if end_time_ms <= start_time_ms:
+            return jsonify({
+                'success': False,
+                'error': 'end_time must be greater than start_time'
+            }), 400
+        
+        request_id = str(uuid.uuid4())
+        audio_filename = f"{request_id}_audio.mp3"
+        audio_path = os.path.join(UPLOAD_FOLDER, audio_filename)
+        output_dir = os.path.join(OUTPUT_FOLDER, request_id)
+        
+        os.makedirs(output_dir, exist_ok=True)
+        
+        try:
+            success, message = download_file_from_url(audio_url, audio_path, "audio")
+            if not success:
+                cleanup_file(audio_path)
+                return jsonify({
+                    'success': False,
+                    'error': message
+                }), 400
+            
+            success, message, output_filename = split_audio_by_time_with_ffmpeg(audio_path, output_dir, start_time_ms, end_time_ms)
+            
+            cleanup_file(audio_path)
+            
+            if success:
+                if os.environ.get('REPLIT_DEPLOYMENT'):
+                    download_url = f"https://ffmpegapi.net/download/{request_id}/{output_filename}"
+                elif os.environ.get('REPLIT_DEV_DOMAIN'):
+                    download_url = f"https://{os.environ['REPLIT_DEV_DOMAIN']}/download/{request_id}/{output_filename}"
+                else:
+                    download_url = url_for('download_file', filename=f"{request_id}/{output_filename}", _external=True)
+                
+                return jsonify({
+                    'success': True,
+                    'message': message,
+                    'start_time_ms': start_time_ms,
+                    'end_time_ms': end_time_ms,
+                    'duration_ms': end_time_ms - start_time_ms,
+                    'download_url': download_url
+                })
+            else:
+                import shutil
+                if os.path.exists(output_dir):
+                    shutil.rmtree(output_dir)
+                
+                return jsonify({
+                    'success': False,
+                    'error': message
+                }), 500
+                
+        except Exception as e:
+            cleanup_file(audio_path)
+            import shutil
+            if os.path.exists(output_dir):
+                shutil.rmtree(output_dir)
+            
+            logging.error(f"Audio time splitting error: {str(e)}")
+            return jsonify({
+                'success': False,
+                'error': f'Server error: {str(e)}'
+            }), 500
+            
+    except Exception as e:
+        logging.error(f"Split audio time API error: {str(e)}")
         return jsonify({
             'success': False,
             'error': f'Server error: {str(e)}'
