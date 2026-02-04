@@ -1283,8 +1283,17 @@ def split_audio_by_segments_with_ffmpeg(audio_path, output_dir, segment_duration
             return False, "Audio file appears to have zero duration", []
         
         # Calculate number of segments needed
+        # Use a minimum segment threshold (1 second) to avoid creating tiny unusable segments
+        MIN_SEGMENT_DURATION = 1.0
+        
         num_segments = math.ceil(total_duration / segment_duration)
         output_files = []
+        
+        # Check if the last segment would be too short and skip it
+        last_segment_duration = total_duration - ((num_segments - 1) * segment_duration)
+        if last_segment_duration < MIN_SEGMENT_DURATION and num_segments > 1:
+            num_segments -= 1
+            logging.info(f"Skipping last segment as it would be only {last_segment_duration:.2f}s (below {MIN_SEGMENT_DURATION}s threshold)")
         
         logging.info(f"Splitting {total_duration:.2f}s audio into segments of {segment_duration}s each ({num_segments} segments)")
         
