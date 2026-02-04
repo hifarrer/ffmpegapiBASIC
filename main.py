@@ -1484,8 +1484,8 @@ def contact():
     return render_template('contact.html')
 
 @app.route('/api/merge_image_audio', methods=['POST'])
-@require_api_key
 @log_api_request
+@require_api_key
 def merge_image_audio():
     """API endpoint to merge image and audio into video from URLs or files (sync/async)"""
     # Log full request details for debugging
@@ -1744,8 +1744,8 @@ def merge_image_audio():
         }), 500
 
 @app.route('/api/merge_videos', methods=['POST'])
-@require_api_key
 @log_api_request
+@require_api_key
 def merge_videos():
     """API endpoint to merge multiple videos from URLs (sync/async)"""
     # Log full request details for debugging
@@ -2034,8 +2034,8 @@ def merge_videos():
         }), 500
 
 @app.route('/api/picture_in_picture', methods=['POST'])
-@require_api_key
 @log_api_request
+@require_api_key
 def picture_in_picture():
     """API endpoint to create picture-in-picture video (sync/async)"""
     # Log full request details for debugging
@@ -3438,8 +3438,8 @@ def get_job_status(job_id):
         }), 500
 
 @app.route('/api/split_audio', methods=['POST'])
-@require_api_key
 @log_api_request
+@require_api_key
 def split_audio():
     """API endpoint to split audio into equal parts (sync/async)"""
     # Log full request details for debugging
@@ -3586,8 +3586,8 @@ def split_audio():
         }), 500
 
 @app.route('/api/split_audio_segments', methods=['POST'])
-@require_api_key
 @log_api_request
+@require_api_key
 def split_audio_segments():
     """API endpoint to split audio by segment duration (sync/async)"""
     # Log full request details for debugging
@@ -3871,8 +3871,8 @@ def trim_audio_with_ffmpeg(audio_path, output_path, desired_length, fade_duratio
         return False, f"Audio trimming error: {str(e)}"
 
 @app.route('/api/add_subtitles', methods=['POST'])
-@require_api_key
 @log_api_request
+@require_api_key
 def add_subtitles():
     """API endpoint to add subtitles to video"""
     # Log full request details for debugging
@@ -4025,8 +4025,8 @@ def add_subtitles():
         }), 500
 
 @app.route('/api/trim_audio', methods=['POST'])
-@require_api_key
 @log_api_request
+@require_api_key
 def trim_audio():
     """API endpoint to trim audio to desired length"""
     # Log full request details for debugging
@@ -4171,8 +4171,8 @@ def trim_audio():
         }), 500
 
 @app.route('/api/convert_to_vertical', methods=['POST'])
-@require_api_key
 @log_api_request
+@require_api_key
 def convert_to_vertical():
     """API endpoint to convert horizontal videos to vertical format (sync/async)"""
     # Log full request details for debugging
