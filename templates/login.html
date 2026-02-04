@@ -1,13 +1,11 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-bs-theme="dark">
 <head>
-    <!-- Google tag (gtag.js) -->
     <script async src="https://www.googletagmanager.com/gtag/js?id=AW-17548478207"></script>
     <script>
       window.dataLayer = window.dataLayer || [];
       function gtag(){dataLayer.push(arguments);}
       gtag('js', new Date());
-
       gtag('config', 'AW-17548478207');
     </script>
     
@@ -16,9 +14,82 @@
     <title>Login - FFMPEG API</title>
     <link href="https://cdn.replit.com/agent/bootstrap-agent-dark-theme.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <style>
+        body {
+            background: linear-gradient(135deg, rgba(13, 17, 38, 0.95) 0%, rgba(26, 26, 64, 0.9) 50%, rgba(13, 17, 38, 0.95) 100%),
+                        url('https://ik.imagekit.io/neonvideo/logos/ffmpegbg.png');
+            background-size: cover;
+            background-position: center;
+            background-attachment: fixed;
+            min-height: 100vh;
+        }
+        .navbar-transparent {
+            background: transparent !important;
+        }
+        .auth-card {
+            background: rgba(20, 20, 40, 0.85);
+            border: 1px solid rgba(124, 58, 237, 0.3);
+            border-radius: 16px;
+            backdrop-filter: blur(10px);
+        }
+        .auth-card .card-header {
+            background: linear-gradient(135deg, rgba(124, 58, 237, 0.2) 0%, rgba(99, 102, 241, 0.2) 100%);
+            border-bottom: 1px solid rgba(124, 58, 237, 0.3);
+            border-radius: 16px 16px 0 0;
+        }
+        .auth-card .card-header h3 {
+            background: linear-gradient(90deg, #a855f7, #6366f1);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        .btn-gradient {
+            background: linear-gradient(135deg, #7c3aed 0%, #6366f1 100%);
+            border: none;
+            padding: 0.75rem 1.5rem;
+            font-weight: 600;
+            border-radius: 50px;
+            color: #fff;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 20px rgba(124, 58, 237, 0.4);
+        }
+        .btn-gradient:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 30px rgba(124, 58, 237, 0.5);
+            background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);
+        }
+        .form-control {
+            background: rgba(30, 30, 50, 0.8);
+            border: 1px solid rgba(124, 58, 237, 0.3);
+            border-radius: 8px;
+        }
+        .form-control:focus {
+            background: rgba(30, 30, 50, 0.9);
+            border-color: #7c3aed;
+            box-shadow: 0 0 0 0.25rem rgba(124, 58, 237, 0.25);
+        }
+        .page-title {
+            font-size: 2.5rem;
+            font-weight: 700;
+            color: #fff;
+            text-align: center;
+            margin-bottom: 0.5rem;
+        }
+        .page-title .highlight {
+            background: linear-gradient(90deg, #a855f7, #6366f1);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        .page-subtitle {
+            color: rgba(255, 255, 255, 0.7);
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+    </style>
 </head>
 <body>
-    <nav class="navbar navbar-dark bg-primary">
+    <nav class="navbar navbar-dark navbar-transparent">
         <div class="container">
             <a class="navbar-brand" href="{{ url_for('index') }}">
                 <i class="fas fa-video me-2"></i>FFMPEG API
@@ -32,14 +103,19 @@
         </div>
     </nav>
 
-    <div class="container mt-5">
+    <div class="container py-5">
+        <div class="text-center mb-4 pt-4">
+            <h1 class="page-title">Welcome <span class="highlight">Back</span></h1>
+            <p class="page-subtitle">Sign in to access your API dashboard</p>
+        </div>
+        
         <div class="row justify-content-center">
             <div class="col-md-6 col-lg-5">
-                <div class="card">
-                    <div class="card-header text-center">
-                        <h3><i class="fas fa-sign-in-alt me-2"></i>Sign In</h3>
+                <div class="card auth-card">
+                    <div class="card-header text-center py-3">
+                        <h3 class="mb-0"><i class="fas fa-sign-in-alt me-2"></i>Sign In</h3>
                     </div>
-                    <div class="card-body">
+                    <div class="card-body p-4">
                         {% with messages = get_flashed_messages(with_categories=true) %}
                             {% if messages %}
                                 {% for category, message in messages %}
@@ -86,19 +162,23 @@
                                 {% endif %}
                             </div>
                             
-                            <div class="mb-3 form-check">
+                            <div class="mb-4 form-check">
                                 {{ form.remember_me(class="form-check-input") }}
                                 {{ form.remember_me.label(class="form-check-label") }}
                             </div>
                             
                             <div class="d-grid">
-                                {{ form.submit(class="btn btn-primary") }}
+                                <button type="submit" class="btn btn-gradient">
+                                    <i class="fas fa-sign-in-alt me-2"></i>Sign In
+                                </button>
                             </div>
                         </form>
                         
-                        <div class="text-center mt-3">
-                            <p class="text-muted">Don't have an account?</p>
-                            <a href="{{ url_for('auth.register') }}" class="btn btn-outline-primary">Create Account</a>
+                        <div class="text-center mt-4">
+                            <p class="text-muted mb-2">Don't have an account?</p>
+                            <a href="{{ url_for('auth.register') }}" class="btn btn-outline-light">
+                                <i class="fas fa-user-plus me-2"></i>Create Account
+                            </a>
                         </div>
                     </div>
                 </div>
