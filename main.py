@@ -294,31 +294,29 @@ def log_api_request(f):
             # Calculate processing time
             processing_time_ms = int((time.time() - start_time) * 1000)
             
-            # Log to database in a separate thread to avoid blocking
-            def save_log():
-                try:
-                    with app.app_context():
-                        ApiLog.log_request(
-                            endpoint=endpoint,
-                            method=method,
-                            user_id=user_id,
-                            username=username,
-                            api_key_id=api_key_id,
-                            request_data=request_data,
-                            response_data=response_data,
-                            status_code=status_code,
-                            error_message=error_message,
-                            ip_address=ip_address,
-                            user_agent=user_agent,
-                            processing_time_ms=processing_time_ms
-                        )
-                except Exception as log_error:
-                    logging.error(f"Failed to save API log: {str(log_error)}")
+            # Re-fetch user info after require_api_key has run (it sets these on request)
+            final_user_id = getattr(request, 'api_user_id', None)
+            final_username = getattr(request, 'api_username', None)
+            final_api_key_id = getattr(request, 'api_key_id', None)
             
-            # Run log saving in background thread
-            log_thread = threading.Thread(target=save_log)
-            log_thread.daemon = True
-            log_thread.start()
+            # Log synchronously to ensure it's saved before response returns
+            try:
+                ApiLog.log_request(
+                    endpoint=endpoint,
+                    method=method,
+                    user_id=final_user_id,
+                    username=final_username,
+                    api_key_id=final_api_key_id,
+                    request_data=request_data,
+                    response_data=response_data,
+                    status_code=status_code,
+                    error_message=error_message,
+                    ip_address=ip_address,
+                    user_agent=user_agent,
+                    processing_time_ms=processing_time_ms
+                )
+            except Exception as log_error:
+                logging.error(f"Failed to save API log: {str(log_error)}", exc_info=True)
         
         return response
     

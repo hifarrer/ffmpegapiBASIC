@@ -307,19 +307,19 @@ class ApiLog(db.Model):
     __tablename__ = 'api_logs'
     
     id = db.Column(db.Integer, primary_key=True)
-    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)
-    username = db.Column(db.String(80), nullable=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True, index=True)
+    username = db.Column(db.String(80), nullable=True, index=True)
     api_key_id = db.Column(db.Integer, db.ForeignKey('api_key.id'), nullable=True)
-    endpoint = db.Column(db.String(255), nullable=False)
+    endpoint = db.Column(db.String(255), nullable=False, index=True)
     method = db.Column(db.String(10), nullable=False)
     request_data = db.Column(db.Text)
     response_data = db.Column(db.Text)
-    status_code = db.Column(db.Integer)
+    status_code = db.Column(db.Integer, index=True)
     error_message = db.Column(db.Text)
     ip_address = db.Column(db.String(45))
     user_agent = db.Column(db.String(500))
     processing_time_ms = db.Column(db.Integer)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, index=True)
     
     user = db.relationship('User', backref='api_logs')
     api_key = db.relationship('ApiKey', backref='api_logs')
@@ -380,6 +380,7 @@ class ApiLog(db.Model):
                    request_data=None, response_data=None, status_code=None, 
                    error_message=None, ip_address=None, user_agent=None, processing_time_ms=None):
         """Create a new API log entry"""
+        import logging
         try:
             log = cls()
             log.endpoint = endpoint
@@ -397,8 +398,10 @@ class ApiLog(db.Model):
             
             db.session.add(log)
             db.session.commit()
+            logging.debug(f"API log saved: {endpoint} - {status_code}")
             return log
         except Exception as e:
+            logging.error(f"Failed to save API log for {endpoint}: {str(e)}", exc_info=True)
             db.session.rollback()
             return None
     
