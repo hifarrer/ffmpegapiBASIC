@@ -593,7 +593,7 @@ def api_logs():
         
         # Filter parameters
         username_filter = request.args.get('username', '').strip()
-        endpoint_filter = request.args.get('endpoint', '').strip()
+        endpoint_filter = request.args.get('endpoint_filter', '').strip()
         status_filter = request.args.get('status', '')
         date_from = request.args.get('date_from', '')
         date_to = request.args.get('date_to', '')
@@ -652,7 +652,7 @@ def api_logs():
                              unique_endpoints=unique_endpoints,
                              filters={
                                  'username': username_filter,
-                                 'endpoint': endpoint_filter,
+                                 'endpoint_filter': endpoint_filter,
                                  'status': status_filter,
                                  'date_from': date_from,
                                  'date_to': date_to

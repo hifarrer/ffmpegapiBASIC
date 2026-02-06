@@ -1,0 +1,109 @@
+File "/home/runner/workspace/.pythonlibs/lib/python3.11/site-packages/sqlalchemy/engine/base.py", line 2589, in close
+2026-02-06 11:15:03.59
+3e1b689c
+User
+^^^^^^^^^^^^^^^^^^^^^
+2026-02-06 11:15:03.59
+3e1b689c
+User
+File "/home/runner/workspace/main.py", line 2023, in merge_videos
+2026-02-06 11:15:03.59
+3e1b689c
+User
+File "/home/runner/workspace/.pythonlibs/lib/python3.11/site-packages/sqlalchemy/engine/base.py", line 2727, in _do_close
+2026-02-06 11:15:03.59
+3e1b689c
+User
+File "/home/runner/workspace/.pythonlibs/lib/python3.11/site-packages/sqlalchemy/orm/session.py", line 2590, in _close_impl
+2026-02-06 11:15:03.59
+3e1b689c
+User
+File "/home/runner/workspace/.pythonlibs/lib/python3.11/site-packages/sqlalchemy/engine/default.py", line 711, in do_rollback
+2026-02-06 11:15:03.59
+3e1b689c
+User
+self.engine.dialect.do_rollback(self.connection)
+2026-02-06 11:15:03.59
+3e1b689c
+User
+db.session.close()
+2026-02-06 11:15:03.59
+3e1b689c
+User
+File "/home/runner/workspace/.pythonlibs/lib/python3.11/site-packages/sqlalchemy/engine/base.py", line 1128, in _rollback_impl
+2026-02-06 11:15:03.59
+3e1b689c
+User
+transaction.close(invalidate)
+2026-02-06 11:15:03.59
+3e1b689c
+User
+File "/home/runner/workspace/.pythonlibs/lib/python3.11/site-packages/sqlalchemy/orm/session.py", line 1419, in close
+2026-02-06 11:15:03.59
+3e1b689c
+User
+psycopg2.OperationalError: SSL connection has been closed unexpectedly
+2026-02-06 11:15:03.59
+3e1b689c
+User
+File "/home/runner/workspace/main.py", line 2150, in merge_videos
+2026-02-06 11:15:03.59
+3e1b689c
+User
+self._do_close()
+2026-02-06 11:15:03.59
+3e1b689c
+User
+The above exception was the direct cause of the following exception:
+2026-02-06 11:15:03.59
+3e1b689c
+User
+self._close_impl()
+2026-02-06 11:15:03.59
+3e1b689c
+User
+Traceback (most recent call last):
+2026-02-06 11:15:03.59
+3e1b689c
+User
+^^^^^^^^^^^^^^^^^^^^
+2026-02-06 11:15:03.59
+3e1b689c
+User
+sqlalchemy.exc.OperationalError: (psycopg2.OperationalError) SSL connection has been closed unexpectedly
+2026-02-06 11:15:03.59
+3e1b689c
+User
+File "/home/runner/workspace/.pythonlibs/lib/python3.11/site-packages/sqlalchemy/orm/scoping.py", line 526, in close
+2026-02-06 11:15:03.59
+3e1b689c
+User
+dbapi_connection.rollback()
+2026-02-06 11:15:07.47
+3e1b689c
+User
+DEBUG:root:API log saved: /api/merge_videos - 500
+2026-02-06 11:18:55.98
+3e1b689c
+User
+ERROR:root:Error loading API logs: Flask.url_for() got multiple values for argument 'endpoint'
+2026-02-06 11:19:02.78
+3e1b689c
+User
+ERROR:root:Error loading API logs: Flask.url_for() got multiple values for argument 'endpoint'
+2026-02-06 11:19:10.23
+3e1b689c
+User
+ERROR:root:Error loading API logs: Flask.url_for() got multiple values for argument 'endpoint'
+2026-02-06 11:19:21.58
+3e1b689c
+User
+ERROR:root:Error loading API logs: Flask.url_for() got multiple values for argument 'endpoint'
+2026-02-06 11:20:02.93
+3e1b689c
+User
+ERROR:root:Error loading API logs: Flask.url_for() got multiple values for argument 'endpoint'
+2026-02-06 11:20:11.94
+3e1b689c
+User
+ERROR:root:Error loading API logs: Flask.url_for() got multiple values for argument 'endpoint'
