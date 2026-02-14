@@ -1694,7 +1694,7 @@ class VideoMerger {
     async handleTiktokSubtitlesSubmit() {
         const jsonData = {
             video_url: document.getElementById('tiktokVideoUrl').value,
-            ass_content: document.getElementById('tiktokAssContent').value,
+            subtitle_url: document.getElementById('tiktokSubtitleUrl').value,
             subtitle_style: document.getElementById('tiktokSubtitleStyle').value,
             aspect_ratio: document.getElementById('tiktokAspectRatio').value,
         };

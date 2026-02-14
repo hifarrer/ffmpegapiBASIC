@@ -1392,13 +1392,13 @@
                                     </div>
 
                                     <div class="mb-4">
-                                        <label for="tiktokAssContent" class="form-label">
+                                        <label for="tiktokSubtitleUrl" class="form-label">
                                             <i class="fas fa-file-alt me-2"></i>
-                                            ASS Subtitle Content
+                                            Subtitle URL (ASS File)
                                         </label>
-                                        <textarea class="form-control" id="tiktokAssContent" name="ass_content" rows="6" 
-                                                  placeholder="[Script Info]&#10;ScriptType: v4.00&#10;&#10;[Events]&#10;Format: Marked, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text&#10;Dialogue: Marked=0,0:00:00.00,0:00:02.00,Default,,0000,0000,0000,,Hello world" required></textarea>
-                                        <div class="form-text">Paste your ASS subtitle file content here (word-level timestamps recommended)</div>
+                                        <input type="url" class="form-control" id="tiktokSubtitleUrl" name="subtitle_url" 
+                                               placeholder="https://example.com/subtitles.ass" required>
+                                        <div class="form-text">Enter the URL to your ASS subtitle file (word-level timestamps recommended)</div>
                                     </div>
 
                                     <div class="row mb-4">

@@ -4888,7 +4888,7 @@ def add_tiktok_subtitles():
             }), 400
 
         video_url = data.get('video_url')
-        ass_content = data.get('ass_content')
+        subtitle_url = data.get('subtitle_url')
         subtitle_style = data.get('subtitle_style', 'plain-white')
         aspect_ratio = data.get('aspect_ratio', '9:16')
         audio_duration_seconds = data.get('audio_duration_seconds')
@@ -4899,10 +4899,10 @@ def add_tiktok_subtitles():
                 'error': 'video_url is required'
             }), 400
 
-        if not ass_content:
+        if not subtitle_url:
             return jsonify({
                 'success': False,
-                'error': 'ass_content is required'
+                'error': 'subtitle_url is required'
             }), 400
 
         valid_styles = ['plain-white', 'yellow-bg', 'pink-bg', 'blue-bg', 'red-bg']
@@ -4912,6 +4912,34 @@ def add_tiktok_subtitles():
         if aspect_ratio not in ('16:9', '9:16'):
             aspect_ratio = '9:16'
 
+        request_id = str(uuid.uuid4())
+        subtitle_path = os.path.join(UPLOAD_FOLDER, f"{request_id}_tiktok_subtitle.ass")
+
+        try:
+            success, message = download_file_from_url(subtitle_url, subtitle_path, "subtitle")
+            if not success:
+                cleanup_file(subtitle_path)
+                return jsonify({
+                    'success': False,
+                    'error': f'Failed to download subtitle file: {message}'
+                }), 400
+
+            with open(subtitle_path, 'r', encoding='utf-8', errors='replace') as f:
+                ass_content = f.read()
+
+            if not ass_content.strip():
+                cleanup_file(subtitle_path)
+                return jsonify({
+                    'success': False,
+                    'error': 'Downloaded subtitle file is empty'
+                }), 400
+        except Exception as dl_error:
+            cleanup_file(subtitle_path)
+            return jsonify({
+                'success': False,
+                'error': f'Error processing subtitle file: {str(dl_error)}'
+            }), 400
+
         render_input = json.dumps({
             'video_url': video_url,
             'ass_content': ass_content,
@@ -4919,6 +4947,8 @@ def add_tiktok_subtitles():
             'aspect_ratio': aspect_ratio,
             'audio_duration_seconds': audio_duration_seconds,
         })
+
+        cleanup_file(subtitle_path)
 
         logging.info(f"[TIKTOK_SUBTITLES] Starting Remotion render for video: {video_url[:80]}...")
 
