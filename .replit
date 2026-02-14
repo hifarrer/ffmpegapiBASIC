@@ -2,7 +2,7 @@ modules = ["python-3.11", "nodejs-20", "python3", "postgresql-16"]
 
 [nix]
 channel = "stable-25_05"
-packages = ["cargo", "ffmpeg", "libiconv", "openssl", "postgresql", "rustc", "chromium"]
+packages = ["cargo", "ffmpeg", "libiconv", "openssl", "postgresql", "rustc", "chromium", "nspr", "nss", "xorg.libX11", "xorg.libXcomposite", "xorg.libXdamage", "xorg.libXext", "xorg.libXfixes", "xorg.libXrandr", "xorg.libxcb", "at-spi2-atk", "cups", "libdrm", "mesa", "expat", "alsa-lib", "pango", "cairo", "glib", "dbus", "gtk3"]
 
 [deployment]
 deploymentTarget = "autoscale"
@@ -28,6 +28,10 @@ author = "agent"
 task = "shell.exec"
 args = "gunicorn --bind 0.0.0.0:5000 --reuse-port --reload main:app"
 waitForPort = 5000
+
+[[ports]]
+localPort = 3000
+externalPort = 3001
 
 [[ports]]
 localPort = 5000

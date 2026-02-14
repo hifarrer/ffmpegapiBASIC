@@ -15,14 +15,14 @@ const defaultProps: CaptionedVideoCompositionProps = {
 
 const RemotionRoot: React.FC = () => {
   return (
-    <Composition<CaptionedVideoCompositionProps>
+    <Composition
       id="CaptionedVideo"
-      component={CaptionedVideoComposition}
+      component={CaptionedVideoComposition as any}
       durationInFrames={300}
       fps={30}
       width={1080}
       height={1920}
-      defaultProps={defaultProps}
+      defaultProps={defaultProps as any}
     />
   );
 };

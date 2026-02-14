@@ -4874,5 +4874,154 @@ def convert_to_vertical():
             'error': f'Server error: {str(e)}'
         }), 500
 
+@app.route('/api/videos/add-tiktok-subtitles', methods=['POST'])
+@log_api_request
+@require_api_key
+def add_tiktok_subtitles():
+    """API endpoint to add TikTok-style subtitles to video using Remotion"""
+    try:
+        data = request.get_json()
+        if not data:
+            return jsonify({
+                'success': False,
+                'error': 'Request body must be JSON'
+            }), 400
+
+        video_url = data.get('video_url')
+        ass_content = data.get('ass_content')
+        subtitle_style = data.get('subtitle_style', 'plain-white')
+        aspect_ratio = data.get('aspect_ratio', '9:16')
+        audio_duration_seconds = data.get('audio_duration_seconds')
+
+        if not video_url:
+            return jsonify({
+                'success': False,
+                'error': 'video_url is required'
+            }), 400
+
+        if not ass_content:
+            return jsonify({
+                'success': False,
+                'error': 'ass_content is required'
+            }), 400
+
+        valid_styles = ['plain-white', 'yellow-bg', 'pink-bg', 'blue-bg', 'red-bg']
+        if subtitle_style not in valid_styles:
+            subtitle_style = 'plain-white'
+
+        if aspect_ratio not in ('16:9', '9:16'):
+            aspect_ratio = '9:16'
+
+        render_input = json.dumps({
+            'video_url': video_url,
+            'ass_content': ass_content,
+            'subtitle_style': subtitle_style,
+            'aspect_ratio': aspect_ratio,
+            'audio_duration_seconds': audio_duration_seconds,
+        })
+
+        logging.info(f"[TIKTOK_SUBTITLES] Starting Remotion render for video: {video_url[:80]}...")
+
+        try:
+            result = subprocess.run(
+                ['npx', 'tsx', 'server/render-tiktok-captions.ts'],
+                input=render_input,
+                capture_output=True,
+                text=True,
+                timeout=600,
+                cwd=os.path.dirname(os.path.abspath(__file__)) or '.'
+            )
+        except subprocess.TimeoutExpired:
+            logging.error("[TIKTOK_SUBTITLES] Rendering timed out after 600 seconds")
+            return jsonify({
+                'success': False,
+                'error': 'Video rendering timed out. The video may be too long.'
+            }), 504
+
+        logging.info(f"[TIKTOK_SUBTITLES] Process exit code: {result.returncode}")
+        if result.stderr:
+            logging.info(f"[TIKTOK_SUBTITLES] stderr: {result.stderr[:2000]}")
+
+        if result.returncode != 0:
+            error_msg = 'Rendering process failed'
+            try:
+                err_data = json.loads(result.stdout)
+                error_msg = err_data.get('error', error_msg)
+            except (json.JSONDecodeError, TypeError):
+                if result.stderr:
+                    error_msg = result.stderr[:500]
+            
+            logging.error(f"[TIKTOK_SUBTITLES] Render failed: {error_msg}")
+            return jsonify({
+                'success': False,
+                'error': error_msg
+            }), 500
+
+        try:
+            output_data = json.loads(result.stdout)
+        except (json.JSONDecodeError, TypeError):
+            logging.error(f"[TIKTOK_SUBTITLES] Could not parse output: {result.stdout[:500]}")
+            return jsonify({
+                'success': False,
+                'error': 'Failed to parse rendering output'
+            }), 500
+
+        if not output_data.get('success'):
+            return jsonify({
+                'success': False,
+                'error': output_data.get('error', 'Unknown rendering error')
+            }), 500
+
+        output_video_path = output_data.get('output_video_path')
+        if not output_video_path or not os.path.exists(output_video_path):
+            return jsonify({
+                'success': False,
+                'error': 'Rendered video file not found'
+            }), 500
+
+        output_filename = os.path.basename(output_video_path)
+        storage_path = f"tiktok-captions/{output_filename}"
+
+        try:
+            storage_url = upload_to_storage(output_video_path, storage_path)
+            if storage_url:
+                cleanup_file(output_video_path)
+                return jsonify({
+                    'success': True,
+                    'output_video_path': output_video_path,
+                    'download_url': storage_url,
+                    'message': 'Video with TikTok subtitles rendered successfully'
+                })
+        except Exception as storage_error:
+            logging.warning(f"[TIKTOK_SUBTITLES] Storage upload failed: {str(storage_error)}")
+
+        try:
+            final_output = os.path.join(OUTPUT_FOLDER, output_filename)
+            import shutil
+            shutil.copy2(output_video_path, final_output)
+            cleanup_file(output_video_path)
+            download_url = url_for('download_video', filename=output_filename, _external=True)
+            return jsonify({
+                'success': True,
+                'output_video_path': final_output,
+                'download_url': download_url,
+                'message': 'Video with TikTok subtitles rendered successfully'
+            })
+        except Exception as copy_error:
+            logging.warning(f"[TIKTOK_SUBTITLES] File copy failed: {str(copy_error)}")
+            return jsonify({
+                'success': True,
+                'output_video_path': output_video_path,
+                'message': 'Video with TikTok subtitles rendered successfully (temporary location)'
+            })
+
+    except Exception as e:
+        logging.error(f"[TIKTOK_SUBTITLES] Error: {str(e)}", exc_info=True)
+        return jsonify({
+            'success': False,
+            'error': f'Server error: {str(e)}'
+        }), 500
+
+
 if __name__ == '__main__':
     app.run(host="0.0.0.0", port=5000, debug=True)
