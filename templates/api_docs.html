@@ -118,6 +118,7 @@
                                 <a class="toc-link ms-3" href="#split-audio-segments">Split Audio by Segments</a>
                                 <a class="toc-link ms-3" href="#split-audio-time">Split Audio by Time</a>
                                 <a class="toc-link ms-3" href="#trim-audio">Trim Audio</a>
+                                <a class="toc-link ms-3" href="#trim-video">Trim Video</a>
                                 <a class="toc-link ms-3" href="#convert-to-vertical">Convert to Vertical</a>
                                 <a class="toc-link ms-3" href="#job-status">Job Status</a>
                                 <a class="toc-link" href="#errors">Error Handling</a>
@@ -141,7 +142,7 @@
                 <!-- Overview -->
                 <section id="overview" class="mb-5">
                     <h2><i class="fas fa-info-circle me-2"></i>Overview</h2>
-                    <p>The FFMPEG Video Merger API provides seven powerful video processing capabilities:</p>
+                    <p>The FFMPEG Video Merger API provides eight powerful video processing capabilities:</p>
                     
                     <div class="row">
                         <div class="col-md-4 mb-3">
@@ -195,6 +196,15 @@
                                     <i class="fas fa-cut fa-2x text-primary mb-3"></i>
                                     <h5>Trim Audio</h5>
                                     <p class="small">Trim audio files to exact durations with precise timing</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-3 mb-3">
+                            <div class="card h-100">
+                                <div class="card-body text-center">
+                                    <i class="fas fa-film fa-2x text-primary mb-3"></i>
+                                    <h5>Trim Video</h5>
+                                    <p class="small">Trim videos by specifying start and end times in seconds</p>
                                 </div>
                             </div>
                         </div>
@@ -1305,6 +1315,227 @@ if ($result['success']) {
   "message": "Job submitted for async processing. Use /api/job/{job_id}/status to check progress.",
   "status_url": "https://ffmpegapi.net/api/job/550e8400-e29b-41d4-a716-446655440000/status"
 }</code></pre>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Trim Video -->
+                    <div id="trim-video" class="api-endpoint">
+                        <div class="card">
+                            <div class="card-header">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <h4 class="mb-0">Trim Video</h4>
+                                    <span class="method-badge method-post">POST</span>
+                                </div>
+                                <code class="text-muted">/api/trim_video</code>
+                            </div>
+                            <div class="card-body">
+                                <p>Trim a video file by specifying start and end times in seconds. Perfect for extracting specific segments from longer videos.</p>
+                                
+                                <h6 class="mt-4 mb-3">Request Parameters</h6>
+                                <div class="table-responsive">
+                                    <table class="table table-dark table-striped">
+                                        <thead>
+                                            <tr>
+                                                <th>Parameter</th>
+                                                <th>Type</th>
+                                                <th>Required</th>
+                                                <th>Description</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <tr>
+                                                <td><code>video_url</code></td>
+                                                <td>string</td>
+                                                <td>Yes</td>
+                                                <td>URL of the video file to trim (supports MP4, MOV, AVI, MKV, WebM, FLV, WMV)</td>
+                                            </tr>
+                                            <tr>
+                                                <td><code>start_time</code></td>
+                                                <td>number</td>
+                                                <td>Yes</td>
+                                                <td>Start time in seconds (supports decimal values, e.g., 30.5). Must be >= 0</td>
+                                            </tr>
+                                            <tr>
+                                                <td><code>end_time</code></td>
+                                                <td>number</td>
+                                                <td>Yes</td>
+                                                <td>End time in seconds (supports decimal values, e.g., 120.0). Must be greater than start_time</td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+
+                                <h6 class="mt-4 mb-3">Example Request</h6>
+                                <div class="code-block">
+                                    <pre><code class="language-bash">curl -X POST "https://ffmpegapi.net/api/trim_video" \
+     -H "X-API-Key: YOUR_API_KEY" \
+     -H "Content-Type: application/json" \
+     -d '{
+       "video_url": "https://example.com/video.mp4",
+       "start_time": 30,
+       "end_time": 120
+     }'</code></pre>
+                                </div>
+
+                                <h6 class="mt-4 mb-3">Success Response</h6>
+                                <div class="code-block">
+                                    <pre><code class="language-json">{
+  "success": true,
+  "filename": "abc123_trimmed_video.mp4",
+  "download_url": "https://ffmpegapi.net/api/storage/abc123_trimmed_video.mp4",
+  "start_time": 30,
+  "end_time": 120,
+  "duration": 90,
+  "message": "Video trimmed from 30.0s to 120.0s successfully"
+}</code></pre>
+                                </div>
+
+                                <h6 class="mt-4 mb-3">Error Response</h6>
+                                <div class="code-block">
+                                    <pre><code class="language-json">{
+  "success": false,
+  "error": "end_time must be greater than start_time"
+}</code></pre>
+                                </div>
+
+                                <h6 class="mt-4 mb-3">Notes</h6>
+                                <ul>
+                                    <li><strong>Format Support:</strong> Supports MP4, MOV, AVI, MKV, WebM, FLV, WMV and other common video formats</li>
+                                    <li><strong>Fast Processing:</strong> Uses stream copy (no re-encoding) for fastest possible trimming. Automatically falls back to re-encoding if stream copy fails</li>
+                                    <li><strong>Precision:</strong> Supports sub-second precision (e.g., 30.5 seconds)</li>
+                                    <li><strong>Time Validation:</strong> end_time must be greater than start_time, and start_time must be non-negative</li>
+                                    <li><strong>Quality:</strong> Stream copy preserves original video and audio quality with no re-encoding</li>
+                                    <li><strong>File Size:</strong> Video file URLs must be publicly accessible and under 100MB</li>
+                                </ul>
+
+                                <div class="alert alert-info mt-3">
+                                    <i class="fas fa-info-circle me-2"></i>
+                                    <strong>Tip:</strong> Times are specified in seconds. For example, to extract from 1 minute 30 seconds to 3 minutes, use start_time=90 and end_time=180.
+                                </div>
+
+                                <h6 class="mt-4 mb-3">Code Examples</h6>
+                                <ul class="nav nav-pills mb-3" id="trimVideoExampleTabs" role="tablist">
+                                    <li class="nav-item" role="presentation">
+                                        <button class="nav-link active" id="trimvid-curl-tab" data-bs-toggle="pill" data-bs-target="#trimvid-curl" type="button" role="tab">cURL</button>
+                                    </li>
+                                    <li class="nav-item" role="presentation">
+                                        <button class="nav-link" id="trimvid-python-tab" data-bs-toggle="pill" data-bs-target="#trimvid-python" type="button" role="tab">Python</button>
+                                    </li>
+                                    <li class="nav-item" role="presentation">
+                                        <button class="nav-link" id="trimvid-javascript-tab" data-bs-toggle="pill" data-bs-target="#trimvid-javascript" type="button" role="tab">JavaScript</button>
+                                    </li>
+                                    <li class="nav-item" role="presentation">
+                                        <button class="nav-link" id="trimvid-php-tab" data-bs-toggle="pill" data-bs-target="#trimvid-php" type="button" role="tab">PHP</button>
+                                    </li>
+                                </ul>
+                                <div class="tab-content" id="trimVideoExampleContent">
+                                    <div class="tab-pane fade show active" id="trimvid-curl" role="tabpanel">
+                                        <div class="code-block">
+                                            <pre><code class="language-bash">curl -X POST "https://ffmpegapi.net/api/trim_video" \
+     -H "X-API-Key: YOUR_API_KEY" \
+     -H "Content-Type: application/json" \
+     -d '{
+       "video_url": "https://example.com/long_video.mp4",
+       "start_time": 60,
+       "end_time": 180
+     }'</code></pre>
+                                        </div>
+                                    </div>
+                                    <div class="tab-pane fade" id="trimvid-python" role="tabpanel">
+                                        <div class="code-block">
+                                            <pre><code class="language-python">import requests
+import json
+
+url = "https://ffmpegapi.net/api/trim_video"
+headers = {
+    "X-API-Key": "YOUR_API_KEY",
+    "Content-Type": "application/json"
+}
+data = {
+    "video_url": "https://example.com/long_video.mp4",
+    "start_time": 60,
+    "end_time": 180
+}
+
+response = requests.post(url, headers=headers, json=data)
+result = response.json()
+
+if result["success"]:
+    print(f"Video trimmed successfully!")
+    print(f"Download URL: {result['download_url']}")
+    print(f"Duration: {result['duration']} seconds")
+    print(f"From {result['start_time']}s to {result['end_time']}s")
+else:
+    print(f"Error: {result['error']}")</code></pre>
+                                        </div>
+                                    </div>
+                                    <div class="tab-pane fade" id="trimvid-javascript" role="tabpanel">
+                                        <div class="code-block">
+                                            <pre><code class="language-javascript">const trimVideo = async () => {
+  const response = await fetch('https://ffmpegapi.net/api/trim_video', {
+    method: 'POST',
+    headers: {
+      'X-API-Key': 'YOUR_API_KEY',
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({
+      video_url: 'https://example.com/long_video.mp4',
+      start_time: 60,
+      end_time: 180
+    })
+  });
+  
+  const result = await response.json();
+  
+  if (result.success) {
+    console.log('Video trimmed successfully!');
+    console.log('Download URL:', result.download_url);
+    console.log('Duration:', result.duration, 'seconds');
+    console.log(`From ${result.start_time}s to ${result.end_time}s`);
+  } else {
+    console.error('Error:', result.error);
+  }
+};
+
+trimVideo();</code></pre>
+                                        </div>
+                                    </div>
+                                    <div class="tab-pane fade" id="trimvid-php" role="tabpanel">
+                                        <div class="code-block">
+                                            <pre><code class="language-php"><?php
+$url = 'https://ffmpegapi.net/api/trim_video';
+$data = array(
+    'video_url' => 'https://example.com/long_video.mp4',
+    'start_time' => 60,
+    'end_time' => 180
+);
+
+$options = array(
+    'http' => array(
+        'header' => "X-API-Key: YOUR_API_KEY\r\n" .
+                   "Content-Type: application/json\r\n",
+        'method' => 'POST',
+        'content' => json_encode($data)
+    )
+);
+
+$context = stream_context_create($options);
+$response = file_get_contents($url, false, $context);
+$result = json_decode($response, true);
+
+if ($result['success']) {
+    echo "Video trimmed successfully!\n";
+    echo "Download URL: " . $result['download_url'] . "\n";
+    echo "Duration: " . $result['duration'] . " seconds\n";
+    echo "From " . $result['start_time'] . "s to " . $result['end_time'] . "s\n";
+} else {
+    echo "Error: " . $result['error'] . "\n";
+}
+?></code></pre>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                         </div>
