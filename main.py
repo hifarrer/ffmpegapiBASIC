@@ -4508,6 +4508,216 @@ def trim_audio():
             'error': f'Server error: {str(e)}'
         }), 500
 
+def trim_video_with_ffmpeg(video_path, output_path, start_time, end_time):
+    """Trim video to specified start and end time using FFMPEG"""
+    try:
+        duration = end_time - start_time
+
+        cmd = [
+            'ffmpeg',
+            '-ss', str(start_time),
+            '-i', video_path,
+            '-t', str(duration),
+            '-c:v', 'copy',
+            '-c:a', 'copy',
+            '-avoid_negative_ts', 'make_zero',
+            '-y',
+            output_path
+        ]
+
+        logging.info(f"[TRIM_VIDEO] Attempting trim with stream copy from {start_time}s to {end_time}s (duration: {duration}s)")
+        logging.info(f"[TRIM_VIDEO] Command: {' '.join(cmd)}")
+        result = subprocess.run(cmd, capture_output=True, text=True, timeout=600)
+
+        if result.returncode == 0:
+            logging.info("[TRIM_VIDEO] Video trimming completed successfully with stream copy")
+            return True, "Video trimmed successfully"
+        else:
+            logging.warning(f"[TRIM_VIDEO] Stream copy failed: {result.stderr}, trying re-encode")
+
+        cmd_reencode = [
+            'ffmpeg',
+            '-ss', str(start_time),
+            '-i', video_path,
+            '-t', str(duration),
+            '-c:v', 'libx264',
+            '-preset', 'fast',
+            '-crf', '23',
+            '-c:a', 'aac',
+            '-b:a', '192k',
+            '-avoid_negative_ts', 'make_zero',
+            '-y',
+            output_path
+        ]
+
+        logging.info(f"[TRIM_VIDEO] Attempting trim with re-encoding")
+        logging.info(f"[TRIM_VIDEO] Command: {' '.join(cmd_reencode)}")
+        result = subprocess.run(cmd_reencode, capture_output=True, text=True, timeout=1800)
+
+        if result.returncode == 0:
+            logging.info("[TRIM_VIDEO] Video trimming completed successfully with re-encoding")
+            return True, "Video trimmed successfully"
+        else:
+            logging.error(f"[TRIM_VIDEO] Video processing failed: {result.stderr}")
+            return False, f"Video trimming failed: {result.stderr}"
+
+    except subprocess.TimeoutExpired:
+        logging.error("[TRIM_VIDEO] Video trimming timed out")
+        return False, "Video trimming processing timed out"
+    except Exception as e:
+        logging.error(f"[TRIM_VIDEO] Video trimming error: {str(e)}")
+        return False, f"Video trimming error: {str(e)}"
+
+
+@app.route('/api/trim_video', methods=['POST'])
+@log_api_request
+@require_api_key
+def trim_video():
+    """API endpoint to trim video based on start and end time"""
+    api_key = request.headers.get('X-API-Key') or request.args.get('api_key')
+    logging.info(f"[TRIM_VIDEO] Request received from API key: {api_key[:20]}...")
+    logging.info(f"[TRIM_VIDEO] Headers: {dict(request.headers)}")
+    if request.is_json:
+        logging.info(f"[TRIM_VIDEO] JSON data: {request.get_json()}")
+    logging.info(f"[TRIM_VIDEO] Form data: {dict(request.form)}")
+
+    try:
+        request_id = str(uuid.uuid4())
+
+        if request.is_json:
+            data = request.get_json()
+            video_url = data.get('video_url')
+            start_time = data.get('start_time')
+            end_time = data.get('end_time')
+        else:
+            video_url = request.form.get('video_url')
+            start_time = request.form.get('start_time')
+            end_time = request.form.get('end_time')
+
+        if not video_url:
+            return jsonify({
+                'success': False,
+                'error': 'video_url is required'
+            }), 400
+
+        if start_time is None:
+            return jsonify({
+                'success': False,
+                'error': 'start_time is required'
+            }), 400
+
+        if end_time is None:
+            return jsonify({
+                'success': False,
+                'error': 'end_time is required'
+            }), 400
+
+        try:
+            start_time = float(start_time)
+            if start_time < 0:
+                return jsonify({
+                    'success': False,
+                    'error': 'start_time must be a non-negative number'
+                }), 400
+        except (ValueError, TypeError):
+            return jsonify({
+                'success': False,
+                'error': 'start_time must be a valid number'
+            }), 400
+
+        try:
+            end_time = float(end_time)
+            if end_time <= 0:
+                return jsonify({
+                    'success': False,
+                    'error': 'end_time must be a positive number'
+                }), 400
+        except (ValueError, TypeError):
+            return jsonify({
+                'success': False,
+                'error': 'end_time must be a valid number'
+            }), 400
+
+        if end_time <= start_time:
+            return jsonify({
+                'success': False,
+                'error': 'end_time must be greater than start_time'
+            }), 400
+
+        video_ext = video_url.split('.')[-1].split('?')[0].lower() if '.' in video_url else 'mp4'
+        if video_ext not in ['mp4', 'mov', 'avi', 'mkv', 'webm', 'flv', 'wmv']:
+            video_ext = 'mp4'
+        video_filename = f"{request_id}_video.{video_ext}"
+        video_path = os.path.join(UPLOAD_FOLDER, video_filename)
+
+        success, message = download_file_from_url(video_url, video_path, "video")
+        if not success:
+            return jsonify({
+                'success': False,
+                'error': message
+            }), 400
+
+        try:
+            output_filename = f"{request_id}_trimmed_video.mp4"
+            output_path = os.path.join(OUTPUT_FOLDER, output_filename)
+
+            success, message = trim_video_with_ffmpeg(video_path, output_path, start_time, end_time)
+
+            cleanup_file(video_path)
+
+            if success:
+                storage_url = upload_to_storage(output_path, output_filename)
+
+                if storage_url:
+                    cleanup_file(output_path)
+
+                    return jsonify({
+                        'success': True,
+                        'message': f"Video trimmed from {start_time}s to {end_time}s successfully",
+                        'download_url': storage_url,
+                        'filename': output_filename,
+                        'start_time': start_time,
+                        'end_time': end_time,
+                        'duration': end_time - start_time
+                    })
+                else:
+                    logging.warning("Storage upload failed, falling back to local download")
+
+                    if os.environ.get('REPLIT_DEPLOYMENT'):
+                        download_url = f"https://ffmpegapi.net/download/{output_filename}"
+                    elif os.environ.get('REPLIT_DEV_DOMAIN'):
+                        download_url = f"https://{os.environ['REPLIT_DEV_DOMAIN']}/download/{output_filename}"
+                    else:
+                        download_url = url_for('download_file', filename=output_filename, _external=True)
+
+                    return jsonify({
+                        'success': True,
+                        'message': f"Video trimmed from {start_time}s to {end_time}s successfully (Note: Using temporary local storage - download soon)",
+                        'download_url': download_url,
+                        'filename': output_filename,
+                        'start_time': start_time,
+                        'end_time': end_time,
+                        'duration': end_time - start_time
+                    })
+            else:
+                return jsonify({
+                    'success': False,
+                    'error': message
+                }), 500
+
+        except Exception as e:
+            cleanup_file(video_path)
+            raise e
+
+    except Exception as e:
+        logging.error(f"[TRIM_VIDEO] Error in trim_video: {str(e)}")
+        logging.error(f"[TRIM_VIDEO] Full traceback:", exc_info=True)
+        return jsonify({
+            'success': False,
+            'error': f'Server error: {str(e)}'
+        }), 500
+
+
 @app.route('/api/convert_to_vertical', methods=['POST'])
 @log_api_request
 @require_api_key

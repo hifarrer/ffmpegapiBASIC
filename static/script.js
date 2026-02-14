@@ -10,6 +10,7 @@ class VideoMerger {
         this.initializeSplitAudioSegmentsTab();
         this.initializeSplitAudioTimeTab();
         this.initializeTrimAudioTab();
+        this.initializeTrimVideoTab();
         this.initializeConvertVerticalTab();
     }
 
@@ -1398,6 +1399,137 @@ class VideoMerger {
 
     hideTrimAudioResult() {
         this.trimAudioResultContainer.style.display = 'none';
+    }
+
+    initializeTrimVideoTab() {
+        this.trimVideoForm = document.getElementById('trimVideoForm');
+        this.trimVideoSubmitBtn = document.getElementById('trimVideoSubmitBtn');
+        this.trimVideoProgressContainer = document.getElementById('trimVideoProgressContainer');
+        this.trimVideoAlertContainer = document.getElementById('trimVideoAlertContainer');
+        this.trimVideoResultContainer = document.getElementById('trimVideoResultContainer');
+        this.trimVideoDownloadBtn = document.getElementById('trimVideoDownloadBtn');
+        this.trimVideoCleanupBtn = document.getElementById('trimVideoCleanupBtn');
+        this.trimVideoResetBtn = document.getElementById('trimVideoResetBtn');
+        this.trimVideoCurrentFilename = null;
+
+        this.trimVideoForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            this.handleTrimVideoSubmit();
+        });
+
+        this.trimVideoCleanupBtn.addEventListener('click', () => {
+            this.handleTrimVideoCleanup();
+        });
+
+        this.trimVideoResetBtn.addEventListener('click', () => {
+            this.resetTrimVideoForm();
+        });
+    }
+
+    async handleTrimVideoSubmit() {
+        const formData = new FormData(this.trimVideoForm);
+
+        const jsonData = {};
+        formData.forEach((value, key) => {
+            jsonData[key] = value;
+        });
+
+        this.showTrimVideoProgress();
+        this.hideTrimVideoAlert();
+        this.hideTrimVideoResult();
+
+        try {
+            const response = await fetch('/api/trim_video', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-API-Key': window.API_KEY
+                },
+                body: JSON.stringify(jsonData)
+            });
+
+            const result = await response.json();
+
+            if (result.success) {
+                this.trimVideoDownloadBtn.href = result.download_url;
+                this.trimVideoDownloadBtn.download = result.filename;
+                this.trimVideoCurrentFilename = result.filename;
+
+                this.showTrimVideoResult();
+                this.showTrimVideoAlert('success', `Video trimmed from ${result.start_time}s to ${result.end_time}s (${result.duration}s duration) successfully!`);
+            } else {
+                this.showTrimVideoAlert('danger', `Error: ${result.error}`);
+            }
+        } catch (error) {
+            console.error('Trim video error:', error);
+            this.showTrimVideoAlert('danger', `An error occurred: ${error.message}`);
+        } finally {
+            this.hideTrimVideoProgress();
+        }
+    }
+
+    async handleTrimVideoCleanup() {
+        if (!this.trimVideoCurrentFilename) return;
+
+        try {
+            const response = await fetch(`/api/cleanup/${this.trimVideoCurrentFilename}`, {
+                method: 'DELETE',
+                headers: {
+                    'X-API-Key': window.API_KEY
+                }
+            });
+
+            if (response.ok) {
+                this.showTrimVideoAlert('info', 'File deleted from server successfully');
+                this.trimVideoCurrentFilename = null;
+                this.hideTrimVideoResult();
+            } else {
+                this.showTrimVideoAlert('warning', 'File cleanup failed, but it will be automatically deleted after 24 hours');
+            }
+        } catch (error) {
+            console.error('Cleanup error:', error);
+            this.showTrimVideoAlert('warning', 'File cleanup failed, but it will be automatically deleted after 24 hours');
+        }
+    }
+
+    resetTrimVideoForm() {
+        this.trimVideoForm.reset();
+        this.hideTrimVideoAlert();
+        this.hideTrimVideoResult();
+        this.hideTrimVideoProgress();
+        this.trimVideoCurrentFilename = null;
+    }
+
+    showTrimVideoProgress() {
+        this.trimVideoProgressContainer.style.display = 'block';
+        this.trimVideoSubmitBtn.disabled = true;
+    }
+
+    hideTrimVideoProgress() {
+        this.trimVideoProgressContainer.style.display = 'none';
+        this.trimVideoSubmitBtn.disabled = false;
+    }
+
+    showTrimVideoAlert(type, message) {
+        this.trimVideoAlertContainer.innerHTML = `
+            <div class="alert alert-${type} alert-dismissible fade show" role="alert">
+                <i class="fas fa-${this.getAlertIcon(type)} me-2"></i>
+                ${message}
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+        `;
+    }
+
+    hideTrimVideoAlert() {
+        this.trimVideoAlertContainer.innerHTML = '';
+    }
+
+    showTrimVideoResult() {
+        this.trimVideoResultContainer.style.display = 'block';
+    }
+
+    hideTrimVideoResult() {
+        this.trimVideoResultContainer.style.display = 'none';
     }
 
     initializeConvertVerticalTab() {
