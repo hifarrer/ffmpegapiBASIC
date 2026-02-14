@@ -10,6 +10,14 @@
   "license": "ISC",
   "description": "",
   "dependencies": {
-    "resend": "^6.1.2"
+    "@remotion/bundler": "^4.0.422",
+    "@remotion/captions": "^4.0.422",
+    "@remotion/renderer": "^4.0.422",
+    "@types/react": "^18.3.12",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "remotion": "^4.0.422",
+    "resend": "^6.1.2",
+    "typescript": "^5.6.3"
   }
 }

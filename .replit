@@ -2,7 +2,7 @@ modules = ["python-3.11", "nodejs-20", "python3", "postgresql-16"]
 
 [nix]
 channel = "stable-25_05"
-packages = ["cargo", "ffmpeg", "libiconv", "openssl", "postgresql", "rustc"]
+packages = ["cargo", "ffmpeg", "libiconv", "openssl", "postgresql", "rustc", "chromium"]
 
 [deployment]
 deploymentTarget = "autoscale"
