@@ -2,7 +2,7 @@
 
 ## Overview
 
-This is a comprehensive web-based video processing tool that provides seven main functionalities using FFMPEG with a secure authentication system:
+This is a comprehensive web-based video processing tool that provides eight main functionalities using FFMPEG with a secure authentication system:
 
 1. **Image & Audio Merger** (`/api/merge_image_audio`): Creates videos by combining an image file with an audio file
 2. **Video Merger** (`/api/merge_videos`): Concatenates multiple videos from URLs into a single video, with optional audio replacement and output dimensions to handle videos with different aspect ratios
@@ -10,7 +10,8 @@ This is a comprehensive web-based video processing tool that provides seven main
 4. **Add Subtitles** (`/api/add_subtitles`): Burns ASS subtitle files directly into videos with full styling support
 5. **Split Audio** (`/api/split_audio`): Splits audio files into equal parts with customizable segment count
 6. **Trim Audio** (`/api/trim_audio`): Trims audio files to exact durations with optional fade-out effects
-7. **Convert to Vertical** (`/api/convert_to_vertical`): Converts horizontal videos to vertical format (3:4 or 9:16) optimized for mobile viewing, with automatic aspect ratio detection and optional watermark placement
+7. **Trim Video** (`/api/trim_video`): Trims videos by specifying start and end times in seconds, with stream copy for fast processing and re-encode fallback
+8. **Convert to Vertical** (`/api/convert_to_vertical`): Converts horizontal videos to vertical format (3:4 or 9:16) optimized for mobile viewing, with automatic aspect ratio detection and optional watermark placement
 
 **Authentication & API Keys**: All API endpoints now require authentication via API keys. Users can register for accounts and generate multiple API keys through a dashboard. The site provides a default API key for guest usage on the landing page.
 
