@@ -1,0 +1,893 @@
+# TikTok-Style Subtitles API Endpoint Implementation Guide
+
+This document provides detailed instructions and code samples for implementing an API endpoint that adds TikTok-style subtitles to videos, matching the exact implementation used in this project.
+
+## Table of Contents
+1. [Overview](#overview)
+2. [Required Dependencies](#required-dependencies)
+3. [API Endpoint Specification](#api-endpoint-specification)
+4. [Core Implementation](#core-implementation)
+5. [Code Samples](#code-samples)
+6. [ASS Subtitle Format](#ass-subtitle-format)
+7. [Implementation Steps](#implementation-steps)
+8. [Error Handling](#error-handling)
+9. [Testing](#testing)
+
+---
+
+## Overview
+
+The TikTok-style subtitle system uses **Remotion** (a React-based video rendering framework) to overlay animated, karaoke-style subtitles on videos. The subtitles feature:
+
+- **Word-by-word highlighting** with a pop animation effect
+- **Multiple style presets** (plain white, colored backgrounds)
+- **Bottom-aligned positioning** with proper padding
+- **Smooth transitions** between words
+- **Karaoke-style scaling** animation on active words
+
+The system accepts:
+- A video URL (the source video to add subtitles to)
+- ASS (Advanced SubStation Alpha) subtitle content
+- Subtitle style preset
+- Optional aspect ratio and audio duration
+
+---
+
+## Required Dependencies
+
+Install the following npm packages:
+
+```json
+{
+  "dependencies": {
+    "@remotion/bundler": "^4.0.422",
+    "@remotion/captions": "^4.0.422",
+    "@remotion/renderer": "^4.0.422",
+    "remotion": "^4.0.422",
+    "react": "^18.0.0"
+  }
+}
+```
+
+**System Requirements:**
+- Node.js 18+ 
+- Chrome/Chromium (for Remotion's headless rendering)
+- On Linux: Ensure `libnspr4.so` and related libraries are available (see library path setup in code)
+
+---
+
+## API Endpoint Specification
+
+### Endpoint: `POST /api/videos/add-tiktok-subtitles`
+
+**Request Body:**
+```json
+{
+  "video_url": "https://example.com/video.mp4",
+  "ass_content": "[Script Info]...",
+  "subtitle_style": "plain-white",
+  "aspect_ratio": "16:9",
+  "audio_duration_seconds": 120
+}
+```
+
+**Parameters:**
+- `video_url` (required): URL or file path to the source video
+- `ass_content` (required): ASS subtitle file content as a string
+- `subtitle_style` (optional): One of `"plain-white"`, `"yellow-bg"`, `"pink-bg"`, `"blue-bg"`, `"red-bg"`. Defaults to `"plain-white"`
+- `aspect_ratio` (optional): `"16:9"` or `"9:16"` (vertical). Defaults to `"9:16"`
+- `audio_duration_seconds` (optional): Duration in seconds for video length calculation. If not provided, will be estimated
+
+**Response:**
+```json
+{
+  "success": true,
+  "output_video_path": "/tmp/captioned-video-1234567890-abc123.mp4",
+  "message": "Video with TikTok subtitles rendered successfully"
+}
+```
+
+**Error Response:**
+```json
+{
+  "success": false,
+  "error": "Error message here"
+}
+```
+
+---
+
+## Core Implementation
+
+The implementation consists of three main components:
+
+1. **Subtitle Parser** - Parses ASS content into caption tokens
+2. **Remotion Composition** - React component that renders the video with subtitles
+3. **Video Renderer** - Orchestrates the rendering process
+
+---
+
+## Code Samples
+
+### 1. Subtitle Styles Configuration
+
+**File: `shared/subtitleStyles.ts`**
+
+```typescript
+export const subtitleStyles = [
+  "plain-white",
+  "yellow-bg",
+  "pink-bg",
+  "blue-bg",
+  "red-bg",
+] as const;
+
+export type SubtitleStyle = (typeof subtitleStyles)[number];
+
+export const defaultSubtitleStyle: SubtitleStyle = "plain-white";
+
+export const isSubtitleStyle = (value: unknown): value is SubtitleStyle => {
+  return (
+    typeof value === "string" &&
+    subtitleStyles.includes(value as SubtitleStyle)
+  );
+};
+
+export const coerceSubtitleStyle = (value: unknown): SubtitleStyle => {
+  if (isSubtitleStyle(value)) {
+    return value;
+  }
+  return defaultSubtitleStyle;
+};
+```
+
+### 2. Caption Parsing Service
+
+**File: `server/services/captions.ts`**
+
+```typescript
+import { createTikTokStyleCaptions, type Caption } from "@remotion/captions";
+import {
+  coerceSubtitleStyle,
+  defaultSubtitleStyle,
+  type SubtitleStyle,
+} from "@shared/subtitleStyles";
+
+export interface AssCaptionToken {
+  startMs: number;
+  endMs: number;
+  text: string;
+}
+
+export type TikTokCaptionPage = ReturnType<
+  typeof createTikTokStyleCaptions
+>["pages"][number];
+
+// Parse ASS timestamp (H:MM:SS.CC) to milliseconds
+const parseAssTimestampToMs = (input: string): number => {
+  const [hours, minutes, secondsWithCs] = input.split(":");
+  const [seconds, centiseconds = "0"] = secondsWithCs.split(".");
+  return (
+    Number(hours) * 3600 * 1000 +
+    Number(minutes) * 60 * 1000 +
+    Number(seconds) * 1000 +
+    Number(centiseconds.padEnd(2, "0").slice(0, 2)) * 10
+  );
+};
+
+// Clean ASS text by removing formatting codes
+const cleanAssText = (input: string): string => {
+  return input.replace(/\\N/g, " ").replace(/\{[^}]*\}/g, "").trim();
+};
+
+// Parse ASS file content into tokens
+export const parseAssToTokens = (assContent: string): AssCaptionToken[] => {
+  const lines = assContent.split("\n");
+  const tokens: AssCaptionToken[] = [];
+
+  for (const line of lines) {
+    if (!line.startsWith("Dialogue:")) {
+      continue;
+    }
+
+    // Dialogue format: Dialogue: Marked=0,start,end,Style,Name,MarginL,MarginR,MarginV,Effect,Text
+    const parts = line.split(",");
+    if (parts.length < 10) {
+      continue;
+    }
+
+    const startMs = parseAssTimestampToMs(parts[1]);
+    const endMs = parseAssTimestampToMs(parts[2]);
+    const text = cleanAssText(parts.slice(9).join(","));
+
+    if (!text || endMs <= startMs) {
+      continue;
+    }
+
+    tokens.push({ startMs, endMs, text });
+  }
+
+  return tokens.sort((a, b) => a.startMs - b.startMs);
+};
+
+// Convert ASS tokens to Remotion Caption format
+export const parseAssToCaptions = (assContent: string): Caption[] => {
+  return parseAssToTokens(assContent).map((token) => {
+    const midpointMs = token.startMs + (token.endMs - token.startMs) / 2;
+    return {
+      text: token.text,
+      startMs: token.startMs,
+      endMs: token.endMs,
+      timestampMs: midpointMs,
+      confidence: null,
+    };
+  });
+};
+
+// Normalize subtitle style input
+export const normalizeSubtitleStyle = (input: unknown): SubtitleStyle => {
+  return coerceSubtitleStyle(input ?? defaultSubtitleStyle);
+};
+
+// Check if style is TikTok-style (all current styles are)
+export const isTikTokSubtitleStyle = (style: SubtitleStyle): boolean => {
+  return true;
+};
+
+// Combine window for grouping tokens (milliseconds)
+const getCombineWindowForStyle = (style: SubtitleStyle): number => {
+  return 1100; // Keep cadence consistent across all karaoke presets
+};
+
+// Create TikTok-style caption pages from captions
+export const createTikTokPages = ({
+  captions,
+  style,
+}: {
+  captions: Caption[];
+  style: SubtitleStyle;
+}) => {
+  return createTikTokStyleCaptions({
+    captions,
+    combineTokensWithinMilliseconds: getCombineWindowForStyle(style),
+  }).pages;
+};
+```
+
+### 3. Remotion Composition Component
+
+**File: `server/remotion/CaptionedVideoComposition.tsx`**
+
+```typescript
+import React from "react";
+import { AbsoluteFill, OffthreadVideo, useCurrentFrame } from "remotion";
+import type { SubtitleStyle } from "@shared/subtitleStyles";
+import type { TikTokCaptionPage } from "../services/captions";
+
+export interface CaptionedVideoCompositionProps {
+  videoSrc: string;
+  pages: TikTokCaptionPage[];
+  fps: number;
+  stylePreset: SubtitleStyle;
+}
+
+// Style configuration for each subtitle preset
+const styleMap: Record<
+  SubtitleStyle,
+  {
+    fontSize: number;
+    activeColor: string;
+    activeBackground?: string;
+    bottomOffset: number;
+  }
+> = {
+  "plain-white": {
+    fontSize: 60,
+    activeColor: "#ffffff",
+    activeBackground: "transparent",
+    bottomOffset: 140,
+  },
+  "yellow-bg": {
+    fontSize: 60,
+    activeColor: "#ffffff",
+    activeBackground: "#facc15",
+    bottomOffset: 140,
+  },
+  "pink-bg": {
+    fontSize: 60,
+    activeColor: "#ffffff",
+    activeBackground: "#ec4899",
+    bottomOffset: 140,
+  },
+  "blue-bg": {
+    fontSize: 60,
+    activeColor: "#ffffff",
+    activeBackground: "#3b82f6",
+    bottomOffset: 140,
+  },
+  "red-bg": {
+    fontSize: 60,
+    activeColor: "#ffffff",
+    activeBackground: "#ef4444",
+    bottomOffset: 140,
+  },
+};
+
+export const CaptionedVideoComposition: React.FC<
+  CaptionedVideoCompositionProps
+> = ({ videoSrc, pages, fps, stylePreset }) => {
+  const frame = useCurrentFrame();
+  const currentMs = (frame / fps) * 1000;
+  const activeStyle = styleMap[stylePreset] ?? styleMap["plain-white"];
+
+  // Find the active page (caption group) for current time
+  const activePage = pages.find((page) => {
+    const endMs = page.startMs + page.durationMs;
+    return currentMs >= page.startMs && currentMs <= endMs;
+  });
+
+  // Find the active token (word) within the page
+  const activeTokenIndex = activePage
+    ? activePage.tokens.findIndex(
+        (token) => currentMs >= token.fromMs && currentMs <= token.toMs,
+      )
+    : -1;
+  const activeToken =
+    activePage && activeTokenIndex >= 0
+      ? activePage.tokens[activeTokenIndex]
+      : null;
+
+  // Calculate karaoke progress (0 to 1) for animation
+  const karaokeProgress =
+    activeToken && activeToken.toMs > activeToken.fromMs
+      ? Math.min(
+          1,
+          Math.max(
+            0,
+            (currentMs - activeToken.fromMs) / (activeToken.toMs - activeToken.fromMs),
+          ),
+        )
+      : 0;
+
+  // Pop animation: scale up at start, settle by end
+  const karaokeScale =
+    1 + 0.22 * Math.sin(Math.min(1, karaokeProgress) * Math.PI) * (1 - karaokeProgress * 0.15);
+
+  return (
+    <AbsoluteFill style={{ backgroundColor: "black" }}>
+      <OffthreadVideo src={videoSrc} />
+      {activePage ? (
+        <AbsoluteFill
+          style={{
+            justifyContent: "flex-end",
+            alignItems: "center",
+            paddingBottom: activeStyle.bottomOffset,
+            paddingLeft: 48,
+            paddingRight: 48,
+          }}
+        >
+          <div
+            style={{
+              textAlign: "center",
+              fontSize: activeStyle.fontSize,
+              fontWeight: 800,
+              lineHeight: 1.1,
+              textShadow: "0 4px 24px rgba(0, 0, 0, 0.9)",
+              WebkitTextStroke: "1px rgba(0,0,0,0.85)",
+            }}
+          >
+            {activeToken ? (
+              <span
+                style={{
+                  color: activeStyle.activeColor,
+                  background: activeStyle.activeBackground,
+                  borderRadius: 10,
+                  padding: "4px 14px",
+                  display: "inline-block",
+                  transform: `scale(${karaokeScale})`,
+                  transformOrigin: "center center",
+                  transition: "transform 40ms linear",
+                }}
+              >
+                {activeToken.text}
+              </span>
+            ) : null}
+          </div>
+        </AbsoluteFill>
+      ) : null}
+    </AbsoluteFill>
+  );
+};
+```
+
+### 4. Remotion Root Component
+
+**File: `server/remotion/Root.tsx`**
+
+```typescript
+import React from "react";
+import { Composition, registerRoot } from "remotion";
+import {
+  CaptionedVideoComposition,
+  type CaptionedVideoCompositionProps,
+} from "./CaptionedVideoComposition";
+import type { SubtitleStyle } from "@shared/subtitleStyles";
+
+const defaultProps: CaptionedVideoCompositionProps = {
+  videoSrc: "",
+  pages: [],
+  fps: 30,
+  stylePreset: "plain-white" as SubtitleStyle,
+};
+
+const RemotionRoot: React.FC = () => {
+  return (
+    <Composition<CaptionedVideoCompositionProps>
+      id="CaptionedVideo"
+      component={CaptionedVideoComposition}
+      durationInFrames={300}
+      fps={30}
+      width={1080}
+      height={1920}
+      defaultProps={defaultProps}
+    />
+  );
+};
+
+registerRoot(RemotionRoot);
+```
+
+### 5. Video Rendering Service
+
+**File: `server/services/remotion.ts`**
+
+```typescript
+import fs from "fs";
+import os from "os";
+import path from "path";
+import { fileURLToPath } from "url";
+import { bundle } from "@remotion/bundler";
+import { renderMedia, selectComposition } from "@remotion/renderer";
+import {
+  normalizeSubtitleStyle,
+  isTikTokSubtitleStyle,
+  parseAssToCaptions,
+  createTikTokPages,
+} from "./captions";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+let cachedServeUrl: string | null = null;
+
+// Set up library path for Chrome headless shell dependencies (Linux)
+const setupLibraryPath = () => {
+  if (process.platform === "linux") {
+    const currentLdPath = process.env.LD_LIBRARY_PATH || "";
+    const commonLibPaths = [
+      "/usr/lib",
+      "/usr/lib/x86_64-linux-gnu",
+      "/lib/x86_64-linux-gnu",
+      "/lib64",
+    ];
+
+    const libPaths = commonLibPaths.filter(Boolean).join(":");
+
+    if (currentLdPath && !currentLdPath.includes("/nix/store")) {
+      if (!currentLdPath.includes(libPaths)) {
+        process.env.LD_LIBRARY_PATH = `${currentLdPath}:${libPaths}`;
+      }
+    } else if (!currentLdPath) {
+      process.env.LD_LIBRARY_PATH = libPaths;
+    }
+  }
+};
+
+// Initialize library path on module load
+setupLibraryPath();
+
+// Get video resolution based on aspect ratio
+const getCaptionResolution = (
+  aspectRatio: string | undefined,
+): { width: number; height: number } => {
+  if (aspectRatio === "16:9") {
+    return { width: 1920, height: 1080 };
+  }
+  // Vertical default (9:16)
+  return { width: 1080, height: 1440 };
+};
+
+// Get or create Remotion serve URL (bundles the React components)
+const getServeUrl = async (): Promise<string> => {
+  if (cachedServeUrl) {
+    return cachedServeUrl;
+  }
+
+  const entryPoint = path.resolve(__dirname, "../remotion/Root.tsx");
+  cachedServeUrl = await bundle(entryPoint);
+  return cachedServeUrl;
+};
+
+// Main function to render video with TikTok captions
+export const renderVideoWithTikTokCaptions = async ({
+  videoSrc,
+  assContent,
+  subtitleStyle,
+  aspectRatio,
+  audioDurationSeconds,
+}: {
+  videoSrc: string;
+  assContent: string;
+  subtitleStyle: string | null | undefined;
+  aspectRatio?: string | null;
+  audioDurationSeconds?: number | null;
+}): Promise<string | null> => {
+  // Normalize and validate subtitle style
+  const style = normalizeSubtitleStyle(subtitleStyle);
+  if (!isTikTokSubtitleStyle(style)) {
+    return null;
+  }
+
+  // Parse ASS content into captions
+  const captions = parseAssToCaptions(assContent);
+  if (captions.length === 0) {
+    throw new Error("No caption tokens parsed from ASS subtitle content");
+  }
+
+  // Create TikTok-style pages from captions
+  const pages = createTikTokPages({ captions, style });
+  const fps = 30;
+  const { width, height } = getCaptionResolution(aspectRatio ?? undefined);
+
+  // Estimate video duration
+  const estimatedDurationSeconds = Math.max(
+    8,
+    Math.ceil((audioDurationSeconds ?? 0) + 6),
+  );
+  const durationInFrames = estimatedDurationSeconds * fps;
+
+  // Create output file path
+  const outputLocation = path.join(
+    os.tmpdir(),
+    `captioned-video-${Date.now()}-${Math.random().toString(36).slice(2)}.mp4`,
+  );
+
+  // Get Remotion serve URL (bundles React components)
+  const serveUrl = await getServeUrl();
+
+  // Select the composition
+  const composition = await selectComposition({
+    serveUrl,
+    id: "CaptionedVideo",
+    inputProps: {
+      videoSrc,
+      pages,
+      fps,
+      stylePreset: style,
+    },
+  });
+
+  // Render the video
+  await renderMedia({
+    serveUrl,
+    codec: "h264",
+    composition: {
+      ...composition,
+      fps,
+      width,
+      height,
+      durationInFrames,
+    },
+    inputProps: {
+      videoSrc,
+      pages,
+      fps,
+      stylePreset: style,
+    },
+    outputLocation,
+    overwrite: true,
+    muted: false,
+    imageFormat: "jpeg",
+    crf: 18,
+  });
+
+  return outputLocation;
+};
+
+// Helper to clean up rendered video files
+export const deleteRenderedVideoIfExists = (filePath: string | null) => {
+  if (!filePath) return;
+  if (fs.existsSync(filePath)) {
+    fs.unlinkSync(filePath);
+  }
+};
+```
+
+### 6. API Endpoint Implementation
+
+**File: `server/routes.ts` (or your routes file)**
+
+```typescript
+import express, { Request, Response } from "express";
+import { renderVideoWithTikTokCaptions } from "./services/remotion";
+import { isSubtitleStyle, defaultSubtitleStyle } from "@shared/subtitleStyles";
+
+const router = express.Router();
+
+router.post("/api/videos/add-tiktok-subtitles", async (req: Request, res: Response) => {
+  try {
+    const {
+      video_url,
+      ass_content,
+      subtitle_style,
+      aspect_ratio,
+      audio_duration_seconds,
+    } = req.body;
+
+    // Validate required parameters
+    if (!video_url) {
+      return res.status(400).json({
+        success: false,
+        error: "video_url is required",
+      });
+    }
+
+    if (!ass_content) {
+      return res.status(400).json({
+        success: false,
+        error: "ass_content is required",
+      });
+    }
+
+    // Validate and normalize subtitle style
+    const style = isSubtitleStyle(subtitle_style)
+      ? subtitle_style
+      : defaultSubtitleStyle;
+
+    // Render video with TikTok captions
+    const outputVideoPath = await renderVideoWithTikTokCaptions({
+      videoSrc: video_url,
+      assContent: ass_content,
+      subtitleStyle: style,
+      aspectRatio: aspect_ratio || null,
+      audioDurationSeconds: audio_duration_seconds || null,
+    });
+
+    if (!outputVideoPath) {
+      return res.status(500).json({
+        success: false,
+        error: "Failed to render video with subtitles",
+      });
+    }
+
+    return res.json({
+      success: true,
+      output_video_path: outputVideoPath,
+      message: "Video with TikTok subtitles rendered successfully",
+    });
+  } catch (error) {
+    console.error("Error rendering video with TikTok subtitles:", error);
+    return res.status(500).json({
+      success: false,
+      error: error instanceof Error ? error.message : "Unknown error occurred",
+    });
+  }
+});
+
+export default router;
+```
+
+---
+
+## ASS Subtitle Format
+
+The system expects ASS (Advanced SubStation Alpha) format subtitle files. Here's the expected format:
+
+### ASS File Structure
+
+```
+[Script Info]
+ScriptType: v4.00
+Collisions: Normal
+PlayResX: 1920
+PlayResY: 1080
+
+[V4 Styles]
+Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, TertiaryColour, BackColour, Bold, Italic, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, AlphaLevel, Encoding
+Style: Default,Arial,90,153,153,153,153,0,0,0,0,0,6,30,30,30,0,0
+
+[Events]
+Format: Marked, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
+Dialogue: Marked=0,0:00:11.63,0:00:11.81,Default,,0000,0000,0000,,Hello
+Dialogue: Marked=0,0:00:11.81,0:00:12.15,Default,,0000,0000,0000,,world
+```
+
+### Dialogue Line Format
+
+Each dialogue line follows this format:
+```
+Dialogue: Marked=0,START_TIME,END_TIME,Style,Name,MarginL,MarginR,MarginV,Effect,Text
+```
+
+- `START_TIME` and `END_TIME`: Format `H:MM:SS.CC` (hours:minutes:seconds.centiseconds)
+- `Text`: The subtitle text (can contain formatting codes like `\N` for newline, `{...}` for styling)
+
+### Example ASS Content Generator
+
+If you need to generate ASS content from timestamped words:
+
+```typescript
+function formatTimeForASS(seconds: number): string {
+  const hours = Math.floor(seconds / 3600);
+  const minutes = Math.floor((seconds % 3600) / 60);
+  const secs = Math.floor(seconds % 60);
+  const centiseconds = Math.floor((seconds % 1) * 100);
+
+  return `${hours}:${minutes.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}.${centiseconds.toString().padStart(2, "0")}`;
+}
+
+function convertTimestampedWordsToASS(
+  words: Array<{ startS: number; endS: number; word: string }>
+): string {
+  const assHeader = `[Script Info]
+ScriptType: v4.00
+Collisions: Normal
+PlayResX: 1920
+PlayResY: 1080
+
+[V4 Styles]
+Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, TertiaryColour, BackColour, Bold, Italic, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, AlphaLevel, Encoding
+Style: Default,Arial,90,153,153,153,153,0,0,0,0,0,6,30,30,30,0,0
+
+[Events]
+Format: Marked, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text`;
+
+  const dialogues: string[] = [];
+
+  for (const word of words) {
+    if (word.word.trim()) {
+      const startTime = formatTimeForASS(word.startS);
+      const endTime = formatTimeForASS(word.endS);
+      const cleanText = word.word.replace(/\n/g, " ").trim();
+
+      dialogues.push(
+        `Dialogue: Marked=0,${startTime},${endTime},Default,,0000,0000,0000,,${cleanText}`
+      );
+    }
+  }
+
+  return assHeader + "\n" + dialogues.join("\n");
+}
+```
+
+---
+
+## Implementation Steps
+
+1. **Install Dependencies**
+   ```bash
+   npm install @remotion/bundler @remotion/captions @remotion/renderer remotion react
+   ```
+
+2. **Create Directory Structure**
+   ```
+   server/
+     services/
+       remotion.ts
+       captions.ts
+     remotion/
+       Root.tsx
+       CaptionedVideoComposition.tsx
+   shared/
+     subtitleStyles.ts
+   ```
+
+3. **Copy Code Samples**
+   - Copy all code samples above into their respective files
+   - Adjust import paths based on your project structure
+
+4. **Set Up TypeScript Configuration**
+   Ensure your `tsconfig.json` supports:
+   - JSX (for React components)
+   - ES modules
+   - Node.js types
+
+5. **Create API Endpoint**
+   - Add the route handler to your Express app
+   - Ensure proper error handling and validation
+
+6. **Test the Endpoint**
+   - Use a sample video URL and ASS content
+   - Verify the output video has subtitles
+
+---
+
+## Error Handling
+
+The implementation should handle:
+
+1. **Invalid ASS Content**
+   - Empty or malformed ASS files
+   - Missing dialogue lines
+   - Invalid timestamps
+
+2. **Video Loading Errors**
+   - Invalid video URLs
+   - Unsupported video formats
+   - Network errors when fetching video
+
+3. **Rendering Errors**
+   - Remotion bundling failures
+   - Chrome/Chromium not available
+   - Insufficient disk space
+   - Rendering timeouts
+
+4. **System Dependencies**
+   - Missing Chrome/Chromium
+   - Missing system libraries (Linux)
+
+**Example Error Handling:**
+
+```typescript
+try {
+  const outputPath = await renderVideoWithTikTokCaptions({...});
+  // Success
+} catch (error) {
+  if (error instanceof Error) {
+    if (error.message.includes("No caption tokens")) {
+      // Handle empty ASS content
+    } else if (error.message.includes("Chrome")) {
+      // Handle Chrome/Chromium issues
+    } else {
+      // Generic error
+    }
+  }
+}
+```
+
+---
+
+## Testing
+
+### Test Request Example
+
+```bash
+curl -X POST http://localhost:3000/api/videos/add-tiktok-subtitles \
+  -H "Content-Type: application/json" \
+  -d '{
+    "video_url": "https://example.com/sample-video.mp4",
+    "ass_content": "[Script Info]\nScriptType: v4.00\n\n[Events]\nFormat: Marked, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text\nDialogue: Marked=0,0:00:00.00,0:00:02.00,Default,,0000,0000,0000,,Hello world",
+    "subtitle_style": "yellow-bg",
+    "aspect_ratio": "9:16",
+    "audio_duration_seconds": 30
+  }'
+```
+
+### Expected Output
+
+The endpoint should return:
+- A file path to the rendered video
+- The video should have TikTok-style subtitles overlaid
+- Subtitles should animate word-by-word with the karaoke effect
+
+---
+
+## Notes
+
+- **Performance**: Video rendering is CPU-intensive and can take several minutes depending on video length
+- **Temporary Files**: Rendered videos are stored in the system temp directory. Consider implementing cleanup
+- **Chrome Dependency**: Remotion requires Chrome/Chromium. On Linux, ensure all required libraries are available
+- **Aspect Ratios**: The system supports 16:9 (horizontal) and 9:16 (vertical) formats
+- **Subtitle Styles**: All styles use the same animation and positioning, only colors/backgrounds differ
+
+---
+
+## Additional Resources
+
+- [Remotion Documentation](https://www.remotion.dev/docs/)
+- [ASS Subtitle Format Specification](https://en.wikipedia.org/wiki/SubStation_Alpha)
+- [@remotion/captions Package](https://www.remotion.dev/docs/captions)
+
+---
+
+**End of Implementation Guide**
