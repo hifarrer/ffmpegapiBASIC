@@ -97,20 +97,44 @@ def user_management():
     try:
         page = request.args.get('page', 1, type=int)
         per_page = 20
-        
-        users = User.query.order_by(User.created_at.desc()).paginate(
+
+        username_filter = request.args.get('username', '').strip()
+        email_filter = request.args.get('email', '').strip()
+        plan_filter = request.args.get('plan', '').strip()
+
+        query = User.query
+
+        if username_filter:
+            query = query.filter(User.username.ilike(f'%{username_filter}%'))
+
+        if email_filter:
+            query = query.filter(User.email.ilike(f'%{email_filter}%'))
+
+        if plan_filter:
+            if plan_filter == 'none':
+                query = query.outerjoin(UserSubscription, User.id == UserSubscription.user_id)\
+                             .filter(UserSubscription.id.is_(None))
+            else:
+                query = query.join(UserSubscription, User.id == UserSubscription.user_id)\
+                             .join(SubscriptionPlan, UserSubscription.plan_id == SubscriptionPlan.id)\
+                             .filter(SubscriptionPlan.id == int(plan_filter))
+
+        users = query.order_by(User.created_at.desc()).paginate(
             page=page, per_page=per_page, error_out=False
         )
-        
-        # Get all subscription plans for the dropdown
+
         plans = SubscriptionPlan.query.filter_by(is_active=True).order_by(SubscriptionPlan.sort_order).all()
-        
-        return render_template('admin/users.html', users=users, plans=plans)
+
+        return render_template('admin/users.html', users=users, plans=plans,
+                             username_filter=username_filter,
+                             email_filter=email_filter,
+                             plan_filter=plan_filter)
         
     except Exception as e:
         logging.error(f"Error loading user management: {str(e)}")
         flash('Error loading user data', 'danger')
-        return render_template('admin/users.html', users=None)
+        return render_template('admin/users.html', users=None, plans=[],
+                             username_filter='', email_filter='', plan_filter='')
 
 @admin_bp.route('/users/<int:user_id>/toggle-status', methods=['POST'])
 @admin_required

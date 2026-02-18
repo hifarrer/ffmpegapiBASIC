@@ -9,6 +9,47 @@
 </div>
 
 {% if users %}
+    <div class="card mb-3">
+        <div class="card-body">
+            <form method="GET" action="{{ url_for('admin.user_management') }}">
+                <div class="row g-2 align-items-end">
+                    <div class="col-md-3">
+                        <label for="username" class="form-label mb-1"><small>Username</small></label>
+                        <input type="text" class="form-control form-control-sm" id="username" name="username"
+                               value="{{ username_filter }}" placeholder="Search by username...">
+                    </div>
+                    <div class="col-md-3">
+                        <label for="email" class="form-label mb-1"><small>Email</small></label>
+                        <input type="text" class="form-control form-control-sm" id="email" name="email"
+                               value="{{ email_filter }}" placeholder="Search by email...">
+                    </div>
+                    <div class="col-md-3">
+                        <label for="plan" class="form-label mb-1"><small>Plan</small></label>
+                        <select class="form-select form-select-sm" id="plan" name="plan">
+                            <option value="">All Plans</option>
+                            <option value="none" {% if plan_filter == 'none' %}selected{% endif %}>No Plan</option>
+                            {% for plan in plans %}
+                                <option value="{{ plan.id }}" {% if plan_filter == plan.id|string %}selected{% endif %}>
+                                    {{ plan.name }}
+                                </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="d-flex gap-2">
+                            <button type="submit" class="btn btn-primary btn-sm">
+                                <i class="fas fa-filter me-1"></i>Filter
+                            </button>
+                            <a href="{{ url_for('admin.user_management') }}" class="btn btn-outline-secondary btn-sm">
+                                <i class="fas fa-times me-1"></i>Clear
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <div class="row mb-3">
         <div class="col-md-6">
             <div class="d-flex align-items-center">
@@ -214,7 +255,7 @@
         <ul class="pagination justify-content-center">
             {% if users.has_prev %}
                 <li class="page-item">
-                    <a class="page-link" href="{{ url_for('admin.user_management', page=users.prev_num) }}">
+                    <a class="page-link" href="{{ url_for('admin.user_management', page=users.prev_num, username=username_filter, email=email_filter, plan=plan_filter) }}">
                         <i class="fas fa-chevron-left"></i>
                     </a>
                 </li>
@@ -224,7 +265,7 @@
                 {% if page_num %}
                     {% if page_num != users.page %}
                         <li class="page-item">
-                            <a class="page-link" href="{{ url_for('admin.user_management', page=page_num) }}">
+                            <a class="page-link" href="{{ url_for('admin.user_management', page=page_num, username=username_filter, email=email_filter, plan=plan_filter) }}">
                                 {{ page_num }}
                             </a>
                         </li>
@@ -242,7 +283,7 @@
             
             {% if users.has_next %}
                 <li class="page-item">
-                    <a class="page-link" href="{{ url_for('admin.user_management', page=users.next_num) }}">
+                    <a class="page-link" href="{{ url_for('admin.user_management', page=users.next_num, username=username_filter, email=email_filter, plan=plan_filter) }}">
                         <i class="fas fa-chevron-right"></i>
                     </a>
                 </li>
