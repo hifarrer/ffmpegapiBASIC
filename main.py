@@ -80,9 +80,20 @@ OUTPUT_FOLDER = os.environ.get("OUTPUT_FOLDER") or (
 ALLOWED_IMAGE_EXTENSIONS = {'png', 'jpg', 'jpeg'}
 ALLOWED_AUDIO_EXTENSIONS = {'mp3', 'wav', 'm4a'}
 
-# Create directories if they don't exist
-os.makedirs(UPLOAD_FOLDER, exist_ok=True)
-os.makedirs(OUTPUT_FOLDER, exist_ok=True)
+
+def ensure_storage_dirs():
+    """Create all storage directories required by the app (Railway volume, /tmp, or local)."""
+    dirs = [UPLOAD_FOLDER, OUTPUT_FOLDER]
+    for d in dirs:
+        try:
+            os.makedirs(d, exist_ok=True)
+            logging.info(f"Storage dir ready: {d}")
+        except OSError as e:
+            logging.error(f"Failed to create storage dir {d}: {e}")
+            raise
+
+
+ensure_storage_dirs()
 
 # Initialize extensions
 db.init_app(app)
