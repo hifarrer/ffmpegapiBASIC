@@ -35,7 +35,17 @@ app.wsgi_app = ProxyFix(app.wsgi_app, x_proto=1, x_host=1)
 
 # Configuration
 app.config['MAX_CONTENT_LENGTH'] = 100 * 1024 * 1024  # 100MB max file size
-app.config["SQLALCHEMY_DATABASE_URI"] = os.environ.get("DATABASE_URL")
+# Railway/Neon: DATABASE_URL is set by Railway Postgres; or set NEON_DATABASE_URL (or DATABASE_URL) in Variables
+_database_url = os.environ.get("DATABASE_URL") or os.environ.get("NEON_DATABASE_URL")
+if not _database_url:
+    raise RuntimeError(
+        "Database URL is required. Set DATABASE_URL or NEON_DATABASE_URL in Railway Variables "
+        "(e.g. add a Postgres plugin or paste your Neon connection string)."
+    )
+# SQLAlchemy/psycopg2 require postgresql://; Railway may give postgres://
+if _database_url.startswith("postgres://"):
+    _database_url = "postgresql://" + _database_url[11:]
+app.config["SQLALCHEMY_DATABASE_URI"] = _database_url
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 app.config["SQLALCHEMY_ENGINE_OPTIONS"] = {
     'pool_pre_ping': True,
@@ -45,12 +55,13 @@ app.config["SQLALCHEMY_ENGINE_OPTIONS"] = {
     "pool_timeout": 120,  # Increased to handle connection pool exhaustion
 }
 
+# Production detection: Replit or Railway (and similar platforms)
+_IS_PRODUCTION = bool(os.environ.get('REPLIT_DEPLOYMENT') or os.environ.get('RAILWAY_ENVIRONMENT'))
+
 # URL building configuration for async jobs
 # Use localhost for development, production domain for production
-# Check if we're in production deployment
-if os.environ.get('REPLIT_DEPLOYMENT'):
-    # Production environment - don't set SERVER_NAME to allow external requests
-    # Flask will use the request's host header
+if _IS_PRODUCTION:
+    # Production - don't set SERVER_NAME; Flask uses the request's host header
     app.config['PREFERRED_URL_SCHEME'] = 'https'
 else:
     # Development environment - use localhost
@@ -58,8 +69,8 @@ else:
     app.config['PREFERRED_URL_SCHEME'] = 'http'
 app.config['APPLICATION_ROOT'] = '/'
 
-# In production, use /tmp which is the only writable directory
-if os.environ.get('REPLIT_DEPLOYMENT'):
+# In production (Replit/Railway), use /tmp which is the only writable directory
+if _IS_PRODUCTION:
     UPLOAD_FOLDER = '/tmp/uploads'
     OUTPUT_FOLDER = '/tmp/outputs'
 else:
