@@ -1,0 +1,10 @@
+.env
+.git
+__pycache__
+*.pyc
+.venv
+venv
+node_modules
+.gitignore
+*.md
+terminals
