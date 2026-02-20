@@ -69,13 +69,13 @@ else:
     app.config['PREFERRED_URL_SCHEME'] = 'http'
 app.config['APPLICATION_ROOT'] = '/'
 
-# In production (Replit/Railway), use /tmp which is the only writable directory
-if _IS_PRODUCTION:
-    UPLOAD_FOLDER = '/tmp/uploads'
-    OUTPUT_FOLDER = '/tmp/outputs'
-else:
-    UPLOAD_FOLDER = 'uploads'
-    OUTPUT_FOLDER = 'outputs'
+# Upload/output paths: prefer env (Railway volume) when set, else production /tmp or local dirs
+UPLOAD_FOLDER = os.environ.get("UPLOAD_FOLDER") or (
+    '/tmp/uploads' if _IS_PRODUCTION else 'uploads'
+)
+OUTPUT_FOLDER = os.environ.get("OUTPUT_FOLDER") or (
+    '/tmp/outputs' if _IS_PRODUCTION else 'outputs'
+)
 
 ALLOWED_IMAGE_EXTENSIONS = {'png', 'jpg', 'jpeg'}
 ALLOWED_AUDIO_EXTENSIONS = {'mp3', 'wav', 'm4a'}
@@ -2325,19 +2325,31 @@ def picture_in_picture():
 
 @app.route('/api/storage/<path:filename>')
 def serve_from_storage(filename):
-    """Serve a file from Replit App Storage"""
+    """Serve a file from storage. On Railway serves from volume (OUTPUT_FOLDER/UPLOAD_FOLDER)."""
     try:
+        # Railway: serve from volume (OUTPUT_FOLDER, then UPLOAD_FOLDER)
+        if os.environ.get('RAILWAY_ENVIRONMENT'):
+            secure_path = secure_filename(filename)
+            if '/' in filename:
+                path_parts = filename.split('/')
+                secure_path = '/'.join(secure_filename(p) for p in path_parts)
+            for folder in (OUTPUT_FOLDER, UPLOAD_FOLDER):
+                full_path = os.path.abspath(os.path.join(folder, secure_path))
+                folder_abs = os.path.abspath(folder)
+                if full_path.startswith(folder_abs) and os.path.exists(full_path):
+                    return send_from_directory(
+                        os.path.dirname(full_path),
+                        os.path.basename(full_path),
+                        mimetype=mimetypes.guess_type(filename)[0] or 'application/octet-stream',
+                        as_attachment=True,
+                        download_name=os.path.basename(filename)
+                    )
+            return jsonify({'success': False, 'error': 'File not found'}), 404
+
         from replit.object_storage import Client
         client = Client()
-        
-        # Download the file from storage
         file_data = client.download_as_bytes(filename)
-        
-        # Determine content type
-        import mimetypes
         content_type = mimetypes.guess_type(filename)[0] or 'application/octet-stream'
-        
-        # Return the file
         from flask import Response
         return Response(
             file_data,
@@ -2348,8 +2360,6 @@ def serve_from_storage(filename):
             }
         )
     except Exception as e:
-        # Don't log errors for poster images - these are optional video thumbnails
-        # that external clients may request but aren't always generated
         if '-poster.jpg' in filename or '-poster.png' in filename:
             logging.debug(f"Poster image not found (expected): {filename}")
         else:
