@@ -120,7 +120,7 @@
                                 <a class="toc-link ms-3" href="#trim-audio">Trim Audio</a>
                                 <a class="toc-link ms-3" href="#trim-video">Trim Video</a>
                                 <a class="toc-link ms-3" href="#convert-to-vertical">Convert to Vertical</a>
-                                <a class="toc-link ms-3" href="#tiktok-subtitles">TikTok-Style Subtitles</a>
+                                <a class="toc-link ms-3" href="#ai-captions-remotion">AI Captions (Remotion)</a>
                                 <a class="toc-link ms-3" href="#job-status">Job Status</a>
                                 <a class="toc-link" href="#errors">Error Handling</a>
                                 <a class="toc-link" href="#examples">Code Examples</a>
@@ -1726,18 +1726,18 @@ convertVideo();</code></pre>
                         </div>
                     </div>
 
-                    <!-- TikTok-Style Subtitles -->
-                    <div id="tiktok-subtitles" class="api-endpoint">
+                    <!-- AI Captions (Remotion) -->
+                    <div id="ai-captions-remotion" class="api-endpoint">
                         <div class="card">
                             <div class="card-header">
                                 <div class="d-flex justify-content-between align-items-center">
-                                    <h4 class="mb-0">TikTok-Style Subtitles</h4>
+                                    <h4 class="mb-0">AI Captions (Remotion)</h4>
                                     <span class="method-badge method-post">POST</span>
                                 </div>
-                                <code class="text-muted">/api/videos/add-tiktok-subtitles</code>
+                                <code class="text-muted">/api/videos/add-tiktok-captions</code>
                             </div>
                             <div class="card-body">
-                                <p>Add animated TikTok-style karaoke subtitles to videos using Remotion. Features word-by-word highlighting with pop animation effects and multiple color presets. The subtitles are rendered directly into the video for a professional look.</p>
+                                <p>Add animated TikTok-style karaoke captions to videos using AI. The endpoint downloads the video, extracts audio, transcribes with OpenAI Whisper (word-level timestamps), then renders word-by-word captions via Remotion. No subtitle file is required. Returns the captioned video plus caption artifacts (JSON, SRT, VTT).</p>
                                 
                                 <h6>Request Format</h6>
                                 <p><strong>Content-Type:</strong> <code>application/json</code></p>
@@ -1761,16 +1761,16 @@ convertVideo();</code></pre>
                                                 <td>URL to the source video file</td>
                                             </tr>
                                             <tr>
-                                                <td><code>subtitle_url</code></td>
-                                                <td>String</td>
-                                                <td>Yes</td>
-                                                <td>URL to the ASS subtitle file (word-level timestamps recommended for best karaoke effect)</td>
-                                            </tr>
-                                            <tr>
                                                 <td><code>subtitle_style</code></td>
                                                 <td>String</td>
                                                 <td>No</td>
-                                                <td>Style preset for the subtitles. Options: <code>plain-white</code>, <code>yellow-bg</code>, <code>pink-bg</code>, <code>blue-bg</code>, <code>red-bg</code>. Default: <code>plain-white</code></td>
+                                                <td>Caption style preset. Options: <code>plain-white</code>, <code>yellow-bg</code>, <code>pink-bg</code>, <code>blue-bg</code>, <code>red-bg</code>. Default: <code>plain-white</code></td>
+                                            </tr>
+                                            <tr>
+                                                <td><code>language</code></td>
+                                                <td>String</td>
+                                                <td>No</td>
+                                                <td>Language code for transcription. Options: <code>auto</code> (detect), <code>en</code>, <code>es</code>, <code>tr</code>, <code>fr</code>, <code>de</code>, <code>pt</code>, <code>ja</code>, <code>ko</code>, <code>zh</code>, <code>ar</code>. Default: <code>auto</code></td>
                                             </tr>
                                             <tr>
                                                 <td><code>aspect_ratio</code></td>
@@ -1779,10 +1779,16 @@ convertVideo();</code></pre>
                                                 <td>Output video aspect ratio. Options: <code>9:16</code> (vertical), <code>16:9</code> (horizontal). Default: <code>9:16</code></td>
                                             </tr>
                                             <tr>
-                                                <td><code>audio_duration_seconds</code></td>
+                                                <td><code>max_chars_per_line</code></td>
                                                 <td>Number</td>
                                                 <td>No</td>
-                                                <td>Duration of the audio in seconds. Used to calculate video length. If not provided, duration is estimated from subtitle timestamps</td>
+                                                <td>Maximum characters per caption line (controls grouping). Default: <code>20</code>. Range: 5–80</td>
+                                            </tr>
+                                            <tr>
+                                                <td><code>max_lines</code></td>
+                                                <td>Number</td>
+                                                <td>No</td>
+                                                <td>Maximum caption lines displayed at once. Default: <code>1</code>. Range: 1–4</td>
                                             </tr>
                                         </tbody>
                                     </table>
@@ -1792,10 +1798,11 @@ convertVideo();</code></pre>
                                 <div class="code-block p-3">
                                     <pre><code class="language-json">{
   "video_url": "https://example.com/video.mp4",
-  "subtitle_url": "https://example.com/subtitles.ass",
   "subtitle_style": "yellow-bg",
+  "language": "auto",
   "aspect_ratio": "9:16",
-  "audio_duration_seconds": 30
+  "max_chars_per_line": 20,
+  "max_lines": 1
 }</code></pre>
                                 </div>
 
@@ -1803,47 +1810,44 @@ convertVideo();</code></pre>
                                 <div class="code-block p-3">
                                     <pre><code class="language-json">{
   "success": true,
-  "message": "Video with TikTok subtitles rendered successfully",
-  "download_url": "https://ffmpegapi.net/api/storage/tiktok-captions/captioned-video.mp4",
-  "output_video_path": "/tmp/captioned-video.mp4"
+  "download_url": "https://ffmpegapi.net/.../captioned-video.mp4",
+  "captions_json_url": "https://ffmpegapi.net/.../captions.json",
+  "srt_url": "https://ffmpegapi.net/.../captions.srt",
+  "vtt_url": "https://ffmpegapi.net/.../captions.vtt",
+  "word_count": 33,
+  "message": "Video with auto-generated TikTok captions rendered successfully"
 }</code></pre>
                                 </div>
 
-                                <h6 class="mt-4">Subtitle Style Presets</h6>
+                                <h6 class="mt-4">Caption Style Presets</h6>
                                 <div class="table-responsive">
                                     <table class="table table-sm">
                                         <thead>
                                             <tr>
                                                 <th>Style</th>
                                                 <th>Description</th>
-                                                <th>Preview</th>
                                             </tr>
                                         </thead>
                                         <tbody>
                                             <tr>
                                                 <td><code>plain-white</code></td>
-                                                <td>White text with text shadow (default)</td>
-                                                <td><span style="color: #fff; text-shadow: 0 2px 8px rgba(0,0,0,0.9); font-weight: 800;">Hello</span></td>
+                                                <td>White text with shadow (default)</td>
                                             </tr>
                                             <tr>
                                                 <td><code>yellow-bg</code></td>
                                                 <td>White text on yellow background</td>
-                                                <td><span style="color: #fff; background: #facc15; border-radius: 6px; padding: 2px 8px; font-weight: 800;">Hello</span></td>
                                             </tr>
                                             <tr>
                                                 <td><code>pink-bg</code></td>
                                                 <td>White text on pink background</td>
-                                                <td><span style="color: #fff; background: #ec4899; border-radius: 6px; padding: 2px 8px; font-weight: 800;">Hello</span></td>
                                             </tr>
                                             <tr>
                                                 <td><code>blue-bg</code></td>
                                                 <td>White text on blue background</td>
-                                                <td><span style="color: #fff; background: #3b82f6; border-radius: 6px; padding: 2px 8px; font-weight: 800;">Hello</span></td>
                                             </tr>
                                             <tr>
                                                 <td><code>red-bg</code></td>
                                                 <td>White text on red background</td>
-                                                <td><span style="color: #fff; background: #ef4444; border-radius: 6px; padding: 2px 8px; font-weight: 800;">Hello</span></td>
                                             </tr>
                                         </tbody>
                                     </table>
@@ -1851,97 +1855,88 @@ convertVideo();</code></pre>
 
                                 <div class="alert alert-info mt-3">
                                     <i class="fas fa-lightbulb me-2"></i>
-                                    <strong>Tip:</strong> For the best karaoke effect, use ASS subtitle files with word-level timestamps (each word as a separate dialogue line). This creates the animated word-by-word highlighting that TikTok videos are known for.
-                                </div>
-
-                                <div class="alert alert-warning mt-3">
-                                    <i class="fas fa-clock me-2"></i>
-                                    <strong>Note:</strong> Video rendering is CPU-intensive and may take several minutes depending on the video length. Consider using shorter clips for faster results.
+                                    <strong>Tip:</strong> Rendering is CPU-intensive and may take several minutes. Audio is limited to 25MB for Whisper; long videos are compressed to stay under that limit.
                                 </div>
 
                                 <h6 class="mt-4 mb-3">Code Examples</h6>
-                                <ul class="nav nav-pills mb-3" id="tiktokExampleTabs" role="tablist">
+                                <ul class="nav nav-pills mb-3" id="aiCaptionsExampleTabs" role="tablist">
                                     <li class="nav-item" role="presentation">
-                                        <button class="nav-link active" id="tiktok-curl-tab" data-bs-toggle="pill" data-bs-target="#tiktok-curl" type="button" role="tab">cURL</button>
+                                        <button class="nav-link active" id="ai-captions-curl-tab" data-bs-toggle="pill" data-bs-target="#ai-captions-curl" type="button" role="tab">cURL</button>
                                     </li>
                                     <li class="nav-item" role="presentation">
-                                        <button class="nav-link" id="tiktok-python-tab" data-bs-toggle="pill" data-bs-target="#tiktok-python" type="button" role="tab">Python</button>
+                                        <button class="nav-link" id="ai-captions-python-tab" data-bs-toggle="pill" data-bs-target="#ai-captions-python" type="button" role="tab">Python</button>
                                     </li>
                                     <li class="nav-item" role="presentation">
-                                        <button class="nav-link" id="tiktok-javascript-tab" data-bs-toggle="pill" data-bs-target="#tiktok-javascript" type="button" role="tab">JavaScript</button>
+                                        <button class="nav-link" id="ai-captions-javascript-tab" data-bs-toggle="pill" data-bs-target="#ai-captions-javascript" type="button" role="tab">JavaScript</button>
                                     </li>
                                 </ul>
-                                <div class="tab-content" id="tiktokExampleContent">
-                                    <div class="tab-pane fade show active" id="tiktok-curl" role="tabpanel">
+                                <div class="tab-content" id="aiCaptionsExampleContent">
+                                    <div class="tab-pane fade show active" id="ai-captions-curl" role="tabpanel">
                                         <div class="code-block">
-                                            <pre><code class="language-bash">curl -X POST "https://ffmpegapi.net/api/videos/add-tiktok-subtitles" \
+                                            <pre><code class="language-bash">curl -X POST "https://ffmpegapi.net/api/videos/add-tiktok-captions" \
   -H "X-API-Key: YOUR_API_KEY" \
   -H "Content-Type: application/json" \
   -d '{
     "video_url": "https://example.com/video.mp4",
-    "subtitle_url": "https://example.com/subtitles.ass",
     "subtitle_style": "yellow-bg",
-    "aspect_ratio": "9:16",
-    "audio_duration_seconds": 30
+    "language": "auto",
+    "aspect_ratio": "9:16"
   }'</code></pre>
                                         </div>
                                     </div>
-                                    <div class="tab-pane fade" id="tiktok-python" role="tabpanel">
+                                    <div class="tab-pane fade" id="ai-captions-python" role="tabpanel">
                                         <div class="code-block">
                                             <pre><code class="language-python">import requests
 
-url = "https://ffmpegapi.net/api/videos/add-tiktok-subtitles"
+url = "https://ffmpegapi.net/api/videos/add-tiktok-captions"
 headers = {
     "X-API-Key": "YOUR_API_KEY",
     "Content-Type": "application/json"
 }
 data = {
     "video_url": "https://example.com/video.mp4",
-    "subtitle_url": "https://example.com/subtitles.ass",
     "subtitle_style": "yellow-bg",
-    "aspect_ratio": "9:16",
-    "audio_duration_seconds": 30
+    "language": "auto",
+    "aspect_ratio": "9:16"
 }
 
 response = requests.post(url, headers=headers, json=data)
 result = response.json()
 
 if result["success"]:
-    print(f"Subtitles added successfully!")
-    print(f"Download URL: {result['download_url']}")
+    print("AI captions generated!")
+    print("Download video:", result["download_url"])
+    print("Captions JSON:", result.get("captions_json_url"))
+    print("SRT:", result.get("srt_url"))
 else:
-    print(f"Error: {result['error']}")</code></pre>
+    print("Error:", result["error"])</code></pre>
                                         </div>
                                     </div>
-                                    <div class="tab-pane fade" id="tiktok-javascript" role="tabpanel">
+                                    <div class="tab-pane fade" id="ai-captions-javascript" role="tabpanel">
                                         <div class="code-block">
-                                            <pre><code class="language-javascript">const addTikTokSubtitles = async () => {
-  const response = await fetch('https://ffmpegapi.net/api/videos/add-tiktok-subtitles', {
-    method: 'POST',
-    headers: {
-      'X-API-Key': 'YOUR_API_KEY',
-      'Content-Type': 'application/json'
-    },
-    body: JSON.stringify({
-      video_url: 'https://example.com/video.mp4',
-      subtitle_url: 'https://example.com/subtitles.ass',
-      subtitle_style: 'yellow-bg',
-      aspect_ratio: '9:16',
-      audio_duration_seconds: 30
-    })
-  });
-  
-  const result = await response.json();
-  
-  if (result.success) {
-    console.log('Subtitles added successfully!');
-    console.log('Download URL:', result.download_url);
-  } else {
-    console.error('Error:', result.error);
-  }
-};
+                                            <pre><code class="language-javascript">const response = await fetch('https://ffmpegapi.net/api/videos/add-tiktok-captions', {
+  method: 'POST',
+  headers: {
+    'X-API-Key': 'YOUR_API_KEY',
+    'Content-Type': 'application/json'
+  },
+  body: JSON.stringify({
+    video_url: 'https://example.com/video.mp4',
+    subtitle_style: 'yellow-bg',
+    language: 'auto',
+    aspect_ratio: '9:16'
+  })
+});
 
-addTikTokSubtitles();</code></pre>
+const result = await response.json();
+
+if (result.success) {
+  console.log('Download:', result.download_url);
+  console.log('Captions JSON:', result.captions_json_url);
+  console.log('SRT:', result.srt_url);
+} else {
+  console.error('Error:', result.error);
+}</code></pre>
                                         </div>
                                     </div>
                                 </div>

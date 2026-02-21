@@ -12,7 +12,6 @@ class VideoMerger {
         this.initializeTrimAudioTab();
         this.initializeTrimVideoTab();
         this.initializeConvertVerticalTab();
-        this.initializeTiktokSubtitlesTab();
         this.initializeAutoCaptionTab();
     }
 
@@ -1673,112 +1672,6 @@ class VideoMerger {
         this.convertVerticalResultContainer.style.display = 'none';
     }
 
-    initializeTiktokSubtitlesTab() {
-        this.tiktokSubtitlesForm = document.getElementById('tiktokSubtitlesForm');
-        this.tiktokSubtitlesSubmitBtn = document.getElementById('tiktokSubtitlesSubmitBtn');
-        this.tiktokSubtitlesProgressContainer = document.getElementById('tiktokSubtitlesProgressContainer');
-        this.tiktokSubtitlesAlertContainer = document.getElementById('tiktokSubtitlesAlertContainer');
-        this.tiktokSubtitlesResultContainer = document.getElementById('tiktokSubtitlesResultContainer');
-        this.tiktokSubtitlesDownloadBtn = document.getElementById('tiktokSubtitlesDownloadBtn');
-        this.tiktokSubtitlesResetBtn = document.getElementById('tiktokSubtitlesResetBtn');
-
-        this.tiktokSubtitlesForm.addEventListener('submit', (e) => {
-            e.preventDefault();
-            this.handleTiktokSubtitlesSubmit();
-        });
-
-        this.tiktokSubtitlesResetBtn.addEventListener('click', () => {
-            this.resetTiktokSubtitlesForm();
-        });
-    }
-
-    async handleTiktokSubtitlesSubmit() {
-        const jsonData = {
-            video_url: document.getElementById('tiktokVideoUrl').value,
-            subtitle_url: document.getElementById('tiktokSubtitleUrl').value,
-            subtitle_style: document.getElementById('tiktokSubtitleStyle').value,
-            aspect_ratio: document.getElementById('tiktokAspectRatio').value,
-        };
-
-        const audioDuration = document.getElementById('tiktokAudioDuration').value;
-        if (audioDuration) {
-            jsonData.audio_duration_seconds = parseInt(audioDuration, 10);
-        }
-
-        this.showTiktokSubtitlesProgress();
-        this.hideTiktokSubtitlesAlert();
-        this.hideTiktokSubtitlesResult();
-
-        try {
-            const response = await fetch('/api/videos/add-tiktok-subtitles', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-API-Key': window.API_KEY
-                },
-                body: JSON.stringify(jsonData)
-            });
-
-            const result = await response.json();
-
-            if (result.success) {
-                this.tiktokSubtitlesDownloadBtn.href = result.download_url;
-
-                const messageElement = document.getElementById('tiktokSubtitlesResultMessage');
-                messageElement.textContent = result.message || 'Your video with TikTok-style subtitles is ready for download.';
-
-                this.showTiktokSubtitlesResult();
-                this.showTiktokSubtitlesAlert('success', result.message || 'TikTok subtitles added successfully!');
-            } else {
-                this.showTiktokSubtitlesAlert('danger', `Error: ${result.error}`);
-            }
-        } catch (error) {
-            console.error('TikTok subtitles error:', error);
-            this.showTiktokSubtitlesAlert('danger', `An error occurred: ${error.message}`);
-        } finally {
-            this.hideTiktokSubtitlesProgress();
-        }
-    }
-
-    resetTiktokSubtitlesForm() {
-        this.tiktokSubtitlesForm.reset();
-        this.hideTiktokSubtitlesAlert();
-        this.hideTiktokSubtitlesResult();
-        this.hideTiktokSubtitlesProgress();
-    }
-
-    showTiktokSubtitlesProgress() {
-        this.tiktokSubtitlesProgressContainer.style.display = 'block';
-        this.tiktokSubtitlesSubmitBtn.disabled = true;
-    }
-
-    hideTiktokSubtitlesProgress() {
-        this.tiktokSubtitlesProgressContainer.style.display = 'none';
-        this.tiktokSubtitlesSubmitBtn.disabled = false;
-    }
-
-    showTiktokSubtitlesAlert(type, message) {
-        this.tiktokSubtitlesAlertContainer.innerHTML = `
-            <div class="alert alert-${type} alert-dismissible fade show" role="alert">
-                <i class="fas fa-${this.getAlertIcon(type)} me-2"></i>
-                ${message}
-                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-            </div>
-        `;
-    }
-
-    hideTiktokSubtitlesAlert() {
-        this.tiktokSubtitlesAlertContainer.innerHTML = '';
-    }
-
-    showTiktokSubtitlesResult() {
-        this.tiktokSubtitlesResultContainer.style.display = 'block';
-    }
-
-    hideTiktokSubtitlesResult() {
-        this.tiktokSubtitlesResultContainer.style.display = 'none';
-    }
-
     initializeAutoCaptionTab() {
         this.autoCaptionForm = document.getElementById('autoCaptionForm');
         this.autoCaptionSubmitBtn = document.getElementById('autoCaptionSubmitBtn');
@@ -1851,15 +1744,15 @@ class VideoMerger {
 
                 const messageElement = document.getElementById('autoCaptionResultMessage');
                 const wordInfo = result.word_count ? ` (${result.word_count} words detected)` : '';
-                messageElement.textContent = (result.message || 'Auto-captions generated successfully!') + wordInfo;
+                messageElement.textContent = (result.message || 'AI captions generated successfully!') + wordInfo;
 
                 this.showAutoCaptionResult();
-                this.showAutoCaptionAlert('success', result.message || 'Auto-captions generated successfully!');
+                this.showAutoCaptionAlert('success', result.message || 'AI captions generated successfully!');
             } else {
                 this.showAutoCaptionAlert('danger', `Error: ${result.error}`);
             }
         } catch (error) {
-            console.error('Auto-caption error:', error);
+            console.error('AI captions error:', error);
             this.showAutoCaptionAlert('danger', `An error occurred: ${error.message}`);
         } finally {
             this.hideAutoCaptionProgress();

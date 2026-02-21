@@ -12,7 +12,7 @@ This is a comprehensive web-based video processing tool that provides nine main 
 6. **Trim Audio** (`/api/trim_audio`): Trims audio files to exact durations with optional fade-out effects
 7. **Trim Video** (`/api/trim_video`): Trims videos by specifying start and end times in seconds, with stream copy for fast processing and re-encode fallback
 8. **Convert to Vertical** (`/api/convert_to_vertical`): Converts horizontal videos to vertical format (3:4 or 9:16) optimized for mobile viewing, with automatic aspect ratio detection and optional watermark placement
-9. **TikTok-Style Subtitles** (`/api/videos/add-tiktok-subtitles`): Adds animated TikTok-style karaoke subtitles to videos using Remotion. Supports word-by-word highlighting with pop animation, multiple style presets (plain-white, yellow-bg, pink-bg, blue-bg, red-bg), and configurable aspect ratios. Accepts ASS subtitle content and renders via headless Chromium.
+9. **Auto-Caption (TikTok-Style)** (`/api/videos/add-tiktok-captions`): Adds animated TikTok-style karaoke captions to videos using Remotion. Extracts audio from the video, transcribes with OpenAI Whisper (word-level timestamps), then renders word-by-word captions. No subtitle file needed. Returns captioned video plus captions.json, SRT, and VTT artifacts.
 
 **Authentication & API Keys**: All API endpoints now require authentication via API keys. Users can register for accounts and generate multiple API keys through a dashboard. The site provides a default API key for guest usage on the landing page.
 
