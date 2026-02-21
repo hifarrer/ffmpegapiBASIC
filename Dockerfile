@@ -1,8 +1,14 @@
-# Use Python 3.13 to match Railway default; install ffmpeg and Node.js for Remotion TikTok captions
+# Use Python 3.13 to match Railway default; install ffmpeg, Node.js, and Chrome deps for Remotion
 FROM python:3.13-slim
 
+# System deps: ffmpeg, Node.js, and libraries Chrome Headless Shell needs to run
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends ffmpeg nodejs npm \
+    && apt-get install -y --no-install-recommends \
+       ffmpeg nodejs npm \
+       libnss3 libatk1.0-0 libatk-bridge2.0-0 libcups2 libdrm2 \
+       libxkbcommon0 libxcomposite1 libxdamage1 libxfixes3 libxrandr2 \
+       libgbm1 libpango-1.0-0 libcairo2 libasound2 libatspi2.0-0 \
+       libxshmfence1 fonts-noto-color-emoji fonts-freefont-ttf \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
@@ -11,9 +17,10 @@ WORKDIR /app
 COPY requirements.txt ./
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Install Node deps for Remotion (npx/tsx used by add-tiktok-captions and add-tiktok-subtitles)
+# Install Node deps and pre-download Chrome Headless Shell at build time
 COPY package.json ./
-RUN npm install
+RUN npm install \
+    && npx remotion browser ensure
 
 COPY . .
 
