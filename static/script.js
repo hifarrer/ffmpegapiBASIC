@@ -1701,6 +1701,7 @@ class VideoMerger {
             subtitle_style: document.getElementById('autoCaptionStyle').value,
             language: document.getElementById('autoCaptionLanguage').value,
             aspect_ratio: document.getElementById('autoCaptionAspectRatio').value,
+            position: document.getElementById('autoCaptionPosition').value,
             max_chars_per_line: parseInt(document.getElementById('autoCaptionMaxChars').value, 10) || 20,
             max_lines: parseInt(document.getElementById('autoCaptionMaxLines').value, 10) || 1,
         };

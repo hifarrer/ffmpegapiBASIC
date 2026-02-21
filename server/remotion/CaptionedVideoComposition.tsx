@@ -3,11 +3,14 @@ import { AbsoluteFill, OffthreadVideo, useCurrentFrame } from "remotion";
 import type { SubtitleStyle } from "../../shared/subtitleStyles";
 import type { TikTokCaptionPage } from "../services/captions";
 
+export type CaptionPosition = "top" | "center" | "bottom";
+
 export interface CaptionedVideoCompositionProps {
   videoSrc: string;
   pages: TikTokCaptionPage[];
   fps: number;
   stylePreset: SubtitleStyle;
+  position?: CaptionPosition;
 }
 
 const styleMap: Record<
@@ -51,9 +54,32 @@ const styleMap: Record<
   },
 };
 
+const getPositionStyles = (
+  pos: CaptionPosition,
+  offset: number,
+): React.CSSProperties => {
+  switch (pos) {
+    case "top":
+      return {
+        justifyContent: "flex-start",
+        paddingTop: offset,
+      };
+    case "center":
+      return {
+        justifyContent: "center",
+      };
+    case "bottom":
+    default:
+      return {
+        justifyContent: "flex-end",
+        paddingBottom: offset,
+      };
+  }
+};
+
 export const CaptionedVideoComposition: React.FC<
   CaptionedVideoCompositionProps
-> = ({ videoSrc, pages, fps, stylePreset }) => {
+> = ({ videoSrc, pages, fps, stylePreset, position = "bottom" }) => {
   const frame = useCurrentFrame();
   const currentMs = (frame / fps) * 1000;
   const activeStyle = styleMap[stylePreset] ?? styleMap["plain-white"];
@@ -93,11 +119,10 @@ export const CaptionedVideoComposition: React.FC<
       {activePage ? (
         <AbsoluteFill
           style={{
-            justifyContent: "flex-end",
             alignItems: "center",
-            paddingBottom: activeStyle.bottomOffset,
             paddingLeft: 48,
             paddingRight: 48,
+            ...getPositionStyles(position, activeStyle.bottomOffset),
           }}
         >
           <div

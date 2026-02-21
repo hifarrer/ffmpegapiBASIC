@@ -48,6 +48,12 @@ const getCaptionResolution = (
   if (aspectRatio === "16:9") {
     return { width: 1920, height: 1080 };
   }
+  if (aspectRatio === "4:3") {
+    return { width: 1440, height: 1080 };
+  }
+  if (aspectRatio === "3:4") {
+    return { width: 1080, height: 1440 };
+  }
   return { width: 1080, height: 1440 };
 };
 
@@ -151,12 +157,14 @@ export const renderVideoWithAutoCaption = async ({
   subtitleStyle,
   aspectRatio,
   audioDurationSeconds,
+  position,
 }: {
   videoSrc: string;
   wordTimestamps: WordTimestamp[];
   subtitleStyle: string | null | undefined;
   aspectRatio?: string | null;
   audioDurationSeconds?: number | null;
+  position?: string | null;
 }): Promise<string | null> => {
   const style = normalizeSubtitleStyle(subtitleStyle);
   if (!isTikTokSubtitleStyle(style)) {
@@ -190,6 +198,8 @@ export const renderVideoWithAutoCaption = async ({
 
   const serveUrl = await getServeUrl();
 
+  const captionPosition = position || "bottom";
+
   const composition = await selectComposition({
     serveUrl,
     id: "CaptionedVideo",
@@ -198,6 +208,7 @@ export const renderVideoWithAutoCaption = async ({
       pages,
       fps,
       stylePreset: style,
+      position: captionPosition,
     },
   });
 
@@ -216,6 +227,7 @@ export const renderVideoWithAutoCaption = async ({
       pages,
       fps,
       stylePreset: style,
+      position: captionPosition,
     },
     outputLocation,
     overwrite: true,

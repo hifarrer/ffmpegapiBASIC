@@ -11,6 +11,7 @@ const defaultProps: CaptionedVideoCompositionProps = {
   pages: [],
   fps: 30,
   stylePreset: "plain-white" as SubtitleStyle,
+  position: "bottom",
 };
 
 const RemotionRoot: React.FC = () => {

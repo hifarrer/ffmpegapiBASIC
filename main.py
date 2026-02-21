@@ -5074,12 +5074,15 @@ def add_tiktok_captions():
         aspect_ratio = data.get('aspect_ratio', '9:16')
         max_chars_per_line = data.get('max_chars_per_line', 20)
         max_lines = data.get('max_lines', 1)
+        position = data.get('position', 'bottom')
 
         valid_styles = ['plain-white', 'yellow-bg', 'pink-bg', 'blue-bg', 'red-bg']
         if subtitle_style not in valid_styles:
             subtitle_style = 'plain-white'
-        if aspect_ratio not in ('16:9', '9:16'):
+        if aspect_ratio not in ('16:9', '9:16', '4:3', '3:4'):
             aspect_ratio = '9:16'
+        if position not in ('top', 'center', 'bottom'):
+            position = 'bottom'
         max_chars_per_line = max(5, min(80, int(max_chars_per_line or 20)))
         max_lines = max(1, min(4, int(max_lines or 1)))
 
@@ -5158,6 +5161,7 @@ def add_tiktok_captions():
             'audio_duration_seconds': audio_duration_seconds,
             'max_chars_per_line': max_chars_per_line,
             'max_lines': max_lines,
+            'position': position,
         })
 
         logging.info("[AUTO_CAPTION] Starting Remotion render...")

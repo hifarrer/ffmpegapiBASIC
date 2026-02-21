@@ -13,6 +13,7 @@ interface RenderInput {
   audio_duration_seconds?: number;
   max_chars_per_line?: number;
   max_lines?: number;
+  position?: string;
 }
 
 const main = async () => {
@@ -50,6 +51,7 @@ const main = async () => {
       subtitleStyle: input.subtitle_style || null,
       aspectRatio: input.aspect_ratio || null,
       audioDurationSeconds: input.audio_duration_seconds || null,
+      position: input.position || null,
     });
   } else if (input.ass_content) {
     outputVideoPath = await renderVideoWithTikTokCaptions({

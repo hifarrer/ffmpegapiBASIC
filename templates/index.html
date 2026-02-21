@@ -1432,12 +1432,25 @@
                                             <select class="form-select" id="autoCaptionAspectRatio" name="aspect_ratio">
                                                 <option value="9:16" selected>9:16 (Vertical)</option>
                                                 <option value="16:9">16:9 (Horizontal)</option>
+                                                <option value="4:3">4:3 (Horizontal)</option>
+                                                <option value="3:4">3:4 (Vertical)</option>
                                             </select>
                                         </div>
                                     </div>
 
                                     <div class="row mb-4">
-                                        <div class="col-md-6">
+                                        <div class="col-md-4">
+                                            <label for="autoCaptionPosition" class="form-label">
+                                                <i class="fas fa-arrows-alt-v me-2"></i>
+                                                Caption Position
+                                            </label>
+                                            <select class="form-select" id="autoCaptionPosition" name="position">
+                                                <option value="bottom" selected>Bottom</option>
+                                                <option value="center">Center</option>
+                                                <option value="top">Top</option>
+                                            </select>
+                                        </div>
+                                        <div class="col-md-4">
                                             <label for="autoCaptionMaxChars" class="form-label">
                                                 <i class="fas fa-text-width me-2"></i>
                                                 Max Chars Per Line
@@ -1446,7 +1459,7 @@
                                                    placeholder="20" min="5" max="80" value="20">
                                             <div class="form-text">Controls caption grouping width</div>
                                         </div>
-                                        <div class="col-md-6">
+                                        <div class="col-md-4">
                                             <label for="autoCaptionMaxLines" class="form-label">
                                                 <i class="fas fa-bars me-2"></i>
                                                 Max Lines

@@ -1776,7 +1776,13 @@ convertVideo();</code></pre>
                                                 <td><code>aspect_ratio</code></td>
                                                 <td>String</td>
                                                 <td>No</td>
-                                                <td>Output video aspect ratio. Options: <code>9:16</code> (vertical), <code>16:9</code> (horizontal). Default: <code>9:16</code></td>
+                                                <td>Output video aspect ratio. Options: <code>9:16</code>, <code>16:9</code>, <code>4:3</code>, <code>3:4</code>. Default: <code>9:16</code></td>
+                                            </tr>
+                                            <tr>
+                                                <td><code>position</code></td>
+                                                <td>String</td>
+                                                <td>No</td>
+                                                <td>Vertical position of captions on screen. Options: <code>top</code>, <code>center</code>, <code>bottom</code>. Default: <code>bottom</code></td>
                                             </tr>
                                             <tr>
                                                 <td><code>max_chars_per_line</code></td>
@@ -1801,6 +1807,7 @@ convertVideo();</code></pre>
   "subtitle_style": "yellow-bg",
   "language": "auto",
   "aspect_ratio": "9:16",
+  "position": "bottom",
   "max_chars_per_line": 20,
   "max_lines": 1
 }</code></pre>
