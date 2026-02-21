@@ -1887,7 +1887,8 @@ convertVideo();</code></pre>
     "video_url": "https://example.com/video.mp4",
     "subtitle_style": "yellow-bg",
     "language": "auto",
-    "aspect_ratio": "9:16"
+    "aspect_ratio": "9:16",
+    "position": "bottom"
   }'</code></pre>
                                         </div>
                                     </div>
@@ -1904,7 +1905,8 @@ data = {
     "video_url": "https://example.com/video.mp4",
     "subtitle_style": "yellow-bg",
     "language": "auto",
-    "aspect_ratio": "9:16"
+    "aspect_ratio": "9:16",
+    "position": "bottom"
 }
 
 response = requests.post(url, headers=headers, json=data)
@@ -1931,7 +1933,8 @@ else:
     video_url: 'https://example.com/video.mp4',
     subtitle_style: 'yellow-bg',
     language: 'auto',
-    aspect_ratio: '9:16'
+    aspect_ratio: '9:16',
+    position: 'bottom'
   })
 });
 
