@@ -13,6 +13,7 @@ class VideoMerger {
         this.initializeTrimVideoTab();
         this.initializeConvertVerticalTab();
         this.initializeTiktokSubtitlesTab();
+        this.initializeAutoCaptionTab();
     }
 
     initializeImageAudioTab() {
@@ -1776,6 +1777,132 @@ class VideoMerger {
 
     hideTiktokSubtitlesResult() {
         this.tiktokSubtitlesResultContainer.style.display = 'none';
+    }
+
+    initializeAutoCaptionTab() {
+        this.autoCaptionForm = document.getElementById('autoCaptionForm');
+        this.autoCaptionSubmitBtn = document.getElementById('autoCaptionSubmitBtn');
+        this.autoCaptionProgressContainer = document.getElementById('autoCaptionProgressContainer');
+        this.autoCaptionProgressText = document.getElementById('autoCaptionProgressText');
+        this.autoCaptionAlertContainer = document.getElementById('autoCaptionAlertContainer');
+        this.autoCaptionResultContainer = document.getElementById('autoCaptionResultContainer');
+        this.autoCaptionDownloadVideoBtn = document.getElementById('autoCaptionDownloadVideoBtn');
+        this.autoCaptionDownloadJsonBtn = document.getElementById('autoCaptionDownloadJsonBtn');
+        this.autoCaptionDownloadSrtBtn = document.getElementById('autoCaptionDownloadSrtBtn');
+        this.autoCaptionDownloadVttBtn = document.getElementById('autoCaptionDownloadVttBtn');
+        this.autoCaptionResetBtn = document.getElementById('autoCaptionResetBtn');
+
+        this.autoCaptionForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            this.handleAutoCaptionSubmit();
+        });
+
+        this.autoCaptionResetBtn.addEventListener('click', () => {
+            this.resetAutoCaptionForm();
+        });
+    }
+
+    async handleAutoCaptionSubmit() {
+        const jsonData = {
+            video_url: document.getElementById('autoCaptionVideoUrl').value,
+            subtitle_style: document.getElementById('autoCaptionStyle').value,
+            language: document.getElementById('autoCaptionLanguage').value,
+            aspect_ratio: document.getElementById('autoCaptionAspectRatio').value,
+            max_chars_per_line: parseInt(document.getElementById('autoCaptionMaxChars').value, 10) || 20,
+            max_lines: parseInt(document.getElementById('autoCaptionMaxLines').value, 10) || 1,
+        };
+
+        this.showAutoCaptionProgress();
+        this.hideAutoCaptionAlert();
+        this.hideAutoCaptionResult();
+
+        try {
+            const response = await fetch('/api/videos/add-tiktok-captions', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-API-Key': window.API_KEY
+                },
+                body: JSON.stringify(jsonData)
+            });
+
+            const result = await response.json();
+
+            if (result.success) {
+                this.autoCaptionDownloadVideoBtn.href = result.download_url;
+                if (result.captions_json_url) {
+                    this.autoCaptionDownloadJsonBtn.href = result.captions_json_url;
+                    this.autoCaptionDownloadJsonBtn.style.display = '';
+                } else {
+                    this.autoCaptionDownloadJsonBtn.style.display = 'none';
+                }
+                if (result.srt_url) {
+                    this.autoCaptionDownloadSrtBtn.href = result.srt_url;
+                    this.autoCaptionDownloadSrtBtn.style.display = '';
+                } else {
+                    this.autoCaptionDownloadSrtBtn.style.display = 'none';
+                }
+                if (result.vtt_url) {
+                    this.autoCaptionDownloadVttBtn.href = result.vtt_url;
+                    this.autoCaptionDownloadVttBtn.style.display = '';
+                } else {
+                    this.autoCaptionDownloadVttBtn.style.display = 'none';
+                }
+
+                const messageElement = document.getElementById('autoCaptionResultMessage');
+                const wordInfo = result.word_count ? ` (${result.word_count} words detected)` : '';
+                messageElement.textContent = (result.message || 'Auto-captions generated successfully!') + wordInfo;
+
+                this.showAutoCaptionResult();
+                this.showAutoCaptionAlert('success', result.message || 'Auto-captions generated successfully!');
+            } else {
+                this.showAutoCaptionAlert('danger', `Error: ${result.error}`);
+            }
+        } catch (error) {
+            console.error('Auto-caption error:', error);
+            this.showAutoCaptionAlert('danger', `An error occurred: ${error.message}`);
+        } finally {
+            this.hideAutoCaptionProgress();
+        }
+    }
+
+    resetAutoCaptionForm() {
+        this.autoCaptionForm.reset();
+        this.hideAutoCaptionAlert();
+        this.hideAutoCaptionResult();
+        this.hideAutoCaptionProgress();
+    }
+
+    showAutoCaptionProgress() {
+        this.autoCaptionProgressContainer.style.display = 'block';
+        this.autoCaptionSubmitBtn.disabled = true;
+    }
+
+    hideAutoCaptionProgress() {
+        this.autoCaptionProgressContainer.style.display = 'none';
+        this.autoCaptionSubmitBtn.disabled = false;
+    }
+
+    showAutoCaptionAlert(type, message) {
+        this.autoCaptionAlertContainer.innerHTML = `
+            <div class="alert alert-${type} alert-dismissible fade show" role="alert">
+                <i class="fas fa-${this.getAlertIcon(type)} me-2"></i>
+                ${message}
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+        `;
+    }
+
+    hideAutoCaptionAlert() {
+        this.autoCaptionAlertContainer.innerHTML = '';
+    }
+
+    showAutoCaptionResult() {
+        this.autoCaptionResultContainer.style.display = 'block';
+    }
+
+    hideAutoCaptionResult() {
+        this.autoCaptionResultContainer.style.display = 'none';
     }
 }
 

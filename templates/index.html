@@ -1486,6 +1486,161 @@
                         </div>
                     </div>
 
+                    <div class="accordion-item">
+                        <h2 class="accordion-header" id="autoCaptionHeading">
+                            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" 
+                                    data-bs-target="#autoCaptionCollapse" aria-expanded="false" aria-controls="autoCaptionCollapse">
+                                <i class="fas fa-magic me-2"></i>
+                                Auto-Caption Video (AI)
+                            </button>
+                        </h2>
+                        <div id="autoCaptionCollapse" class="accordion-collapse collapse" 
+                             aria-labelledby="autoCaptionHeading" data-bs-parent="#videoProcessingAccordion">
+                            <div class="accordion-body">
+                                <p class="text-muted mb-4">
+                                    <i class="fas fa-info-circle me-1"></i>
+                                    Automatically generate TikTok-style animated captions from any video. Extracts audio, transcribes with AI (OpenAI Whisper), and renders word-by-word karaoke captions. No subtitle file needed.
+                                </p>
+
+                                <form id="autoCaptionForm">
+                                    <div class="mb-4">
+                                        <label for="autoCaptionVideoUrl" class="form-label">
+                                            <i class="fas fa-video me-2"></i>
+                                            Video URL
+                                        </label>
+                                        <input type="url" class="form-control" id="autoCaptionVideoUrl" name="video_url" 
+                                               placeholder="https://example.com/video.mp4" required>
+                                        <div class="form-text">Enter the URL of the video to auto-caption</div>
+                                    </div>
+
+                                    <div class="row mb-4">
+                                        <div class="col-md-4">
+                                            <label for="autoCaptionStyle" class="form-label">
+                                                <i class="fas fa-palette me-2"></i>
+                                                Caption Style
+                                            </label>
+                                            <select class="form-select" id="autoCaptionStyle" name="subtitle_style">
+                                                <option value="plain-white" selected>Plain White</option>
+                                                <option value="yellow-bg">Yellow Background</option>
+                                                <option value="pink-bg">Pink Background</option>
+                                                <option value="blue-bg">Blue Background</option>
+                                                <option value="red-bg">Red Background</option>
+                                            </select>
+                                        </div>
+                                        <div class="col-md-4">
+                                            <label for="autoCaptionLanguage" class="form-label">
+                                                <i class="fas fa-language me-2"></i>
+                                                Language
+                                            </label>
+                                            <select class="form-select" id="autoCaptionLanguage" name="language">
+                                                <option value="auto" selected>Auto-detect</option>
+                                                <option value="en">English</option>
+                                                <option value="es">Spanish</option>
+                                                <option value="tr">Turkish</option>
+                                                <option value="fr">French</option>
+                                                <option value="de">German</option>
+                                                <option value="pt">Portuguese</option>
+                                                <option value="ja">Japanese</option>
+                                                <option value="ko">Korean</option>
+                                                <option value="zh">Chinese</option>
+                                                <option value="ar">Arabic</option>
+                                            </select>
+                                        </div>
+                                        <div class="col-md-4">
+                                            <label for="autoCaptionAspectRatio" class="form-label">
+                                                <i class="fas fa-expand me-2"></i>
+                                                Aspect Ratio
+                                            </label>
+                                            <select class="form-select" id="autoCaptionAspectRatio" name="aspect_ratio">
+                                                <option value="9:16" selected>9:16 (Vertical)</option>
+                                                <option value="16:9">16:9 (Horizontal)</option>
+                                            </select>
+                                        </div>
+                                    </div>
+
+                                    <div class="row mb-4">
+                                        <div class="col-md-6">
+                                            <label for="autoCaptionMaxChars" class="form-label">
+                                                <i class="fas fa-text-width me-2"></i>
+                                                Max Chars Per Line
+                                            </label>
+                                            <input type="number" class="form-control" id="autoCaptionMaxChars" name="max_chars_per_line" 
+                                                   placeholder="20" min="5" max="80" value="20">
+                                            <div class="form-text">Controls caption grouping width</div>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <label for="autoCaptionMaxLines" class="form-label">
+                                                <i class="fas fa-bars me-2"></i>
+                                                Max Lines
+                                            </label>
+                                            <input type="number" class="form-control" id="autoCaptionMaxLines" name="max_lines" 
+                                                   placeholder="1" min="1" max="4" value="1">
+                                            <div class="form-text">Number of caption lines displayed at once</div>
+                                        </div>
+                                    </div>
+
+                                    <div class="d-grid">
+                                        <button type="submit" class="btn btn-primary btn-lg" id="autoCaptionSubmitBtn">
+                                            <i class="fas fa-magic me-2"></i>
+                                            Auto-Generate Captions
+                                        </button>
+                                    </div>
+                                </form>
+
+                                <div id="autoCaptionProgressContainer" class="mt-4" style="display: none;">
+                                    <div class="d-flex align-items-center mb-2">
+                                        <div class="spinner-border spinner-border-sm me-2" role="status">
+                                            <span class="visually-hidden">Loading...</span>
+                                        </div>
+                                        <span id="autoCaptionProgressText">Extracting audio and transcribing... This may take a few minutes.</span>
+                                    </div>
+                                    <div class="progress">
+                                        <div class="progress-bar progress-bar-striped progress-bar-animated" 
+                                             role="progressbar" style="width: 100%"></div>
+                                    </div>
+                                </div>
+
+                                <div id="autoCaptionAlertContainer" class="mt-4"></div>
+
+                                <div id="autoCaptionResultContainer" class="mt-4" style="display: none;">
+                                    <div class="card">
+                                        <div class="card-header">
+                                            <h5 class="card-title mb-0">
+                                                <i class="fas fa-check-circle text-success me-2"></i>
+                                                Auto-Captions Generated Successfully
+                                            </h5>
+                                        </div>
+                                        <div class="card-body">
+                                            <p class="card-text" id="autoCaptionResultMessage">Your video with auto-generated TikTok-style captions is ready.</p>
+                                            <div class="d-flex gap-2 flex-wrap mb-3">
+                                                <a id="autoCaptionDownloadVideoBtn" href="#" class="btn btn-success" download>
+                                                    <i class="fas fa-download me-2"></i>
+                                                    Download Video
+                                                </a>
+                                                <a id="autoCaptionDownloadJsonBtn" href="#" class="btn btn-outline-info" download>
+                                                    <i class="fas fa-file-code me-2"></i>
+                                                    Captions JSON
+                                                </a>
+                                                <a id="autoCaptionDownloadSrtBtn" href="#" class="btn btn-outline-info" download>
+                                                    <i class="fas fa-file-alt me-2"></i>
+                                                    SRT
+                                                </a>
+                                                <a id="autoCaptionDownloadVttBtn" href="#" class="btn btn-outline-info" download>
+                                                    <i class="fas fa-file-alt me-2"></i>
+                                                    VTT
+                                                </a>
+                                            </div>
+                                            <button id="autoCaptionResetBtn" class="btn btn-outline-primary">
+                                                <i class="fas fa-plus me-2"></i>
+                                                Process Another Video
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
                     </div>
 
                     <div class="text-center mt-4">

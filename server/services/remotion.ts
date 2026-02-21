@@ -9,6 +9,8 @@ import {
   isTikTokSubtitleStyle,
   parseAssToCaptions,
   createTikTokPages,
+  wordTimestampsToCaptions,
+  type WordTimestamp,
 } from "./captions";
 
 const __filename = fileURLToPath(import.meta.url);
@@ -97,6 +99,88 @@ export const renderVideoWithTikTokCaptions = async ({
     8,
     Math.ceil(baseDuration + 6),
   );
+  const durationInFrames = estimatedDurationSeconds * fps;
+
+  const outputLocation = path.join(
+    os.tmpdir(),
+    `captioned-video-${Date.now()}-${Math.random().toString(36).slice(2)}.mp4`,
+  );
+
+  const serveUrl = await getServeUrl();
+
+  const composition = await selectComposition({
+    serveUrl,
+    id: "CaptionedVideo",
+    inputProps: {
+      videoSrc,
+      pages,
+      fps,
+      stylePreset: style,
+    },
+  });
+
+  await renderMedia({
+    serveUrl,
+    codec: "h264",
+    composition: {
+      ...composition,
+      fps,
+      width,
+      height,
+      durationInFrames,
+    },
+    inputProps: {
+      videoSrc,
+      pages,
+      fps,
+      stylePreset: style,
+    },
+    outputLocation,
+    overwrite: true,
+    muted: false,
+    imageFormat: "jpeg",
+    crf: 18,
+  });
+
+  return outputLocation;
+};
+
+export const renderVideoWithAutoCaption = async ({
+  videoSrc,
+  wordTimestamps,
+  subtitleStyle,
+  aspectRatio,
+  audioDurationSeconds,
+}: {
+  videoSrc: string;
+  wordTimestamps: WordTimestamp[];
+  subtitleStyle: string | null | undefined;
+  aspectRatio?: string | null;
+  audioDurationSeconds?: number | null;
+}): Promise<string | null> => {
+  const style = normalizeSubtitleStyle(subtitleStyle);
+  if (!isTikTokSubtitleStyle(style)) {
+    return null;
+  }
+
+  const captions = wordTimestampsToCaptions(wordTimestamps);
+  if (captions.length === 0) {
+    throw new Error("No captions produced from word timestamps");
+  }
+
+  const pages = createTikTokPages({ captions, style });
+  const fps = 30;
+  const { width, height } = getCaptionResolution(aspectRatio ?? undefined);
+
+  const lastCaptionEndMs = captions.reduce((max, c) => Math.max(max, c.endMs), 0);
+  const captionDurationSeconds = lastCaptionEndMs / 1000;
+
+  const baseDuration =
+    audioDurationSeconds && audioDurationSeconds > 0
+      ? audioDurationSeconds
+      : captionDurationSeconds;
+
+  const estimatedDurationSeconds = Math.max(8, Math.ceil(baseDuration + 6));
   const durationInFrames = estimatedDurationSeconds * fps;
 
   const outputLocation = path.join(

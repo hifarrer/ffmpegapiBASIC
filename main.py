@@ -5085,5 +5085,342 @@ def add_tiktok_subtitles():
         }), 500
 
 
+def extract_audio_from_video(video_path, audio_path):
+    """Extract audio from video as mono 16kHz MP3 (compact for Whisper API upload)."""
+    try:
+        cmd = [
+            'ffmpeg', '-i', video_path,
+            '-vn', '-ac', '1', '-ar', '16000', '-b:a', '64k',
+            '-y', audio_path
+        ]
+        result = subprocess.run(cmd, capture_output=True, text=True, timeout=300)
+        if result.returncode != 0:
+            return False, f"Audio extraction failed: {result.stderr[:500]}"
+        if not os.path.exists(audio_path) or os.path.getsize(audio_path) == 0:
+            return False, "Audio extraction produced empty file"
+        return True, "Audio extracted successfully"
+    except subprocess.TimeoutExpired:
+        return False, "Audio extraction timed out"
+    except Exception as e:
+        return False, f"Audio extraction error: {str(e)}"
+
+
+def transcribe_audio_with_whisper(audio_path, language="auto"):
+    """Call OpenAI Whisper API to get word-level timestamps."""
+    from openai import OpenAI
+
+    api_key = os.environ.get("OPENAI_API_KEY")
+    if not api_key:
+        return None, "OPENAI_API_KEY environment variable is not set"
+
+    file_size = os.path.getsize(audio_path)
+    if file_size > 25 * 1024 * 1024:
+        return None, f"Audio file too large for Whisper API ({file_size // (1024*1024)}MB, max 25MB)"
+
+    client = OpenAI(api_key=api_key)
+
+    kwargs = {
+        "model": "whisper-1",
+        "file": open(audio_path, "rb"),
+        "response_format": "verbose_json",
+        "timestamp_granularities": ["word"],
+    }
+    if language and language != "auto":
+        kwargs["language"] = language
+
+    try:
+        transcript = client.audio.transcriptions.create(**kwargs)
+    except Exception as e:
+        return None, f"Whisper API error: {str(e)}"
+    finally:
+        kwargs["file"].close()
+
+    words = []
+    if hasattr(transcript, 'words') and transcript.words:
+        for w in transcript.words:
+            words.append({
+                "word": w.word.strip(),
+                "start": float(w.start),
+                "end": float(w.end),
+            })
+
+    if not words:
+        return None, "Whisper returned no word-level timestamps"
+
+    return words, None
+
+
+def generate_srt_from_words(words, max_chars=40, max_words_per_segment=8):
+    """Group word timestamps into SRT subtitle segments."""
+    segments = []
+    current_segment_words = []
+    current_chars = 0
+
+    for w in words:
+        word_text = w["word"]
+        if current_segment_words and (
+            current_chars + len(word_text) + 1 > max_chars
+            or len(current_segment_words) >= max_words_per_segment
+        ):
+            segments.append(current_segment_words)
+            current_segment_words = []
+            current_chars = 0
+        current_segment_words.append(w)
+        current_chars += len(word_text) + (1 if current_chars > 0 else 0)
+
+    if current_segment_words:
+        segments.append(current_segment_words)
+
+    def fmt_ts(seconds):
+        h = int(seconds // 3600)
+        m = int((seconds % 3600) // 60)
+        s = int(seconds % 60)
+        ms = int(round((seconds - int(seconds)) * 1000))
+        return f"{h:02d}:{m:02d}:{s:02d},{ms:03d}"
+
+    lines = []
+    for i, seg in enumerate(segments, 1):
+        start = seg[0]["start"]
+        end = seg[-1]["end"]
+        text = " ".join(w["word"] for w in seg)
+        lines.append(f"{i}")
+        lines.append(f"{fmt_ts(start)} --> {fmt_ts(end)}")
+        lines.append(text)
+        lines.append("")
+
+    return "\n".join(lines)
+
+
+def generate_vtt_from_words(words, max_chars=40, max_words_per_segment=8):
+    """Group word timestamps into WebVTT subtitle segments."""
+    segments = []
+    current_segment_words = []
+    current_chars = 0
+
+    for w in words:
+        word_text = w["word"]
+        if current_segment_words and (
+            current_chars + len(word_text) + 1 > max_chars
+            or len(current_segment_words) >= max_words_per_segment
+        ):
+            segments.append(current_segment_words)
+            current_segment_words = []
+            current_chars = 0
+        current_segment_words.append(w)
+        current_chars += len(word_text) + (1 if current_chars > 0 else 0)
+
+    if current_segment_words:
+        segments.append(current_segment_words)
+
+    def fmt_ts(seconds):
+        h = int(seconds // 3600)
+        m = int((seconds % 3600) // 60)
+        s = int(seconds % 60)
+        ms = int(round((seconds - int(seconds)) * 1000))
+        return f"{h:02d}:{m:02d}:{s:02d}.{ms:03d}"
+
+    lines = ["WEBVTT", ""]
+    for seg in segments:
+        start = seg[0]["start"]
+        end = seg[-1]["end"]
+        text = " ".join(w["word"] for w in seg)
+        lines.append(f"{fmt_ts(start)} --> {fmt_ts(end)}")
+        lines.append(text)
+        lines.append("")
+
+    return "\n".join(lines)
+
+
+@app.route('/api/videos/add-tiktok-captions', methods=['POST'])
+@log_api_request
+@require_api_key
+def add_tiktok_captions():
+    """Auto-caption endpoint: extract audio, transcribe with Whisper, render TikTok-style captions."""
+    request_id = str(uuid.uuid4())
+    temp_files = []
+
+    try:
+        data = request.get_json()
+        if not data:
+            return jsonify({'success': False, 'error': 'Request body must be JSON'}), 400
+
+        video_url = data.get('video_url')
+        if not video_url:
+            return jsonify({'success': False, 'error': 'video_url is required'}), 400
+
+        subtitle_style = data.get('subtitle_style', 'plain-white')
+        language = data.get('language', 'auto')
+        aspect_ratio = data.get('aspect_ratio', '9:16')
+        max_chars_per_line = data.get('max_chars_per_line', 20)
+        max_lines = data.get('max_lines', 1)
+
+        valid_styles = ['plain-white', 'yellow-bg', 'pink-bg', 'blue-bg', 'red-bg']
+        if subtitle_style not in valid_styles:
+            subtitle_style = 'plain-white'
+        if aspect_ratio not in ('16:9', '9:16'):
+            aspect_ratio = '9:16'
+        max_chars_per_line = max(5, min(80, int(max_chars_per_line or 20)))
+        max_lines = max(1, min(4, int(max_lines or 1)))
+
+        # Step 1: Download video
+        video_path = os.path.join(UPLOAD_FOLDER, f"{request_id}_autocaption_video.mp4")
+        temp_files.append(video_path)
+
+        logging.info(f"[AUTO_CAPTION] Downloading video: {video_url[:80]}...")
+        success, message = download_file_from_url(video_url, video_path, "video")
+        if not success:
+            return jsonify({'success': False, 'error': f'Failed to download video: {message}'}), 400
+
+        # Step 2: Extract audio
+        audio_path = os.path.join(UPLOAD_FOLDER, f"{request_id}_autocaption_audio.mp3")
+        temp_files.append(audio_path)
+
+        logging.info("[AUTO_CAPTION] Extracting audio from video...")
+        success, message = extract_audio_from_video(video_path, audio_path)
+        if not success:
+            return jsonify({'success': False, 'error': message}), 500
+
+        # Step 3: Transcribe with Whisper
+        logging.info(f"[AUTO_CAPTION] Transcribing audio (language={language})...")
+        words, error = transcribe_audio_with_whisper(audio_path, language)
+        if error:
+            return jsonify({'success': False, 'error': error}), 500
+
+        logging.info(f"[AUTO_CAPTION] Got {len(words)} word timestamps from Whisper")
+
+        # Step 4: Generate caption artifacts
+        captions_json = json.dumps(words, indent=2)
+        srt_content = generate_srt_from_words(words, max_chars=max_chars_per_line * max_lines)
+        vtt_content = generate_vtt_from_words(words, max_chars=max_chars_per_line * max_lines)
+
+        captions_json_path = os.path.join(OUTPUT_FOLDER, f"{request_id}_captions.json")
+        srt_path = os.path.join(OUTPUT_FOLDER, f"{request_id}_captions.srt")
+        vtt_path = os.path.join(OUTPUT_FOLDER, f"{request_id}_captions.vtt")
+        temp_files.extend([captions_json_path, srt_path, vtt_path])
+
+        with open(captions_json_path, 'w', encoding='utf-8') as f:
+            f.write(captions_json)
+        with open(srt_path, 'w', encoding='utf-8') as f:
+            f.write(srt_content)
+        with open(vtt_path, 'w', encoding='utf-8') as f:
+            f.write(vtt_content)
+
+        # Upload artifacts to storage
+        artifact_urls = {}
+        for label, fpath in [("captions_json", captions_json_path), ("srt", srt_path), ("vtt", vtt_path)]:
+            fname = os.path.basename(fpath)
+            try:
+                url = upload_to_storage(fpath, f"auto-captions/{fname}")
+                if url:
+                    artifact_urls[label] = url
+                    continue
+            except Exception:
+                pass
+            artifact_urls[label] = url_for('download_video', filename=fname, _external=True)
+            import shutil
+            try:
+                shutil.copy2(fpath, os.path.join(OUTPUT_FOLDER, fname))
+            except Exception:
+                pass
+
+        # Step 5: Get audio duration for Remotion
+        audio_duration_seconds = None
+        if words:
+            audio_duration_seconds = words[-1]["end"]
+
+        # Step 6: Render with Remotion
+        render_input = json.dumps({
+            'video_url': video_url,
+            'word_timestamps': words,
+            'subtitle_style': subtitle_style,
+            'aspect_ratio': aspect_ratio,
+            'audio_duration_seconds': audio_duration_seconds,
+            'max_chars_per_line': max_chars_per_line,
+            'max_lines': max_lines,
+        })
+
+        logging.info("[AUTO_CAPTION] Starting Remotion render...")
+
+        try:
+            result = subprocess.run(
+                ['npx', 'tsx', 'server/render-tiktok-captions.ts'],
+                input=render_input,
+                capture_output=True,
+                text=True,
+                timeout=600,
+                cwd=os.path.dirname(os.path.abspath(__file__)) or '.'
+            )
+        except subprocess.TimeoutExpired:
+            logging.error("[AUTO_CAPTION] Rendering timed out after 600 seconds")
+            return jsonify({'success': False, 'error': 'Video rendering timed out. The video may be too long.'}), 504
+
+        logging.info(f"[AUTO_CAPTION] Process exit code: {result.returncode}")
+        if result.stderr:
+            logging.info(f"[AUTO_CAPTION] stderr: {result.stderr[:2000]}")
+
+        if result.returncode != 0:
+            error_msg = 'Rendering process failed'
+            try:
+                err_data = json.loads(result.stdout)
+                error_msg = err_data.get('error', error_msg)
+            except (json.JSONDecodeError, TypeError):
+                if result.stderr:
+                    error_msg = result.stderr[:500]
+            logging.error(f"[AUTO_CAPTION] Render failed: {error_msg}")
+            return jsonify({'success': False, 'error': error_msg}), 500
+
+        try:
+            output_data = json.loads(result.stdout)
+        except (json.JSONDecodeError, TypeError):
+            logging.error(f"[AUTO_CAPTION] Could not parse output: {result.stdout[:500]}")
+            return jsonify({'success': False, 'error': 'Failed to parse rendering output'}), 500
+
+        if not output_data.get('success'):
+            return jsonify({'success': False, 'error': output_data.get('error', 'Unknown rendering error')}), 500
+
+        output_video_path = output_data.get('output_video_path')
+        if not output_video_path or not os.path.exists(output_video_path):
+            return jsonify({'success': False, 'error': 'Rendered video file not found'}), 500
+
+        temp_files.append(output_video_path)
+        output_filename = os.path.basename(output_video_path)
+
+        # Upload rendered video to storage
+        download_url = None
+        try:
+            storage_url = upload_to_storage(output_video_path, f"auto-captions/{output_filename}")
+            if storage_url:
+                download_url = storage_url
+        except Exception as storage_error:
+            logging.warning(f"[AUTO_CAPTION] Storage upload failed: {str(storage_error)}")
+
+        if not download_url:
+            try:
+                final_output = os.path.join(OUTPUT_FOLDER, output_filename)
+                import shutil
+                shutil.copy2(output_video_path, final_output)
+                download_url = url_for('download_video', filename=output_filename, _external=True)
+            except Exception:
+                download_url = output_video_path
+
+        logging.info("[AUTO_CAPTION] Completed successfully")
+        return jsonify({
+            'success': True,
+            'download_url': download_url,
+            'captions_json_url': artifact_urls.get('captions_json'),
+            'srt_url': artifact_urls.get('srt'),
+            'vtt_url': artifact_urls.get('vtt'),
+            'word_count': len(words),
+            'message': 'Video with auto-generated TikTok captions rendered successfully'
+        })
+
+    except Exception as e:
+        logging.error(f"[AUTO_CAPTION] Error: {str(e)}", exc_info=True)
+        return jsonify({'success': False, 'error': f'Server error: {str(e)}'}), 500
+    finally:
+        for f in temp_files:
+            cleanup_file(f)
+
+
 if __name__ == '__main__':
     app.run(host="0.0.0.0", port=5000, debug=True)

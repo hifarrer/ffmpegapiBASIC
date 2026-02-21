@@ -95,3 +95,23 @@ export const createTikTokPages = ({
     combineTokensWithinMilliseconds: getCombineWindowForStyle(style),
   }).pages;
 };
+
+export interface WordTimestamp {
+  word: string;
+  start: number;
+  end: number;
+}
+
+export const wordTimestampsToCaptions = (
+  words: WordTimestamp[],
+): Caption[] => {
+  return words
+    .filter((w) => w.word && w.end > w.start)
+    .map((w) => ({
+      text: w.word,
+      startMs: Math.round(w.start * 1000),
+      endMs: Math.round(w.end * 1000),
+      timestampMs: Math.round(((w.start + w.end) / 2) * 1000),
+      confidence: null,
+    }));
+};
