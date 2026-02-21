@@ -13,6 +13,7 @@ class VideoMerger {
         this.initializeTrimVideoTab();
         this.initializeConvertVerticalTab();
         this.initializeAutoCaptionTab();
+        this.initializeTextOverlayTab();
     }
 
     initializeImageAudioTab() {
@@ -1797,6 +1798,110 @@ class VideoMerger {
 
     hideAutoCaptionResult() {
         this.autoCaptionResultContainer.style.display = 'none';
+    }
+
+    initializeTextOverlayTab() {
+        this.textOverlayForm = document.getElementById('textOverlayForm');
+        this.textOverlaySubmitBtn = document.getElementById('textOverlaySubmitBtn');
+        this.textOverlayProgressContainer = document.getElementById('textOverlayProgressContainer');
+        this.textOverlayAlertContainer = document.getElementById('textOverlayAlertContainer');
+        this.textOverlayResultContainer = document.getElementById('textOverlayResultContainer');
+        this.textOverlayDownloadVideoBtn = document.getElementById('textOverlayDownloadVideoBtn');
+        this.textOverlayResetBtn = document.getElementById('textOverlayResetBtn');
+
+        this.textOverlayForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            this.handleTextOverlaySubmit();
+        });
+
+        this.textOverlayResetBtn.addEventListener('click', () => {
+            this.resetTextOverlayForm();
+        });
+    }
+
+    async handleTextOverlaySubmit() {
+        const jsonData = {
+            video_url: document.getElementById('textOverlayVideoUrl').value,
+            text: document.getElementById('textOverlayText').value,
+            subtitle_style: document.getElementById('textOverlayStyle').value,
+            aspect_ratio: document.getElementById('textOverlayAspectRatio').value,
+            position: document.getElementById('textOverlayPosition').value,
+            duration_per_line: parseInt(document.getElementById('textOverlayDuration').value, 10) || 5,
+        };
+
+        this.showTextOverlayProgress();
+        this.hideTextOverlayAlert();
+        this.hideTextOverlayResult();
+
+        try {
+            const response = await fetch('/api/videos/add-text-overlay-captions', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-API-Key': window.API_KEY
+                },
+                body: JSON.stringify(jsonData)
+            });
+
+            const result = await response.json();
+
+            if (result.success) {
+                this.textOverlayDownloadVideoBtn.href = result.download_url;
+
+                const messageElement = document.getElementById('textOverlayResultMessage');
+                const lineInfo = result.line_count ? ` (${result.line_count} lines, ${result.total_duration_seconds}s total)` : '';
+                messageElement.textContent = (result.message || 'Text overlay captions generated successfully!') + lineInfo;
+
+                this.showTextOverlayResult();
+                this.showTextOverlayAlert('success', result.message || 'Text overlay captions generated successfully!');
+            } else {
+                this.showTextOverlayAlert('danger', `Error: ${result.error}`);
+            }
+        } catch (error) {
+            console.error('Text overlay error:', error);
+            this.showTextOverlayAlert('danger', `An error occurred: ${error.message}`);
+        } finally {
+            this.hideTextOverlayProgress();
+        }
+    }
+
+    resetTextOverlayForm() {
+        this.textOverlayForm.reset();
+        this.hideTextOverlayAlert();
+        this.hideTextOverlayResult();
+        this.hideTextOverlayProgress();
+    }
+
+    showTextOverlayProgress() {
+        this.textOverlayProgressContainer.style.display = 'block';
+        this.textOverlaySubmitBtn.disabled = true;
+    }
+
+    hideTextOverlayProgress() {
+        this.textOverlayProgressContainer.style.display = 'none';
+        this.textOverlaySubmitBtn.disabled = false;
+    }
+
+    showTextOverlayAlert(type, message) {
+        this.textOverlayAlertContainer.innerHTML = `
+            <div class="alert alert-${type} alert-dismissible fade show" role="alert">
+                <i class="fas fa-${this.getAlertIcon(type)} me-2"></i>
+                ${message}
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+        `;
+    }
+
+    hideTextOverlayAlert() {
+        this.textOverlayAlertContainer.innerHTML = '';
+    }
+
+    showTextOverlayResult() {
+        this.textOverlayResultContainer.style.display = 'block';
+    }
+
+    hideTextOverlayResult() {
+        this.textOverlayResultContainer.style.display = 'none';
     }
 }
 

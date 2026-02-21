@@ -5251,5 +5251,139 @@ def add_tiktok_captions():
             cleanup_file(f)
 
 
+@app.route('/api/videos/add-text-overlay-captions', methods=['POST'])
+@log_api_request
+@require_api_key
+def add_text_overlay_captions():
+    """Text overlay caption endpoint: display user-provided text lines over video, one line every N seconds."""
+    request_id = str(uuid.uuid4())
+    temp_files = []
+
+    try:
+        data = request.get_json()
+        if not data:
+            return jsonify({'success': False, 'error': 'Request body must be JSON'}), 400
+
+        video_url = data.get('video_url')
+        if not video_url:
+            return jsonify({'success': False, 'error': 'video_url is required'}), 400
+
+        text = data.get('text')
+        if not text or not text.strip():
+            return jsonify({'success': False, 'error': 'text is required (one line per caption)'}), 400
+
+        text_lines = [line for line in text.strip().split('\n') if line.strip()]
+        if not text_lines:
+            return jsonify({'success': False, 'error': 'text must contain at least one non-empty line'}), 400
+
+        subtitle_style = data.get('subtitle_style', 'plain-white')
+        aspect_ratio = data.get('aspect_ratio', '9:16')
+        position = data.get('position', 'center')
+        duration_per_line = data.get('duration_per_line', 5)
+
+        valid_styles = ['plain-white', 'yellow-bg', 'pink-bg', 'blue-bg', 'red-bg']
+        if subtitle_style not in valid_styles:
+            subtitle_style = 'plain-white'
+        if aspect_ratio not in ('16:9', '9:16', '4:3', '3:4'):
+            aspect_ratio = '9:16'
+        if position not in ('top', 'center', 'bottom'):
+            position = 'center'
+        duration_per_line = max(1, min(30, int(duration_per_line or 5)))
+        duration_per_line_ms = duration_per_line * 1000
+
+        render_input = json.dumps({
+            'video_url': video_url,
+            'text_lines': text_lines,
+            'subtitle_style': subtitle_style,
+            'aspect_ratio': aspect_ratio,
+            'position': position,
+            'duration_per_line_ms': duration_per_line_ms,
+        })
+
+        logging.info(f"[TEXT_OVERLAY] Starting Remotion render for {len(text_lines)} lines (style={subtitle_style}, position={position})...")
+
+        try:
+            result = subprocess.run(
+                ['npx', 'tsx', 'server/render-tiktok-captions.ts'],
+                input=render_input,
+                capture_output=True,
+                text=True,
+                timeout=600,
+                cwd=os.path.dirname(os.path.abspath(__file__)) or '.'
+            )
+        except subprocess.TimeoutExpired:
+            logging.error("[TEXT_OVERLAY] Rendering timed out after 600 seconds")
+            return jsonify({'success': False, 'error': 'Video rendering timed out. The video may be too long.'}), 504
+
+        logging.info(f"[TEXT_OVERLAY] Process exit code: {result.returncode}")
+        if result.stderr:
+            logging.info(f"[TEXT_OVERLAY] stderr: {result.stderr[:3000]}")
+        if result.stdout:
+            logging.info(f"[TEXT_OVERLAY] stdout: {result.stdout[:3000]}")
+
+        if result.returncode != 0:
+            error_msg = 'Rendering process failed'
+            try:
+                err_data = json.loads(result.stdout)
+                error_msg = err_data.get('error', error_msg)
+            except (json.JSONDecodeError, TypeError):
+                if result.stderr:
+                    error_msg = result.stderr[:500]
+                elif result.stdout:
+                    error_msg = f"Render stdout: {result.stdout[:500]}"
+            logging.error(f"[TEXT_OVERLAY] Render failed: {error_msg}")
+            return jsonify({'success': False, 'error': error_msg}), 500
+
+        try:
+            output_data = json.loads(result.stdout)
+        except (json.JSONDecodeError, TypeError):
+            logging.error(f"[TEXT_OVERLAY] Could not parse output: {result.stdout[:500]}")
+            return jsonify({'success': False, 'error': 'Failed to parse rendering output'}), 500
+
+        if not output_data.get('success'):
+            return jsonify({'success': False, 'error': output_data.get('error', 'Unknown rendering error')}), 500
+
+        output_video_path = output_data.get('output_video_path')
+        if not output_video_path or not os.path.exists(output_video_path):
+            return jsonify({'success': False, 'error': 'Rendered video file not found'}), 500
+
+        temp_files.append(output_video_path)
+        output_filename = os.path.basename(output_video_path)
+
+        download_url = None
+        try:
+            storage_url = upload_to_storage(output_video_path, f"text-overlay/{output_filename}")
+            if storage_url:
+                download_url = storage_url
+        except Exception as storage_error:
+            logging.warning(f"[TEXT_OVERLAY] Storage upload failed: {str(storage_error)}")
+
+        if not download_url:
+            try:
+                final_output = os.path.join(OUTPUT_FOLDER, output_filename)
+                import shutil
+                shutil.copy2(output_video_path, final_output)
+                download_url = url_for('download_file', filename=output_filename, _external=True)
+            except Exception:
+                download_url = output_video_path
+
+        logging.info("[TEXT_OVERLAY] Completed successfully")
+        return jsonify({
+            'success': True,
+            'download_url': download_url,
+            'line_count': len(text_lines),
+            'duration_per_line': duration_per_line,
+            'total_duration_seconds': len(text_lines) * duration_per_line,
+            'message': 'Video with text overlay captions rendered successfully'
+        })
+
+    except Exception as e:
+        logging.error(f"[TEXT_OVERLAY] Error: {str(e)}", exc_info=True)
+        return jsonify({'success': False, 'error': f'Server error: {str(e)}'}), 500
+    finally:
+        for f in temp_files:
+            cleanup_file(f)
+
+
 if __name__ == '__main__':
     app.run(host="0.0.0.0", port=5000, debug=True)

@@ -1532,6 +1532,144 @@
                         </div>
                     </div>
 
+                    <div class="accordion-item">
+                        <h2 class="accordion-header" id="textOverlayHeading">
+                            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" 
+                                    data-bs-target="#textOverlayCollapse" aria-expanded="false" aria-controls="textOverlayCollapse">
+                                <i class="fas fa-font me-2"></i>
+                                Text Overlay Captions (Remotion)
+                            </button>
+                        </h2>
+                        <div id="textOverlayCollapse" class="accordion-collapse collapse" 
+                             aria-labelledby="textOverlayHeading" data-bs-parent="#videoProcessingAccordion">
+                            <div class="accordion-body">
+                                <p class="text-muted mb-4">
+                                    <i class="fas fa-info-circle me-1"></i>
+                                    Add text overlay captions to a video. Each line of text is displayed for a set duration (default 5 seconds). Great for motivational videos, quotes, and storytelling. No transcription needed.
+                                </p>
+
+                                <form id="textOverlayForm">
+                                    <div class="mb-4">
+                                        <label for="textOverlayVideoUrl" class="form-label">
+                                            <i class="fas fa-video me-2"></i>
+                                            Video URL
+                                        </label>
+                                        <input type="url" class="form-control" id="textOverlayVideoUrl" name="video_url" 
+                                               placeholder="https://example.com/video.mp4" required>
+                                        <div class="form-text">Enter the URL of the video to add text overlays to</div>
+                                    </div>
+
+                                    <div class="mb-4">
+                                        <label for="textOverlayText" class="form-label">
+                                            <i class="fas fa-align-left me-2"></i>
+                                            Caption Text (one line per caption)
+                                        </label>
+                                        <textarea class="form-control" id="textOverlayText" name="text" rows="6" 
+                                                  placeholder="You are wonderful&#10;Life is beautiful&#10;Never give up" required></textarea>
+                                        <div class="form-text">Each line will be shown as a separate caption for the configured duration</div>
+                                    </div>
+
+                                    <div class="row mb-4">
+                                        <div class="col-md-4">
+                                            <label for="textOverlayStyle" class="form-label">
+                                                <i class="fas fa-palette me-2"></i>
+                                                Caption Style
+                                            </label>
+                                            <select class="form-select" id="textOverlayStyle" name="subtitle_style">
+                                                <option value="plain-white" selected>Plain White</option>
+                                                <option value="yellow-bg">Yellow Background</option>
+                                                <option value="pink-bg">Pink Background</option>
+                                                <option value="blue-bg">Blue Background</option>
+                                                <option value="red-bg">Red Background</option>
+                                            </select>
+                                        </div>
+                                        <div class="col-md-4">
+                                            <label for="textOverlayAspectRatio" class="form-label">
+                                                <i class="fas fa-expand me-2"></i>
+                                                Aspect Ratio
+                                            </label>
+                                            <select class="form-select" id="textOverlayAspectRatio" name="aspect_ratio">
+                                                <option value="9:16" selected>9:16 (Vertical)</option>
+                                                <option value="16:9">16:9 (Horizontal)</option>
+                                                <option value="4:3">4:3 (Horizontal)</option>
+                                                <option value="3:4">3:4 (Vertical)</option>
+                                            </select>
+                                        </div>
+                                        <div class="col-md-4">
+                                            <label for="textOverlayPosition" class="form-label">
+                                                <i class="fas fa-arrows-alt-v me-2"></i>
+                                                Caption Position
+                                            </label>
+                                            <select class="form-select" id="textOverlayPosition" name="position">
+                                                <option value="center" selected>Center</option>
+                                                <option value="bottom">Bottom</option>
+                                                <option value="top">Top</option>
+                                            </select>
+                                        </div>
+                                    </div>
+
+                                    <div class="row mb-4">
+                                        <div class="col-md-4">
+                                            <label for="textOverlayDuration" class="form-label">
+                                                <i class="fas fa-clock me-2"></i>
+                                                Seconds Per Line
+                                            </label>
+                                            <input type="number" class="form-control" id="textOverlayDuration" name="duration_per_line" 
+                                                   placeholder="5" min="1" max="30" value="5">
+                                            <div class="form-text">How long each line is displayed (1–30s)</div>
+                                        </div>
+                                    </div>
+
+                                    <div class="d-grid">
+                                        <button type="submit" class="btn btn-primary btn-lg" id="textOverlaySubmitBtn">
+                                            <i class="fas fa-font me-2"></i>
+                                            Generate Text Overlay
+                                        </button>
+                                    </div>
+                                </form>
+
+                                <div id="textOverlayProgressContainer" class="mt-4" style="display: none;">
+                                    <div class="d-flex align-items-center mb-2">
+                                        <div class="spinner-border spinner-border-sm me-2" role="status">
+                                            <span class="visually-hidden">Loading...</span>
+                                        </div>
+                                        <span id="textOverlayProgressText">Rendering text overlay captions... This may take a few minutes.</span>
+                                    </div>
+                                    <div class="progress">
+                                        <div class="progress-bar progress-bar-striped progress-bar-animated" 
+                                             role="progressbar" style="width: 100%"></div>
+                                    </div>
+                                </div>
+
+                                <div id="textOverlayAlertContainer" class="mt-4"></div>
+
+                                <div id="textOverlayResultContainer" class="mt-4" style="display: none;">
+                                    <div class="card">
+                                        <div class="card-header">
+                                            <h5 class="card-title mb-0">
+                                                <i class="fas fa-check-circle text-success me-2"></i>
+                                                Text Overlay Video Ready
+                                            </h5>
+                                        </div>
+                                        <div class="card-body">
+                                            <p class="card-text" id="textOverlayResultMessage">Your video with text overlay captions is ready.</p>
+                                            <div class="d-flex gap-2 flex-wrap mb-3">
+                                                <a id="textOverlayDownloadVideoBtn" href="#" class="btn btn-success" download>
+                                                    <i class="fas fa-download me-2"></i>
+                                                    Download Video
+                                                </a>
+                                            </div>
+                                            <button id="textOverlayResetBtn" class="btn btn-outline-primary">
+                                                <i class="fas fa-plus me-2"></i>
+                                                Process Another Video
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
                     </div>
 
                     <div class="text-center mt-4">

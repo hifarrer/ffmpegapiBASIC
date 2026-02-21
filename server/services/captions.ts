@@ -115,3 +115,27 @@ export const wordTimestampsToCaptions = (
       confidence: null,
     }));
 };
+
+const LINE_DURATION_MS = 5000;
+
+export const textLinesToPages = (
+  lines: string[],
+  durationPerLineMs: number = LINE_DURATION_MS,
+): TikTokCaptionPage[] => {
+  return lines
+    .filter((line) => line.trim().length > 0)
+    .map((line, index) => {
+      const startMs = index * durationPerLineMs;
+      return {
+        startMs,
+        durationMs: durationPerLineMs,
+        tokens: [
+          {
+            text: line.trim(),
+            fromMs: startMs,
+            toMs: startMs + durationPerLineMs,
+          },
+        ],
+      } as TikTokCaptionPage;
+    });
+};

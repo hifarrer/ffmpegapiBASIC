@@ -10,6 +10,7 @@ import {
   parseAssToCaptions,
   createTikTokPages,
   wordTimestampsToCaptions,
+  textLinesToPages,
   type WordTimestamp,
 } from "./captions";
 
@@ -199,6 +200,86 @@ export const renderVideoWithAutoCaption = async ({
   const serveUrl = await getServeUrl();
 
   const captionPosition = position || "bottom";
+
+  const composition = await selectComposition({
+    serveUrl,
+    id: "CaptionedVideo",
+    inputProps: {
+      videoSrc,
+      pages,
+      fps,
+      stylePreset: style,
+      position: captionPosition,
+    },
+  });
+
+  await renderMedia({
+    serveUrl,
+    codec: "h264",
+    composition: {
+      ...composition,
+      fps,
+      width,
+      height,
+      durationInFrames,
+    },
+    inputProps: {
+      videoSrc,
+      pages,
+      fps,
+      stylePreset: style,
+      position: captionPosition,
+    },
+    outputLocation,
+    overwrite: true,
+    muted: false,
+    imageFormat: "jpeg",
+    crf: 18,
+  });
+
+  return outputLocation;
+};
+
+export const renderVideoWithTextOverlay = async ({
+  videoSrc,
+  textLines,
+  subtitleStyle,
+  aspectRatio,
+  position,
+  durationPerLineMs,
+}: {
+  videoSrc: string;
+  textLines: string[];
+  subtitleStyle: string | null | undefined;
+  aspectRatio?: string | null;
+  position?: string | null;
+  durationPerLineMs?: number | null;
+}): Promise<string | null> => {
+  const style = normalizeSubtitleStyle(subtitleStyle);
+  if (!isTikTokSubtitleStyle(style)) {
+    return null;
+  }
+
+  const perLineMs = durationPerLineMs && durationPerLineMs > 0 ? durationPerLineMs : 5000;
+  const pages = textLinesToPages(textLines, perLineMs);
+  if (pages.length === 0) {
+    throw new Error("No valid text lines provided");
+  }
+
+  const fps = 30;
+  const { width, height } = getCaptionResolution(aspectRatio ?? undefined);
+
+  const totalDurationMs = pages.length * perLineMs;
+  const estimatedDurationSeconds = Math.max(8, Math.ceil(totalDurationMs / 1000 + 2));
+  const durationInFrames = estimatedDurationSeconds * fps;
+
+  const outputLocation = path.join(
+    os.tmpdir(),
+    `text-overlay-${Date.now()}-${Math.random().toString(36).slice(2)}.mp4`,
+  );
+
+  const serveUrl = await getServeUrl();
+  const captionPosition = position || "center";
 
   const composition = await selectComposition({
     serveUrl,

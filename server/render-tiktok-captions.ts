@@ -1,6 +1,7 @@
 import {
   renderVideoWithTikTokCaptions,
   renderVideoWithAutoCaption,
+  renderVideoWithTextOverlay,
 } from "./services/remotion";
 import type { WordTimestamp } from "./services/captions";
 
@@ -8,12 +9,14 @@ interface RenderInput {
   video_url: string;
   ass_content?: string;
   word_timestamps?: WordTimestamp[];
+  text_lines?: string[];
   subtitle_style?: string;
   aspect_ratio?: string;
   audio_duration_seconds?: number;
   max_chars_per_line?: number;
   max_lines?: number;
   position?: string;
+  duration_per_line_ms?: number;
 }
 
 const main = async () => {
@@ -32,11 +35,11 @@ const main = async () => {
     process.exit(1);
   }
 
-  if (!input.ass_content && !input.word_timestamps) {
+  if (!input.ass_content && !input.word_timestamps && !input.text_lines) {
     console.log(
       JSON.stringify({
         success: false,
-        error: "Either ass_content or word_timestamps is required",
+        error: "Either ass_content, word_timestamps, or text_lines is required",
       }),
     );
     process.exit(1);
@@ -44,7 +47,16 @@ const main = async () => {
 
   let outputVideoPath: string | null;
 
-  if (input.word_timestamps && input.word_timestamps.length > 0) {
+  if (input.text_lines && input.text_lines.length > 0) {
+    outputVideoPath = await renderVideoWithTextOverlay({
+      videoSrc: input.video_url,
+      textLines: input.text_lines,
+      subtitleStyle: input.subtitle_style || null,
+      aspectRatio: input.aspect_ratio || null,
+      position: input.position || null,
+      durationPerLineMs: input.duration_per_line_ms || null,
+    });
+  } else if (input.word_timestamps && input.word_timestamps.length > 0) {
     outputVideoPath = await renderVideoWithAutoCaption({
       videoSrc: input.video_url,
       wordTimestamps: input.word_timestamps,
