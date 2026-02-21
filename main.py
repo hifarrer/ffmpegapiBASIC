@@ -5062,7 +5062,7 @@ def add_tiktok_subtitles():
             import shutil
             shutil.copy2(output_video_path, final_output)
             cleanup_file(output_video_path)
-            download_url = url_for('download_video', filename=output_filename, _external=True)
+            download_url = url_for('download_file', filename=output_filename, _external=True)
             return jsonify({
                 'success': True,
                 'output_video_path': final_output,
@@ -5316,7 +5316,7 @@ def add_tiktok_captions():
                     continue
             except Exception:
                 pass
-            artifact_urls[label] = url_for('download_video', filename=fname, _external=True)
+            artifact_urls[label] = url_for('download_file', filename=fname, _external=True)
             import shutil
             try:
                 shutil.copy2(fpath, os.path.join(OUTPUT_FOLDER, fname))
@@ -5399,7 +5399,7 @@ def add_tiktok_captions():
                 final_output = os.path.join(OUTPUT_FOLDER, output_filename)
                 import shutil
                 shutil.copy2(output_video_path, final_output)
-                download_url = url_for('download_video', filename=output_filename, _external=True)
+                download_url = url_for('download_file', filename=output_filename, _external=True)
             except Exception:
                 download_url = output_video_path
 
