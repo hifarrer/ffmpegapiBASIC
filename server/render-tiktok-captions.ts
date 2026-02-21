@@ -82,9 +82,20 @@ const main = async () => {
 };
 
 main().catch((err) => {
+  const errorMsg = err instanceof Error
+    ? `${err.message}\n${err.stack || ""}`
+    : "Unknown error occurred";
   console.log(JSON.stringify({
     success: false,
-    error: err instanceof Error ? err.message : "Unknown error occurred",
+    error: errorMsg,
+  }));
+  process.exit(1);
+});
+
+process.on("uncaughtException", (err) => {
+  console.log(JSON.stringify({
+    success: false,
+    error: `Uncaught: ${err.message}\n${err.stack || ""}`,
   }));
   process.exit(1);
 });

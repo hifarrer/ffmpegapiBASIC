@@ -5356,7 +5356,9 @@ def add_tiktok_captions():
 
         logging.info(f"[AUTO_CAPTION] Process exit code: {result.returncode}")
         if result.stderr:
-            logging.info(f"[AUTO_CAPTION] stderr: {result.stderr[:2000]}")
+            logging.info(f"[AUTO_CAPTION] stderr: {result.stderr[:3000]}")
+        if result.stdout:
+            logging.info(f"[AUTO_CAPTION] stdout: {result.stdout[:3000]}")
 
         if result.returncode != 0:
             error_msg = 'Rendering process failed'
@@ -5366,6 +5368,8 @@ def add_tiktok_captions():
             except (json.JSONDecodeError, TypeError):
                 if result.stderr:
                     error_msg = result.stderr[:500]
+                elif result.stdout:
+                    error_msg = f"Render stdout: {result.stdout[:500]}"
             logging.error(f"[AUTO_CAPTION] Render failed: {error_msg}")
             return jsonify({'success': False, 'error': error_msg}), 500
 
