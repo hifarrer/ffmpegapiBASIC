@@ -59,15 +59,20 @@ app.config["SQLALCHEMY_ENGINE_OPTIONS"] = {
 _IS_PRODUCTION = bool(os.environ.get('REPLIT_DEPLOYMENT') or os.environ.get('RAILWAY_ENVIRONMENT'))
 
 # URL building configuration for async jobs
-# Use localhost for development, production domain for production
+# Use localhost for development, production domain for production.
+# SERVER_NAME is required in production so url_for(..., _external=True) works
+# in background/async jobs (no active request context).
 if _IS_PRODUCTION:
-    # Production - don't set SERVER_NAME; Flask uses the request's host header
     app.config['PREFERRED_URL_SCHEME'] = 'https'
+    app.config['APPLICATION_ROOT'] = '/'
+    # Required for URL generation outside request context (e.g. async merge_videos).
+    # Override with SERVER_NAME env if your public host is different.
+    app.config['SERVER_NAME'] = os.environ.get('SERVER_NAME', 'www.ffmpegapi.net')
 else:
     # Development environment - use localhost
     app.config['SERVER_NAME'] = 'localhost:5000'
     app.config['PREFERRED_URL_SCHEME'] = 'http'
-app.config['APPLICATION_ROOT'] = '/'
+    app.config['APPLICATION_ROOT'] = '/'
 
 # Upload/output paths: prefer env (Railway volume) when set, else production /tmp or local dirs
 UPLOAD_FOLDER = os.environ.get("UPLOAD_FOLDER") or (
