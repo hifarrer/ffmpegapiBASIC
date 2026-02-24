@@ -1135,6 +1135,82 @@ def merge_videos_filter_complex(video_paths, output_path, audio_path=None):
         logging.error(f"Video merge with filter_complex error: {str(e)}")
         return False, f"Video merge error: {str(e)}"
 
+def merge_main_and_outro_with_ffmpeg(main_video_path, outro_video_path, output_path, dimensions=None):
+    """Append outro video to main video. Main part keeps its audio; outro part uses outro's own audio (no main audio during outro)."""
+    normalized_outro_path = None
+    try:
+        # Resolve dimensions: use param or probe main video
+        if dimensions:
+            try:
+                width, height = dimensions.split('x')
+                target_width = int(width)
+                target_height = int(height)
+            except Exception:
+                return False, "Invalid dimensions format. Use format like '1920x1080'"
+        else:
+            success, dims = get_video_dimensions(main_video_path)
+            if not success:
+                return False, f"Could not get main video dimensions: {dims}"
+            target_width, target_height = dims
+
+        # Normalize outro to same dimensions as main (scale + pad)
+        normalized_outro_path = f"{outro_video_path}_normalized_outro.mp4"
+        normalize_cmd = [
+            'ffmpeg',
+            '-i', outro_video_path,
+            '-vf', f'scale={target_width}:{target_height}:force_original_aspect_ratio=decrease,pad={target_width}:{target_height}:(ow-iw)/2:(oh-ih)/2,setsar=1,fps=30,format=yuv420p',
+            '-c:v', 'libx264',
+            '-c:a', 'aac',
+            '-ar', '48000',
+            '-ac', '2',
+            '-preset', 'veryfast',
+            '-crf', '23',
+            '-y',
+            normalized_outro_path
+        ]
+        logging.info(f"Normalizing outro to {target_width}x{target_height}: {' '.join(normalize_cmd)}")
+        result = subprocess.run(normalize_cmd, capture_output=True, text=True, timeout=600)
+        if result.returncode != 0:
+            if normalized_outro_path and os.path.exists(normalized_outro_path):
+                cleanup_file(normalized_outro_path)
+            return False, f"Failed to normalize outro video: {result.stderr}"
+
+        # Concat main (video+audio) then outro (video+audio) so main audio stops and outro audio plays during outro
+        cmd = [
+            'ffmpeg',
+            '-i', main_video_path,
+            '-i', normalized_outro_path,
+            '-filter_complex', '[0:v][1:v]concat=n=2:v=1:a=0[outv];[0:a][1:a]concat=n=2:v=0:a=1[outa]',
+            '-map', '[outv]',
+            '-map', '[outa]',
+            '-c:v', 'libx264',
+            '-c:a', 'aac',
+            '-preset', 'veryfast',
+            '-crf', '23',
+            '-b:a', '192k',
+            '-y',
+            output_path
+        ]
+        logging.info(f"Running FFMPEG main+outro concat: {' '.join(cmd)}")
+        result = subprocess.run(cmd, capture_output=True, text=True, timeout=1800)
+        if normalized_outro_path:
+            cleanup_file(normalized_outro_path)
+        if result.returncode == 0:
+            logging.info("Main + outro concat completed successfully")
+            return True, "Main and outro merged successfully"
+        else:
+            logging.error(f"FFMPEG main+outro concat error: {result.stderr}")
+            return False, f"Main+outro concat failed: {result.stderr}"
+    except subprocess.TimeoutExpired:
+        if normalized_outro_path and os.path.exists(normalized_outro_path):
+            cleanup_file(normalized_outro_path)
+        return False, "Main+outro processing timed out"
+    except Exception as e:
+        if normalized_outro_path and os.path.exists(normalized_outro_path):
+            cleanup_file(normalized_outro_path)
+        logging.error(f"Merge main+outro error: {str(e)}")
+        return False, f"Merge main+outro error: {str(e)}"
+
 def create_picture_in_picture_with_ffmpeg(main_video_path, pip_video_path, output_path, position='bottom-right', scale='iw/4:ih/4', audio_option='video1'):
     """Create picture-in-picture video using FFMPEG"""
     try:
@@ -2184,6 +2260,231 @@ def merge_videos():
             'error': f'Server error: {str(e)}'
         }), 500
 
+@app.route('/api/neonvideo_merge_videos', methods=['POST'])
+@log_api_request
+@require_api_key
+def neonvideo_merge_videos():
+    """Neonvideo-only endpoint: merge videos with optional outro_url. Outro plays with its own sound (main audio stops during outro). Not public (no UI/docs)."""
+    api_key = request.headers.get('X-API-Key') or request.args.get('api_key')
+    logging.info(f"[NEONVIDEO_MERGE_VIDEOS] Request from API key: {api_key[:20] if api_key else '?'}...")
+    try:
+        data = request.get_json()
+        async_processing = data.get('async', False) if data else False
+
+        if async_processing:
+            key_record = ApiKey.query.filter_by(key=api_key, is_active=True).first()
+            job = Job()
+            job.user_id = key_record.user_id
+            job.job_type = 'neonvideo_merge_videos'
+            job.status = 'pending'
+            job.set_input_data(data)
+            db.session.add(job)
+            db.session.commit()
+            thread = threading.Thread(target=process_job_async, args=(job.job_id,))
+            thread.daemon = True
+            thread.start()
+            return jsonify({
+                'success': True,
+                'job_id': job.job_id,
+                'status': 'pending',
+                'message': 'Job submitted for async processing. Use /api/job/{job_id}/status to check progress.',
+                'status_url': url_for('get_job_status', job_id=job.job_id, _external=True)
+            }), 202
+
+        if not data or 'video_urls' not in data:
+            return jsonify({'success': False, 'error': 'video_urls is required'}), 400
+
+        video_urls = data['video_urls']
+        audio_url = data.get('audio_url')
+        dimensions = data.get('dimensions')
+        subtitle_url = data.get('subtitle_url')
+        watermark_url = data.get('watermark_url')
+        outro_url = data.get('outro_url')
+
+        if not isinstance(video_urls, list) or len(video_urls) < 2:
+            return jsonify({'success': False, 'error': 'At least 2 video URLs are required'}), 400
+
+        request_id = str(uuid.uuid4())
+        downloaded_videos = []
+        audio_path = None
+        subtitle_path = None
+        watermark_path = None
+        outro_path = None
+
+        try:
+            for i, url in enumerate(video_urls):
+                video_filename = f"{request_id}_video_{i}.mp4"
+                video_path = os.path.join(UPLOAD_FOLDER, video_filename)
+                success, message = download_video_from_url(url, video_path)
+                if not success:
+                    for path in downloaded_videos:
+                        cleanup_file(path)
+                    return jsonify({'success': False, 'error': f'Failed to download video {i+1}: {message}'}), 400
+                downloaded_videos.append(video_path)
+
+            if audio_url:
+                audio_filename = f"{request_id}_audio.mp3"
+                audio_path = os.path.join(UPLOAD_FOLDER, audio_filename)
+                success, message = download_video_from_url(audio_url, audio_path)
+                if not success:
+                    for path in downloaded_videos:
+                        cleanup_file(path)
+                    return jsonify({'success': False, 'error': f'Failed to download audio: {message}'}), 400
+
+            if subtitle_url:
+                subtitle_filename = f"{request_id}_subtitle.ass"
+                subtitle_path = os.path.join(UPLOAD_FOLDER, subtitle_filename)
+                success, message = download_file_from_url(subtitle_url, subtitle_path, "subtitle")
+                if not success:
+                    for path in downloaded_videos:
+                        cleanup_file(path)
+                    if audio_path:
+                        cleanup_file(audio_path)
+                    return jsonify({'success': False, 'error': f'Failed to download subtitle: {message}'}), 400
+
+            if watermark_url:
+                watermark_filename = f"{request_id}_watermark.png"
+                watermark_path = os.path.join(UPLOAD_FOLDER, watermark_filename)
+                success, message = download_file_from_url(watermark_url, watermark_path, "watermark image")
+                if not success:
+                    for path in downloaded_videos:
+                        cleanup_file(path)
+                    if audio_path:
+                        cleanup_file(audio_path)
+                    if subtitle_path:
+                        cleanup_file(subtitle_path)
+                    return jsonify({'success': False, 'error': f'Failed to download watermark: {message}'}), 400
+
+            if outro_url:
+                outro_filename = f"{request_id}_outro.mp4"
+                outro_path = os.path.join(UPLOAD_FOLDER, outro_filename)
+                success, message = download_video_from_url(outro_url, outro_path)
+                if not success:
+                    for path in downloaded_videos:
+                        cleanup_file(path)
+                    if audio_path:
+                        cleanup_file(audio_path)
+                    if subtitle_path:
+                        cleanup_file(subtitle_path)
+                    if watermark_path:
+                        cleanup_file(watermark_path)
+                    return jsonify({'success': False, 'error': f'Failed to download outro video: {message}'}), 400
+
+            use_outro = bool(outro_url)
+            output_filename = f"{request_id}_merged_videos.mp4"
+            output_path = os.path.join(OUTPUT_FOLDER, output_filename)
+            if use_outro:
+                main_part_filename = f"{request_id}_main_part.mp4"
+                main_part_path = os.path.join(OUTPUT_FOLDER, main_part_filename)
+                current_path = main_part_path
+            else:
+                current_path = output_path
+
+            db.session.remove()
+
+            success, message = merge_videos_with_ffmpeg(downloaded_videos, current_path, audio_path, dimensions)
+            for path in downloaded_videos:
+                cleanup_file(path)
+            if audio_path:
+                cleanup_file(audio_path)
+
+            if not success:
+                if outro_path:
+                    cleanup_file(outro_path)
+                if subtitle_path:
+                    cleanup_file(subtitle_path)
+                if watermark_path:
+                    cleanup_file(watermark_path)
+                return jsonify({'success': False, 'error': message}), 500
+
+            subtitles_added = False
+            if subtitle_path:
+                subtitled_filename = f"{request_id}_merged_subtitled_videos.mp4"
+                subtitled_output_path = os.path.join(OUTPUT_FOLDER, subtitled_filename)
+                subtitle_success, subtitle_message = add_subtitles_with_ffmpeg(current_path, subtitle_path, subtitled_output_path)
+                cleanup_file(subtitle_path)
+                if subtitle_success:
+                    cleanup_file(current_path)
+                    current_path = subtitled_output_path
+                    output_filename = subtitled_filename
+                    message = "Videos merged and subtitles added successfully"
+                    subtitles_added = True
+                else:
+                    cleanup_file(subtitled_output_path)
+                    if outro_path:
+                        cleanup_file(outro_path)
+                    if watermark_path:
+                        cleanup_file(watermark_path)
+                    return jsonify({'success': False, 'error': f'Subtitle addition failed: {subtitle_message}'}), 500
+            else:
+                if subtitle_path:
+                    cleanup_file(subtitle_path)
+
+            if watermark_path:
+                watermarked_filename = f"{request_id}_merged_watermarked_videos.mp4"
+                watermarked_output_path = os.path.join(OUTPUT_FOLDER, watermarked_filename)
+                watermark_success, watermark_message = add_watermark_with_ffmpeg(current_path, watermark_path, watermarked_output_path)
+                cleanup_file(watermark_path)
+                if watermark_success:
+                    cleanup_file(current_path)
+                    current_path = watermarked_output_path
+                    output_filename = watermarked_filename
+                    message = "Videos merged and watermark added successfully" if not subtitles_added else "Videos merged, subtitles and watermark added successfully"
+                else:
+                    cleanup_file(watermarked_output_path)
+                    if outro_path:
+                        cleanup_file(outro_path)
+                    return jsonify({'success': False, 'error': f'Watermark addition failed: {watermark_message}'}), 500
+            else:
+                if watermark_path:
+                    cleanup_file(watermark_path)
+
+            if use_outro:
+                success, message = merge_main_and_outro_with_ffmpeg(current_path, outro_path, output_path, dimensions)
+                cleanup_file(outro_path)
+                cleanup_file(current_path)
+                if not success:
+                    return jsonify({'success': False, 'error': message}), 500
+                output_filename = f"{request_id}_merged_videos.mp4"
+                current_path = output_path
+
+            storage_url = upload_to_storage(current_path, output_filename)
+            if storage_url:
+                cleanup_file(current_path)
+                return jsonify({
+                    'success': True,
+                    'message': message,
+                    'download_url': storage_url,
+                    'filename': output_filename
+                })
+            if os.environ.get('REPLIT_DEPLOYMENT'):
+                download_url = f"https://ffmpegapi.net/download/{output_filename}"
+            elif os.environ.get('REPLIT_DEV_DOMAIN'):
+                download_url = f"https://{os.environ['REPLIT_DEV_DOMAIN']}/download/{output_filename}"
+            else:
+                download_url = url_for('download_file', filename=output_filename, _external=True)
+            return jsonify({
+                'success': True,
+                'message': f"{message} (Note: Using temporary local storage - download soon)",
+                'download_url': download_url,
+                'filename': output_filename
+            })
+        except Exception as e:
+            for path in downloaded_videos:
+                cleanup_file(path)
+            if audio_path:
+                cleanup_file(audio_path)
+            if subtitle_path:
+                cleanup_file(subtitle_path)
+            if watermark_path:
+                cleanup_file(watermark_path)
+            if outro_path:
+                cleanup_file(outro_path)
+            raise e
+    except Exception as e:
+        logging.error(f"[NEONVIDEO_MERGE_VIDEOS] Error: {str(e)}", exc_info=True)
+        return jsonify({'success': False, 'error': f'Server error: {str(e)}'}), 500
+
 @app.route('/api/picture_in_picture', methods=['POST'])
 @log_api_request
 @require_api_key
@@ -2873,6 +3174,8 @@ def process_job_async(job_id):
                 result = process_add_subtitles_job(job, input_data)
             elif job.job_type == 'convert_to_vertical':
                 result = process_convert_to_vertical_job(job, input_data)
+            elif job.job_type == 'neonvideo_merge_videos':
+                result = process_neonvideo_merge_videos_job(job, input_data)
             else:
                 safe_update_job_status_by_id(job_id, 'failed', f'Unknown job type: {job.job_type}')
                 return
@@ -3153,6 +3456,166 @@ def process_merge_videos_job(job, input_data):
     except Exception as e:
         logging.error(f"[ASYNC_MERGE_VIDEOS] Error in process_merge_videos_job: {str(e)}")
         logging.error(f"[ASYNC_MERGE_VIDEOS] Full traceback:", exc_info=True)
+        return {'success': False, 'error': f'Server error: {str(e)}'}
+
+def process_neonvideo_merge_videos_job(job, input_data):
+    """Process neonvideo_merge_videos job (merge with optional outro; outro uses its own audio)."""
+    try:
+        request_id = str(uuid.uuid4())
+        video_urls = input_data['video_urls']
+        audio_url = input_data.get('audio_url')
+        dimensions = input_data.get('dimensions')
+        subtitle_url = input_data.get('subtitle_url')
+        watermark_url = input_data.get('watermark_url')
+        outro_url = input_data.get('outro_url')
+
+        downloaded_videos = []
+        audio_path = None
+        subtitle_path = None
+        watermark_path = None
+        outro_path = None
+
+        for i, url in enumerate(video_urls):
+            video_filename = f"{request_id}_video_{i}.mp4"
+            video_path = os.path.join(UPLOAD_FOLDER, video_filename)
+            success, message = download_video_from_url(url, video_path)
+            if not success:
+                for path in downloaded_videos:
+                    cleanup_file(path)
+                return {'success': False, 'error': f'Failed to download video {i+1}: {message}'}
+            downloaded_videos.append(video_path)
+
+        if audio_url:
+            audio_filename = f"{request_id}_audio.mp3"
+            audio_path = os.path.join(UPLOAD_FOLDER, audio_filename)
+            success, message = download_video_from_url(audio_url, audio_path)
+            if not success:
+                for path in downloaded_videos:
+                    cleanup_file(path)
+                return {'success': False, 'error': f'Failed to download audio: {message}'}
+
+        if subtitle_url:
+            subtitle_filename = f"{request_id}_subtitle.ass"
+            subtitle_path = os.path.join(UPLOAD_FOLDER, subtitle_filename)
+            success, message = download_file_from_url(subtitle_url, subtitle_path, "subtitle")
+            if not success:
+                for path in downloaded_videos:
+                    cleanup_file(path)
+                if audio_path:
+                    cleanup_file(audio_path)
+                return {'success': False, 'error': f'Failed to download subtitle: {message}'}
+
+        if watermark_url:
+            watermark_filename = f"{request_id}_watermark.png"
+            watermark_path = os.path.join(UPLOAD_FOLDER, watermark_filename)
+            success, message = download_file_from_url(watermark_url, watermark_path, "watermark image")
+            if not success:
+                for path in downloaded_videos:
+                    cleanup_file(path)
+                if audio_path:
+                    cleanup_file(audio_path)
+                if subtitle_path:
+                    cleanup_file(subtitle_path)
+                return {'success': False, 'error': f'Failed to download watermark: {message}'}
+
+        if outro_url:
+            outro_filename = f"{request_id}_outro.mp4"
+            outro_path = os.path.join(UPLOAD_FOLDER, outro_filename)
+            success, message = download_video_from_url(outro_url, outro_path)
+            if not success:
+                for path in downloaded_videos:
+                    cleanup_file(path)
+                if audio_path:
+                    cleanup_file(audio_path)
+                if subtitle_path:
+                    cleanup_file(subtitle_path)
+                if watermark_path:
+                    cleanup_file(watermark_path)
+                return {'success': False, 'error': f'Failed to download outro video: {message}'}
+
+        use_outro = bool(outro_url)
+        output_filename = f"{request_id}_merged_videos.mp4"
+        output_path = os.path.join(OUTPUT_FOLDER, output_filename)
+        if use_outro:
+            main_part_path = os.path.join(OUTPUT_FOLDER, f"{request_id}_main_part.mp4")
+            current_path = main_part_path
+        else:
+            current_path = output_path
+
+        success, message = merge_videos_with_ffmpeg(downloaded_videos, current_path, audio_path, dimensions)
+        for path in downloaded_videos:
+            cleanup_file(path)
+        if audio_path:
+            cleanup_file(audio_path)
+        if not success:
+            if outro_path:
+                cleanup_file(outro_path)
+            if subtitle_path:
+                cleanup_file(subtitle_path)
+            if watermark_path:
+                cleanup_file(watermark_path)
+            return {'success': False, 'error': message}
+
+        subtitles_added = False
+        if subtitle_path:
+            subtitled_output_path = os.path.join(OUTPUT_FOLDER, f"{request_id}_merged_subtitled_videos.mp4")
+            subtitle_success, subtitle_message = add_subtitles_with_ffmpeg(current_path, subtitle_path, subtitled_output_path)
+            cleanup_file(subtitle_path)
+            if subtitle_success:
+                cleanup_file(current_path)
+                current_path = subtitled_output_path
+                output_filename = f"{request_id}_merged_subtitled_videos.mp4"
+                message = "Videos merged and subtitles added successfully"
+                subtitles_added = True
+            else:
+                cleanup_file(subtitled_output_path)
+                if outro_path:
+                    cleanup_file(outro_path)
+                if watermark_path:
+                    cleanup_file(watermark_path)
+                return {'success': False, 'error': f'Subtitle addition failed: {subtitle_message}'}
+        elif subtitle_path:
+            cleanup_file(subtitle_path)
+
+        if watermark_path:
+            watermarked_output_path = os.path.join(OUTPUT_FOLDER, f"{request_id}_merged_watermarked_videos.mp4")
+            watermark_success, watermark_message = add_watermark_with_ffmpeg(current_path, watermark_path, watermarked_output_path)
+            cleanup_file(watermark_path)
+            if watermark_success:
+                cleanup_file(current_path)
+                current_path = watermarked_output_path
+                output_filename = f"{request_id}_merged_watermarked_videos.mp4"
+                message = "Videos merged and watermark added successfully" if not subtitles_added else "Videos merged, subtitles and watermark added successfully"
+            else:
+                cleanup_file(watermarked_output_path)
+                if outro_path:
+                    cleanup_file(outro_path)
+                return {'success': False, 'error': f'Watermark addition failed: {watermark_message}'}
+        elif watermark_path:
+            cleanup_file(watermark_path)
+
+        if use_outro:
+            success, message = merge_main_and_outro_with_ffmpeg(current_path, outro_path, output_path, dimensions)
+            cleanup_file(outro_path)
+            cleanup_file(current_path)
+            if not success:
+                return {'success': False, 'error': message}
+            output_filename = f"{request_id}_merged_videos.mp4"
+            current_path = output_path
+
+        storage_url = upload_to_storage(current_path, output_filename)
+        if storage_url:
+            cleanup_file(current_path)
+            return {'success': True, 'message': message, 'download_url': storage_url, 'filename': output_filename}
+        if os.environ.get('REPLIT_DEPLOYMENT'):
+            download_url = f"https://ffmpegapi.net/download/{output_filename}"
+        elif os.environ.get('REPLIT_DEV_DOMAIN'):
+            download_url = f"https://{os.environ['REPLIT_DEV_DOMAIN']}/download/{output_filename}"
+        else:
+            download_url = url_for('download_file', filename=output_filename, _external=True)
+        return {'success': True, 'message': message, 'download_url': download_url, 'filename': output_filename}
+    except Exception as e:
+        logging.error(f"[ASYNC_NEONVIDEO_MERGE_VIDEOS] Error in process_neonvideo_merge_videos_job: {str(e)}", exc_info=True)
         return {'success': False, 'error': f'Server error: {str(e)}'}
 
 def process_picture_in_picture_job(job, input_data):
@@ -3657,6 +4120,10 @@ def get_job_status(job_id):
             result_data = job.get_result_data()
             if result_data:
                 response_data.update(result_data)
+                # Explicit top-level download URL so clients can show the final video
+                if result_data.get('download_url'):
+                    response_data['download_url'] = result_data['download_url']
+                    response_data['result_url'] = result_data['download_url']  # alias for compatibility
         elif job.status == 'failed':
             response_data['error'] = job.error_message
         
