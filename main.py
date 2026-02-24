@@ -4611,7 +4611,7 @@ def add_watermark_with_ffmpeg(video_path, watermark_path, output_path):
         # Create filter that scales watermark to 30% of video width and positions at bottom right
         # The watermark is scaled dynamically and positioned with 20px padding from edges
         watermark_filter = (
-            f"[1:v]scale=iw*0.3:-1[watermark];"
+            f"[1:v]scale=iw*0.5:-1[watermark];"
             f"[0:v][watermark]overlay=main_w-overlay_w-20:main_h-overlay_h-20"
         )
         
