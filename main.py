@@ -4748,15 +4748,15 @@ def add_subtitles():
             
             # Start background processing
             from threading import Thread
-            thread = Thread(target=process_job_async, args=(job.id,))
+            thread = Thread(target=process_job_async, args=(job.job_id,))
             thread.start()
             
             return jsonify({
                 'success': True,
-                'job_id': job.id,
+                'job_id': job.job_id,
                 'status': 'pending',
                 'message': 'Job submitted for async processing. Use /api/job/{job_id}/status to check progress.',
-                'status_url': url_for('job_status', job_id=job.id, _external=True)
+                'status_url': url_for('get_job_status', job_id=job.job_id, _external=True)
             })
         
         # Synchronous processing
