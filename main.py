@@ -2033,19 +2033,24 @@ def merge_videos():
         subtitle_url = data.get('subtitle_url')  # Optional subtitle file URL
         watermark_url = data.get('watermark_url')  # Optional watermark image URL
         
-        if not isinstance(video_urls, list) or len(video_urls) < 2:
+        if not isinstance(video_urls, list) or len(video_urls) < 1:
             return jsonify({
                 'success': False,
-                'error': 'At least 2 video URLs are required'
+                'error': 'video_urls is required and must be a non-empty list'
             }), 400
-        
+        if len(video_urls) < 2 and not audio_url:
+            return jsonify({
+                'success': False,
+                'error': 'At least 2 video URLs are required, or 1 video URL with an audio_url to merge video with audio'
+            }), 400
+
         # Generate unique ID for this request
         request_id = str(uuid.uuid4())
         downloaded_videos = []
         audio_path = None
         subtitle_path = None
         watermark_path = None
-        
+
         try:
             # Download all videos
             for i, url in enumerate(video_urls):
@@ -2301,8 +2306,10 @@ def neonvideo_merge_videos():
         watermark_url = data.get('watermark_url')
         outro_url = data.get('outro_url')
 
-        if not isinstance(video_urls, list) or len(video_urls) < 2:
-            return jsonify({'success': False, 'error': 'At least 2 video URLs are required'}), 400
+        if not isinstance(video_urls, list) or len(video_urls) < 1:
+            return jsonify({'success': False, 'error': 'video_urls is required and must be a non-empty list'}), 400
+        if len(video_urls) < 2 and not audio_url:
+            return jsonify({'success': False, 'error': 'At least 2 video URLs are required, or 1 video URL with an audio_url to merge video with audio'}), 400
 
         request_id = str(uuid.uuid4())
         downloaded_videos = []
