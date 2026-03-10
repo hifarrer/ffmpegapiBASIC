@@ -119,6 +119,7 @@
                                 <a class="toc-link ms-3" href="#split-audio-time">Split Audio by Time</a>
                                 <a class="toc-link ms-3" href="#trim-audio">Trim Audio</a>
                                 <a class="toc-link ms-3" href="#trim-video">Trim Video</a>
+                                <a class="toc-link ms-3" href="#split-video">Split Video</a>
                                 <a class="toc-link ms-3" href="#convert-to-vertical">Convert to Vertical</a>
                                 <a class="toc-link ms-3" href="#ai-captions-remotion">AI Captions (Remotion)</a>
                                 <a class="toc-link ms-3" href="#text-overlay-captions-remotion">Text Overlay Captions (Remotion)</a>
@@ -207,6 +208,15 @@
                                     <i class="fas fa-film fa-2x text-primary mb-3"></i>
                                     <h5>Trim Video</h5>
                                     <p class="small">Trim videos by specifying start and end times in seconds</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-3 mb-3">
+                            <div class="card h-100">
+                                <div class="card-body text-center">
+                                    <i class="fas fa-code-branch fa-2x text-primary mb-3"></i>
+                                    <h5>Split Video</h5>
+                                    <p class="small">Split one video into two parts at a given time or at half length</p>
                                 </div>
                             </div>
                         </div>
@@ -1536,6 +1546,179 @@ if ($result['success']) {
     echo "Error: " . $result['error'] . "\n";
 }
 ?></code></pre>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Split Video -->
+                    <div id="split-video" class="api-endpoint">
+                        <div class="card">
+                            <div class="card-header">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <h4 class="mb-0">Split Video</h4>
+                                    <span class="method-badge method-post">POST</span>
+                                </div>
+                                <code class="text-muted">/api/split_video</code>
+                            </div>
+                            <div class="card-body">
+                                <p>Split a video into two parts at a given time in seconds. If <code>split_at_seconds</code> is omitted or empty, the video is split at half its duration. The API always determines the full video length via ffprobe.</p>
+
+                                <h6 class="mt-4 mb-3">Request Parameters</h6>
+                                <div class="table-responsive">
+                                    <table class="table table-dark table-striped">
+                                        <thead>
+                                            <tr>
+                                                <th>Parameter</th>
+                                                <th>Type</th>
+                                                <th>Required</th>
+                                                <th>Description</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <tr>
+                                                <td><code>video_url</code></td>
+                                                <td>string</td>
+                                                <td>Yes</td>
+                                                <td>URL of the video file to split (supports MP4, MOV, AVI, MKV, WebM, FLV, WMV)</td>
+                                            </tr>
+                                            <tr>
+                                                <td><code>split_at_seconds</code></td>
+                                                <td>number</td>
+                                                <td>No</td>
+                                                <td>Time in seconds where to split. Omit or leave empty to split at half the video length</td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+
+                                <h6 class="mt-4 mb-3">Example Request</h6>
+                                <div class="code-block">
+                                    <pre><code class="language-bash">curl -X POST "https://www.ffmpegapi.net/api/split_video" \
+     -H "X-API-Key: YOUR_API_KEY" \
+     -H "Content-Type: application/json" \
+     -d '{
+       "video_url": "https://example.com/video.mp4"
+     }'</code></pre>
+                                </div>
+                                <p class="small text-muted">With optional split time: <code>"split_at_seconds": 60</code></p>
+
+                                <h6 class="mt-4 mb-3">Success Response</h6>
+                                <div class="code-block">
+                                    <pre><code class="language-json">{
+  "success": true,
+  "message": "Video split at 45.5s (duration 91s)",
+  "part1_url": "https://www.ffmpegapi.net/api/storage/abc123_split_part1.mp4",
+  "part2_url": "https://www.ffmpegapi.net/api/storage/abc123_split_part2.mp4",
+  "part1_filename": "abc123_split_part1.mp4",
+  "part2_filename": "abc123_split_part2.mp4",
+  "duration_seconds": 91,
+  "split_at_seconds": 45.5
+}</code></pre>
+                                </div>
+
+                                <h6 class="mt-4 mb-3">Error Response</h6>
+                                <div class="code-block">
+                                    <pre><code class="language-json">{
+  "success": false,
+  "error": "video_url is required"
+}</code></pre>
+                                </div>
+
+                                <h6 class="mt-4 mb-3">Notes</h6>
+                                <ul>
+                                    <li><strong>Duration:</strong> Full video length is always determined via ffprobe before splitting</li>
+                                    <li><strong>Default:</strong> If <code>split_at_seconds</code> is omitted or empty, the split point is half the video duration</li>
+                                    <li><strong>Output:</strong> Returns two URLs: part 1 (0 to split time) and part 2 (split time to end)</li>
+                                    <li><strong>Validation:</strong> <code>split_at_seconds</code> must be greater than 0 and less than the video duration</li>
+                                </ul>
+
+                                <h6 class="mt-4 mb-3">Code Examples</h6>
+                                <ul class="nav nav-pills mb-3" id="splitVideoExampleTabs" role="tablist">
+                                    <li class="nav-item" role="presentation">
+                                        <button class="nav-link active" id="splitvid-curl-tab" data-bs-toggle="pill" data-bs-target="#splitvid-curl" type="button" role="tab">cURL</button>
+                                    </li>
+                                    <li class="nav-item" role="presentation">
+                                        <button class="nav-link" id="splitvid-python-tab" data-bs-toggle="pill" data-bs-target="#splitvid-python" type="button" role="tab">Python</button>
+                                    </li>
+                                    <li class="nav-item" role="presentation">
+                                        <button class="nav-link" id="splitvid-javascript-tab" data-bs-toggle="pill" data-bs-target="#splitvid-javascript" type="button" role="tab">JavaScript</button>
+                                    </li>
+                                    <li class="nav-item" role="presentation">
+                                        <button class="nav-link" id="splitvid-php-tab" data-bs-toggle="pill" data-bs-target="#splitvid-php" type="button" role="tab">PHP</button>
+                                    </li>
+                                </ul>
+                                <div class="tab-content" id="splitVideoExampleContent">
+                                    <div class="tab-pane fade show active" id="splitvid-curl" role="tabpanel">
+                                        <div class="code-block">
+                                            <pre><code class="language-bash">curl -X POST "https://www.ffmpegapi.net/api/split_video" \
+     -H "X-API-Key: YOUR_API_KEY" \
+     -H "Content-Type: application/json" \
+     -d '{"video_url": "https://example.com/video.mp4"}'</code></pre>
+                                        </div>
+                                    </div>
+                                    <div class="tab-pane fade" id="splitvid-python" role="tabpanel">
+                                        <div class="code-block">
+                                            <pre><code class="language-python">import requests
+
+url = "https://www.ffmpegapi.net/api/split_video"
+headers = {"X-API-Key": "YOUR_API_KEY", "Content-Type": "application/json"}
+data = {"video_url": "https://example.com/video.mp4"}
+
+response = requests.post(url, headers=headers, json=data)
+result = response.json()
+
+if result["success"]:
+    print("Video split successfully!")
+    print("Part 1:", result["part1_url"])
+    print("Part 2:", result["part2_url"])
+    print("Split at:", result["split_at_seconds"], "s of", result["duration_seconds"], "s")
+else:
+    print("Error:", result["error"])</code></pre>
+                                        </div>
+                                    </div>
+                                    <div class="tab-pane fade" id="splitvid-javascript" role="tabpanel">
+                                        <div class="code-block">
+                                            <pre><code class="language-javascript">const response = await fetch('https://www.ffmpegapi.net/api/split_video', {
+  method: 'POST',
+  headers: {
+    'X-API-Key': 'YOUR_API_KEY',
+    'Content-Type': 'application/json'
+  },
+  body: JSON.stringify({ video_url: 'https://example.com/video.mp4' })
+});
+const result = await response.json();
+
+if (result.success) {
+  console.log('Part 1:', result.part1_url);
+  console.log('Part 2:', result.part2_url);
+} else {
+  console.error('Error:', result.error);
+}</code></pre>
+                                        </div>
+                                    </div>
+                                    <div class="tab-pane fade" id="splitvid-php" role="tabpanel">
+                                        <div class="code-block">
+                                            <pre><code class="language-php">$url = 'https://www.ffmpegapi.net/api/split_video';
+$data = array('video_url' => 'https://example.com/video.mp4');
+$options = array(
+    'http' => array(
+        'header' => "X-API-Key: YOUR_API_KEY\r\nContent-Type: application/json\r\n",
+        'method' => 'POST',
+        'content' => json_encode($data)
+    )
+);
+$context = stream_context_create($options);
+$result = json_decode(file_get_contents($url, false, $context), true);
+
+if ($result['success']) {
+    echo "Part 1: " . $result['part1_url'] . "\n";
+    echo "Part 2: " . $result['part2_url'] . "\n";
+} else {
+    echo "Error: " . $result['error'] . "\n";
+}</code></pre>
                                         </div>
                                     </div>
                                 </div>

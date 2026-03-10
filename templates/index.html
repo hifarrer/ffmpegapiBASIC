@@ -1269,6 +1269,102 @@
                         </div>
                     </div>
 
+                    <!-- Split Video -->
+                    <div class="accordion-item">
+                        <h2 class="accordion-header" id="splitVideoHeading">
+                            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" 
+                                    data-bs-target="#splitVideoCollapse" aria-expanded="false" aria-controls="splitVideoCollapse">
+                                <i class="fas fa-code-branch me-2"></i>
+                                Split Video
+                            </button>
+                        </h2>
+                        <div id="splitVideoCollapse" class="accordion-collapse collapse" 
+                             aria-labelledby="splitVideoHeading" data-bs-parent="#videoProcessingAccordion">
+                            <div class="accordion-body">
+                                <p class="text-muted mb-4">
+                                    <i class="fas fa-info-circle me-1"></i>
+                                    Split one video into two parts. Optionally specify the split time in seconds; leave empty to split at half the video length.
+                                </p>
+
+                                <form id="splitVideoForm">
+                                    <div class="mb-4">
+                                        <label for="splitVideoUrl" class="form-label">
+                                            <i class="fas fa-video me-2"></i>
+                                            Video File URL
+                                        </label>
+                                        <input type="url" class="form-control" id="splitVideoUrl" name="video_url" 
+                                               placeholder="https://example.com/video.mp4" required>
+                                        <div class="form-text">Provide the URL of the video file you want to split</div>
+                                    </div>
+
+                                    <div class="mb-4">
+                                        <label for="splitVideoSplitAt" class="form-label">
+                                            <i class="fas fa-clock me-2"></i>
+                                            Split at (seconds) – optional
+                                        </label>
+                                        <input type="number" class="form-control" id="splitVideoSplitAt" name="split_at_seconds" 
+                                               placeholder="Leave empty to split at half" min="0" step="0.1">
+                                        <div class="form-text">Time in seconds where to split. Leave empty to split at half the video length</div>
+                                    </div>
+
+                                    <div class="d-grid">
+                                        <button type="submit" class="btn btn-primary btn-lg" id="splitVideoSubmitBtn">
+                                            <i class="fas fa-code-branch me-2"></i>
+                                            Split Video
+                                        </button>
+                                    </div>
+                                </form>
+
+                                <div id="splitVideoProgressContainer" class="mt-4" style="display: none;">
+                                    <div class="d-flex align-items-center mb-2">
+                                        <div class="spinner-border spinner-border-sm me-2" role="status">
+                                            <span class="visually-hidden">Loading...</span>
+                                        </div>
+                                        <span>Splitting video...</span>
+                                    </div>
+                                    <div class="progress">
+                                        <div class="progress-bar progress-bar-striped progress-bar-animated" 
+                                             role="progressbar" style="width: 100%"></div>
+                                    </div>
+                                </div>
+
+                                <div id="splitVideoAlertContainer" class="mt-4"></div>
+
+                                <div id="splitVideoResultContainer" class="mt-4" style="display: none;">
+                                    <div class="card">
+                                        <div class="card-header">
+                                            <h5 class="card-title mb-0">
+                                                <i class="fas fa-check-circle text-success me-2"></i>
+                                                Video Split Successfully
+                                            </h5>
+                                        </div>
+                                        <div class="card-body">
+                                            <p class="card-text">Your video has been split into two parts. Download part 1 and part 2 below.</p>
+                                            <div class="d-flex gap-2 flex-wrap">
+                                                <a id="splitVideoDownloadPart1Btn" href="#" class="btn btn-success" download>
+                                                    <i class="fas fa-download me-2"></i>
+                                                    Download Part 1
+                                                </a>
+                                                <a id="splitVideoDownloadPart2Btn" href="#" class="btn btn-success" download>
+                                                    <i class="fas fa-download me-2"></i>
+                                                    Download Part 2
+                                                </a>
+                                                <button id="splitVideoCleanupBtn" class="btn btn-outline-secondary">
+                                                    <i class="fas fa-trash me-2"></i>
+                                                    Delete from Server
+                                                </button>
+                                                <button id="splitVideoResetBtn" class="btn btn-outline-primary">
+                                                    <i class="fas fa-plus me-2"></i>
+                                                    Split Another Video
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
                     <!-- Convert to Vertical -->
                     <div class="accordion-item">
                         <h2 class="accordion-header" id="convertVerticalHeading">

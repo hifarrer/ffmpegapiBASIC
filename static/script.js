@@ -11,6 +11,7 @@ class VideoMerger {
         this.initializeSplitAudioTimeTab();
         this.initializeTrimAudioTab();
         this.initializeTrimVideoTab();
+        this.initializeSplitVideoTab();
         this.initializeConvertVerticalTab();
         this.initializeAutoCaptionTab();
         this.initializeTextOverlayTab();
@@ -1532,6 +1533,146 @@ class VideoMerger {
 
     hideTrimVideoResult() {
         this.trimVideoResultContainer.style.display = 'none';
+    }
+
+    initializeSplitVideoTab() {
+        this.splitVideoForm = document.getElementById('splitVideoForm');
+        this.splitVideoSubmitBtn = document.getElementById('splitVideoSubmitBtn');
+        this.splitVideoProgressContainer = document.getElementById('splitVideoProgressContainer');
+        this.splitVideoAlertContainer = document.getElementById('splitVideoAlertContainer');
+        this.splitVideoResultContainer = document.getElementById('splitVideoResultContainer');
+        this.splitVideoDownloadPart1Btn = document.getElementById('splitVideoDownloadPart1Btn');
+        this.splitVideoDownloadPart2Btn = document.getElementById('splitVideoDownloadPart2Btn');
+        this.splitVideoCleanupBtn = document.getElementById('splitVideoCleanupBtn');
+        this.splitVideoResetBtn = document.getElementById('splitVideoResetBtn');
+        this.splitVideoPart1Filename = null;
+        this.splitVideoPart2Filename = null;
+
+        this.splitVideoForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            this.handleSplitVideoSubmit();
+        });
+
+        this.splitVideoCleanupBtn.addEventListener('click', () => {
+            this.handleSplitVideoCleanup();
+        });
+
+        this.splitVideoResetBtn.addEventListener('click', () => {
+            this.resetSplitVideoForm();
+        });
+    }
+
+    async handleSplitVideoSubmit() {
+        const formData = new FormData(this.splitVideoForm);
+        const jsonData = { video_url: formData.get('video_url') };
+        const splitAt = formData.get('split_at_seconds');
+        if (splitAt !== null && String(splitAt).trim() !== '') {
+            const num = parseFloat(splitAt);
+            if (!isNaN(num)) jsonData.split_at_seconds = num;
+        }
+
+        this.showSplitVideoProgress();
+        this.hideSplitVideoAlert();
+        this.hideSplitVideoResult();
+
+        try {
+            const response = await fetch('/api/split_video', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-API-Key': window.API_KEY
+                },
+                body: JSON.stringify(jsonData)
+            });
+
+            const result = await response.json();
+
+            if (result.success) {
+                this.splitVideoDownloadPart1Btn.href = result.part1_url;
+                this.splitVideoDownloadPart1Btn.download = result.part1_filename;
+                this.splitVideoDownloadPart2Btn.href = result.part2_url;
+                this.splitVideoDownloadPart2Btn.download = result.part2_filename;
+                this.splitVideoPart1Filename = result.part1_filename;
+                this.splitVideoPart2Filename = result.part2_filename;
+
+                this.showSplitVideoResult();
+                this.showSplitVideoAlert('success', `Video split at ${result.split_at_seconds}s (duration ${result.duration_seconds}s). Part 1 and Part 2 ready.`);
+            } else {
+                this.showSplitVideoAlert('danger', `Error: ${result.error}`);
+            }
+        } catch (error) {
+            console.error('Split video error:', error);
+            this.showSplitVideoAlert('danger', `An error occurred: ${error.message}`);
+        } finally {
+            this.hideSplitVideoProgress();
+        }
+    }
+
+    async handleSplitVideoCleanup() {
+        if (!this.splitVideoPart1Filename && !this.splitVideoPart2Filename) return;
+
+        try {
+            if (this.splitVideoPart1Filename) {
+                await fetch(`/api/cleanup/${this.splitVideoPart1Filename}`, {
+                    method: 'DELETE',
+                    headers: { 'X-API-Key': window.API_KEY }
+                });
+            }
+            if (this.splitVideoPart2Filename) {
+                await fetch(`/api/cleanup/${this.splitVideoPart2Filename}`, {
+                    method: 'DELETE',
+                    headers: { 'X-API-Key': window.API_KEY }
+                });
+            }
+            this.showSplitVideoAlert('info', 'Files deleted from server successfully');
+            this.splitVideoPart1Filename = null;
+            this.splitVideoPart2Filename = null;
+            this.hideSplitVideoResult();
+        } catch (error) {
+            console.error('Cleanup error:', error);
+            this.showSplitVideoAlert('warning', 'File cleanup failed, but files will be automatically deleted after 24 hours');
+        }
+    }
+
+    resetSplitVideoForm() {
+        this.splitVideoForm.reset();
+        this.hideSplitVideoAlert();
+        this.hideSplitVideoResult();
+        this.hideSplitVideoProgress();
+        this.splitVideoPart1Filename = null;
+        this.splitVideoPart2Filename = null;
+    }
+
+    showSplitVideoProgress() {
+        this.splitVideoProgressContainer.style.display = 'block';
+        this.splitVideoSubmitBtn.disabled = true;
+    }
+
+    hideSplitVideoProgress() {
+        this.splitVideoProgressContainer.style.display = 'none';
+        this.splitVideoSubmitBtn.disabled = false;
+    }
+
+    showSplitVideoAlert(type, message) {
+        this.splitVideoAlertContainer.innerHTML = `
+            <div class="alert alert-${type} alert-dismissible fade show" role="alert">
+                <i class="fas fa-${this.getAlertIcon(type)} me-2"></i>
+                ${message}
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+        `;
+    }
+
+    hideSplitVideoAlert() {
+        this.splitVideoAlertContainer.innerHTML = '';
+    }
+
+    showSplitVideoResult() {
+        this.splitVideoResultContainer.style.display = 'block';
+    }
+
+    hideSplitVideoResult() {
+        this.splitVideoResultContainer.style.display = 'none';
     }
 
     initializeConvertVerticalTab() {

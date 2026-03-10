@@ -5080,6 +5080,51 @@ def trim_video_with_ffmpeg(video_path, output_path, start_time, end_time):
         return False, f"Video trimming error: {str(e)}"
 
 
+def get_video_duration(video_path):
+    """Get video duration in seconds using ffprobe"""
+    try:
+        probe_cmd = [
+            'ffprobe',
+            '-v', 'quiet',
+            '-show_entries', 'format=duration',
+            '-of', 'csv=p=0',
+            video_path
+        ]
+        result = subprocess.run(probe_cmd, capture_output=True, text=True, timeout=30)
+        if result.returncode != 0:
+            logging.error(f"[GET_VIDEO_DURATION] FFprobe error: {result.stderr}")
+            return None, f"Unable to get video duration: {result.stderr}"
+        try:
+            duration = float(result.stdout.strip())
+        except ValueError:
+            logging.error(f"[GET_VIDEO_DURATION] Invalid duration value: {result.stdout.strip()}")
+            return None, "Invalid video file or unable to determine duration"
+        if duration <= 0:
+            return None, "Video file appears to have zero duration"
+        return duration, None
+    except subprocess.TimeoutExpired:
+        return None, "Video duration probe timed out"
+    except Exception as e:
+        logging.error(f"[GET_VIDEO_DURATION] Error: {str(e)}")
+        return None, str(e)
+
+
+def split_video_with_ffmpeg(video_path, output_part1, output_part2, split_at_seconds, total_duration):
+    """Split video into two parts at split_at_seconds using FFmpeg (reuses trim)."""
+    try:
+        success1, msg1 = trim_video_with_ffmpeg(video_path, output_part1, 0, split_at_seconds)
+        if not success1:
+            return False, f"Part 1 failed: {msg1}"
+        success2, msg2 = trim_video_with_ffmpeg(video_path, output_part2, split_at_seconds, total_duration)
+        if not success2:
+            cleanup_file(output_part1)
+            return False, f"Part 2 failed: {msg2}"
+        return True, None
+    except Exception as e:
+        logging.error(f"[SPLIT_VIDEO] Error: {str(e)}")
+        return False, str(e)
+
+
 @app.route('/api/trim_video', methods=['POST'])
 @log_api_request
 @require_api_key
@@ -5227,6 +5272,118 @@ def trim_video():
             'success': False,
             'error': f'Server error: {str(e)}'
         }), 500
+
+
+@app.route('/api/split_video', methods=['POST'])
+@log_api_request
+@require_api_key
+def split_video():
+    """API endpoint to split a video into two parts at a given time (default: half)."""
+    api_key = request.headers.get('X-API-Key') or request.args.get('api_key')
+    logging.info(f"[SPLIT_VIDEO] Request received from API key: {api_key[:20] if api_key else 'None'}...")
+
+    try:
+        request_id = str(uuid.uuid4())
+
+        if request.is_json:
+            data = request.get_json()
+            video_url = data.get('video_url')
+            split_at_seconds = data.get('split_at_seconds')
+        else:
+            video_url = request.form.get('video_url')
+            split_at_seconds = request.form.get('split_at_seconds')
+
+        if not video_url or not str(video_url).strip():
+            return jsonify({'success': False, 'error': 'video_url is required'}), 400
+
+        video_url = str(video_url).strip()
+        video_ext = video_url.split('.')[-1].split('?')[0].lower() if '.' in video_url else 'mp4'
+        if video_ext not in ['mp4', 'mov', 'avi', 'mkv', 'webm', 'flv', 'wmv']:
+            video_ext = 'mp4'
+        video_filename = f"{request_id}_video.{video_ext}"
+        video_path = os.path.join(UPLOAD_FOLDER, video_filename)
+
+        success, message = download_file_from_url(video_url, video_path, "video")
+        if not success:
+            return jsonify({'success': False, 'error': message}), 400
+
+        output_part1 = None
+        output_part2 = None
+        try:
+            total_duration, err = get_video_duration(video_path)
+            if err is not None:
+                cleanup_file(video_path)
+                return jsonify({'success': False, 'error': err}), 400
+
+            if split_at_seconds is None or (isinstance(split_at_seconds, str) and str(split_at_seconds).strip() == ''):
+                split_at_seconds = total_duration / 2
+            else:
+                try:
+                    split_at_seconds = float(split_at_seconds)
+                except (ValueError, TypeError):
+                    cleanup_file(video_path)
+                    return jsonify({'success': False, 'error': 'split_at_seconds must be a valid number'}), 400
+
+            if split_at_seconds <= 0 or split_at_seconds >= total_duration:
+                cleanup_file(video_path)
+                return jsonify({
+                    'success': False,
+                    'error': f'split_at_seconds must be greater than 0 and less than video duration ({total_duration}s)'
+                }), 400
+
+            part1_filename = f"{request_id}_split_part1.mp4"
+            part2_filename = f"{request_id}_split_part2.mp4"
+            output_part1 = os.path.join(OUTPUT_FOLDER, part1_filename)
+            output_part2 = os.path.join(OUTPUT_FOLDER, part2_filename)
+
+            success, message = split_video_with_ffmpeg(video_path, output_part1, output_part2, split_at_seconds, total_duration)
+            cleanup_file(video_path)
+
+            if not success:
+                return jsonify({'success': False, 'error': message or 'Split failed'}), 500
+
+            part1_url = upload_to_storage(output_part1, part1_filename)
+            part2_url = upload_to_storage(output_part2, part2_filename)
+
+            if not part1_url:
+                if os.environ.get('REPLIT_DEPLOYMENT'):
+                    part1_url = f"https://ffmpegapi.net/download/{part1_filename}"
+                elif os.environ.get('REPLIT_DEV_DOMAIN'):
+                    part1_url = f"https://{os.environ['REPLIT_DEV_DOMAIN']}/download/{part1_filename}"
+                else:
+                    part1_url = url_for('download_file', filename=part1_filename, _external=True)
+            else:
+                cleanup_file(output_part1)
+            if not part2_url:
+                if os.environ.get('REPLIT_DEPLOYMENT'):
+                    part2_url = f"https://ffmpegapi.net/download/{part2_filename}"
+                elif os.environ.get('REPLIT_DEV_DOMAIN'):
+                    part2_url = f"https://{os.environ['REPLIT_DEV_DOMAIN']}/download/{part2_filename}"
+                else:
+                    part2_url = url_for('download_file', filename=part2_filename, _external=True)
+            else:
+                cleanup_file(output_part2)
+
+            return jsonify({
+                'success': True,
+                'message': f"Video split at {split_at_seconds}s (duration {total_duration}s)",
+                'part1_url': part1_url,
+                'part2_url': part2_url,
+                'part1_filename': part1_filename,
+                'part2_filename': part2_filename,
+                'duration_seconds': total_duration,
+                'split_at_seconds': split_at_seconds
+            })
+        except Exception as e:
+            cleanup_file(video_path)
+            if output_part1 and os.path.exists(output_part1):
+                cleanup_file(output_part1)
+            if output_part2 and os.path.exists(output_part2):
+                cleanup_file(output_part2)
+            raise e
+    except Exception as e:
+        logging.error(f"[SPLIT_VIDEO] Error: {str(e)}", exc_info=True)
+        return jsonify({'success': False, 'error': f'Server error: {str(e)}'}), 500
 
 
 @app.route('/api/convert_to_vertical', methods=['POST'])
