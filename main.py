@@ -5109,6 +5109,32 @@ def get_video_duration(video_path):
         return None, str(e)
 
 
+def extract_frame_at_time(video_path, output_image_path, time_seconds):
+    """Extract a single frame at the given time using FFmpeg. Returns (success, error_message)."""
+    try:
+        cmd = [
+            'ffmpeg', '-y',
+            '-i', video_path,
+            '-ss', str(time_seconds),
+            '-vframes', '1',
+            '-q:v', '2',
+            output_image_path
+        ]
+        result = subprocess.run(cmd, capture_output=True, text=True, timeout=60)
+        if result.returncode != 0:
+            err = result.stderr or result.stdout or "Unknown error"
+            logging.error(f"[EXTRACT_FRAME] FFmpeg error: {err}")
+            return False, f"Frame extraction failed: {err}"
+        if not os.path.exists(output_image_path) or os.path.getsize(output_image_path) == 0:
+            return False, "Frame extraction produced no output"
+        return True, None
+    except subprocess.TimeoutExpired:
+        return False, "Frame extraction timed out"
+    except Exception as e:
+        logging.error(f"[EXTRACT_FRAME] Error: {str(e)}")
+        return False, str(e)
+
+
 def split_video_with_ffmpeg(video_path, output_part1, output_part2, split_at_seconds, total_duration):
     """Split video into two parts at split_at_seconds using FFmpeg (reuses trim)."""
     try:
@@ -5383,6 +5409,161 @@ def split_video():
             raise e
     except Exception as e:
         logging.error(f"[SPLIT_VIDEO] Error: {str(e)}", exc_info=True)
+        return jsonify({'success': False, 'error': f'Server error: {str(e)}'}), 500
+
+
+@app.route('/api/get_first_frame_image', methods=['POST'])
+@log_api_request
+@require_api_key
+def get_first_frame_image():
+    """API endpoint to extract the first frame of a video and return the image URL."""
+    api_key = request.headers.get('X-API-Key') or request.args.get('api_key')
+    logging.info(f"[GET_FIRST_FRAME] Request from API key: {api_key[:20] if api_key else 'None'}...")
+
+    try:
+        request_id = str(uuid.uuid4())
+
+        if request.is_json:
+            data = request.get_json()
+            video_url = data.get('video_url')
+        else:
+            video_url = request.form.get('video_url')
+
+        if not video_url or not str(video_url).strip():
+            return jsonify({'success': False, 'error': 'video_url is required'}), 400
+
+        video_url = str(video_url).strip()
+        video_ext = video_url.split('.')[-1].split('?')[0].lower() if '.' in video_url else 'mp4'
+        if video_ext not in ['mp4', 'mov', 'avi', 'mkv', 'webm', 'flv', 'wmv']:
+            video_ext = 'mp4'
+        video_filename = f"{request_id}_video.{video_ext}"
+        video_path = os.path.join(UPLOAD_FOLDER, video_filename)
+
+        success, message = download_file_from_url(video_url, video_path, "video")
+        if not success:
+            return jsonify({'success': False, 'error': message}), 400
+
+        output_path = None
+        try:
+            output_filename = f"{request_id}_frame.jpg"
+            output_path = os.path.join(OUTPUT_FOLDER, output_filename)
+
+            success, err = extract_frame_at_time(video_path, output_path, 0.0)
+            cleanup_file(video_path)
+
+            if not success:
+                if os.path.exists(output_path):
+                    cleanup_file(output_path)
+                return jsonify({'success': False, 'error': err or 'Frame extraction failed'}), 500
+
+            storage_url = upload_to_storage(output_path, output_filename)
+            if storage_url:
+                cleanup_file(output_path)
+                image_url = storage_url
+            else:
+                if os.environ.get('REPLIT_DEPLOYMENT'):
+                    image_url = f"https://ffmpegapi.net/download/{output_filename}"
+                elif os.environ.get('REPLIT_DEV_DOMAIN'):
+                    image_url = f"https://{os.environ['REPLIT_DEV_DOMAIN']}/download/{output_filename}"
+                else:
+                    image_url = url_for('download_file', filename=output_filename, _external=True)
+
+            return jsonify({
+                'success': True,
+                'message': 'First frame extracted successfully',
+                'image_url': image_url,
+                'download_url': image_url,
+                'filename': output_filename
+            })
+        except Exception as e:
+            cleanup_file(video_path)
+            if output_path and os.path.exists(output_path):
+                cleanup_file(output_path)
+            raise e
+
+    except Exception as e:
+        logging.error(f"[GET_FIRST_FRAME] Error: {str(e)}", exc_info=True)
+        return jsonify({'success': False, 'error': f'Server error: {str(e)}'}), 500
+
+
+@app.route('/api/get_last_frame_image', methods=['POST'])
+@log_api_request
+@require_api_key
+def get_last_frame_image():
+    """API endpoint to extract the last frame of a video and return the image URL."""
+    api_key = request.headers.get('X-API-Key') or request.args.get('api_key')
+    logging.info(f"[GET_LAST_FRAME] Request from API key: {api_key[:20] if api_key else 'None'}...")
+
+    try:
+        request_id = str(uuid.uuid4())
+
+        if request.is_json:
+            data = request.get_json()
+            video_url = data.get('video_url')
+        else:
+            video_url = request.form.get('video_url')
+
+        if not video_url or not str(video_url).strip():
+            return jsonify({'success': False, 'error': 'video_url is required'}), 400
+
+        video_url = str(video_url).strip()
+        video_ext = video_url.split('.')[-1].split('?')[0].lower() if '.' in video_url else 'mp4'
+        if video_ext not in ['mp4', 'mov', 'avi', 'mkv', 'webm', 'flv', 'wmv']:
+            video_ext = 'mp4'
+        video_filename = f"{request_id}_video.{video_ext}"
+        video_path = os.path.join(UPLOAD_FOLDER, video_filename)
+
+        success, message = download_file_from_url(video_url, video_path, "video")
+        if not success:
+            return jsonify({'success': False, 'error': message}), 400
+
+        output_path = None
+        try:
+            duration, err = get_video_duration(video_path)
+            if err is not None:
+                cleanup_file(video_path)
+                return jsonify({'success': False, 'error': err}), 400
+
+            seek_time = max(0.0, duration - 0.1)
+
+            output_filename = f"{request_id}_frame.jpg"
+            output_path = os.path.join(OUTPUT_FOLDER, output_filename)
+
+            success, extract_err = extract_frame_at_time(video_path, output_path, seek_time)
+            cleanup_file(video_path)
+
+            if not success:
+                if output_path and os.path.exists(output_path):
+                    cleanup_file(output_path)
+                return jsonify({'success': False, 'error': extract_err or 'Frame extraction failed'}), 500
+
+            storage_url = upload_to_storage(output_path, output_filename)
+            if storage_url:
+                cleanup_file(output_path)
+                image_url = storage_url
+            else:
+                if os.environ.get('REPLIT_DEPLOYMENT'):
+                    image_url = f"https://ffmpegapi.net/download/{output_filename}"
+                elif os.environ.get('REPLIT_DEV_DOMAIN'):
+                    image_url = f"https://{os.environ['REPLIT_DEV_DOMAIN']}/download/{output_filename}"
+                else:
+                    image_url = url_for('download_file', filename=output_filename, _external=True)
+
+            return jsonify({
+                'success': True,
+                'message': 'Last frame extracted successfully',
+                'image_url': image_url,
+                'download_url': image_url,
+                'filename': output_filename
+            })
+        except Exception as e:
+            cleanup_file(video_path)
+            if output_path and os.path.exists(output_path):
+                cleanup_file(output_path)
+            raise e
+
+    except Exception as e:
+        logging.error(f"[GET_LAST_FRAME] Error: {str(e)}", exc_info=True)
         return jsonify({'success': False, 'error': f'Server error: {str(e)}'}), 500
 
 

@@ -12,6 +12,8 @@ class VideoMerger {
         this.initializeTrimAudioTab();
         this.initializeTrimVideoTab();
         this.initializeSplitVideoTab();
+        this.initializeFirstFrameTab();
+        this.initializeLastFrameTab();
         this.initializeConvertVerticalTab();
         this.initializeAutoCaptionTab();
         this.initializeTextOverlayTab();
@@ -1673,6 +1675,200 @@ class VideoMerger {
 
     hideSplitVideoResult() {
         this.splitVideoResultContainer.style.display = 'none';
+    }
+
+    initializeFirstFrameTab() {
+        this.firstFrameForm = document.getElementById('firstFrameForm');
+        this.firstFrameSubmitBtn = document.getElementById('firstFrameSubmitBtn');
+        this.firstFrameProgressContainer = document.getElementById('firstFrameProgressContainer');
+        this.firstFrameAlertContainer = document.getElementById('firstFrameAlertContainer');
+        this.firstFrameResultContainer = document.getElementById('firstFrameResultContainer');
+        this.firstFrameImagePreview = document.getElementById('firstFrameImagePreview');
+        this.firstFrameImageLink = document.getElementById('firstFrameImageLink');
+        this.firstFrameResetBtn = document.getElementById('firstFrameResetBtn');
+
+        this.firstFrameForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            this.handleFirstFrameSubmit();
+        });
+
+        this.firstFrameResetBtn.addEventListener('click', () => {
+            this.resetFirstFrameForm();
+        });
+    }
+
+    async handleFirstFrameSubmit() {
+        const formData = new FormData(this.firstFrameForm);
+        const jsonData = { video_url: formData.get('video_url') };
+
+        this.showFirstFrameProgress();
+        this.hideFirstFrameAlert();
+        this.hideFirstFrameResult();
+
+        try {
+            const response = await fetch('/api/get_first_frame_image', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-API-Key': window.API_KEY
+                },
+                body: JSON.stringify(jsonData)
+            });
+
+            const result = await response.json();
+
+            if (result.success) {
+                const imageUrl = result.image_url || result.download_url;
+                this.firstFrameImagePreview.src = imageUrl;
+                this.firstFrameImageLink.href = imageUrl;
+                this.showFirstFrameResult();
+                this.showFirstFrameAlert('success', 'First frame extracted successfully.');
+            } else {
+                this.showFirstFrameAlert('danger', `Error: ${result.error}`);
+            }
+        } catch (error) {
+            console.error('First frame error:', error);
+            this.showFirstFrameAlert('danger', `An error occurred: ${error.message}`);
+        } finally {
+            this.hideFirstFrameProgress();
+        }
+    }
+
+    resetFirstFrameForm() {
+        this.firstFrameForm.reset();
+        this.hideFirstFrameAlert();
+        this.hideFirstFrameResult();
+        this.firstFrameImagePreview.src = '';
+        this.firstFrameImageLink.href = '#';
+    }
+
+    showFirstFrameProgress() {
+        this.firstFrameProgressContainer.style.display = 'block';
+        this.firstFrameSubmitBtn.disabled = true;
+    }
+
+    hideFirstFrameProgress() {
+        this.firstFrameProgressContainer.style.display = 'none';
+        this.firstFrameSubmitBtn.disabled = false;
+    }
+
+    showFirstFrameAlert(type, message) {
+        this.firstFrameAlertContainer.innerHTML = `
+            <div class="alert alert-${type} alert-dismissible fade show" role="alert">
+                <i class="fas fa-${this.getAlertIcon(type)} me-2"></i>
+                ${message}
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+        `;
+    }
+
+    hideFirstFrameAlert() {
+        this.firstFrameAlertContainer.innerHTML = '';
+    }
+
+    showFirstFrameResult() {
+        this.firstFrameResultContainer.style.display = 'block';
+    }
+
+    hideFirstFrameResult() {
+        this.firstFrameResultContainer.style.display = 'none';
+    }
+
+    initializeLastFrameTab() {
+        this.lastFrameForm = document.getElementById('lastFrameForm');
+        this.lastFrameSubmitBtn = document.getElementById('lastFrameSubmitBtn');
+        this.lastFrameProgressContainer = document.getElementById('lastFrameProgressContainer');
+        this.lastFrameAlertContainer = document.getElementById('lastFrameAlertContainer');
+        this.lastFrameResultContainer = document.getElementById('lastFrameResultContainer');
+        this.lastFrameImagePreview = document.getElementById('lastFrameImagePreview');
+        this.lastFrameImageLink = document.getElementById('lastFrameImageLink');
+        this.lastFrameResetBtn = document.getElementById('lastFrameResetBtn');
+
+        this.lastFrameForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            this.handleLastFrameSubmit();
+        });
+
+        this.lastFrameResetBtn.addEventListener('click', () => {
+            this.resetLastFrameForm();
+        });
+    }
+
+    async handleLastFrameSubmit() {
+        const formData = new FormData(this.lastFrameForm);
+        const jsonData = { video_url: formData.get('video_url') };
+
+        this.showLastFrameProgress();
+        this.hideLastFrameAlert();
+        this.hideLastFrameResult();
+
+        try {
+            const response = await fetch('/api/get_last_frame_image', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-API-Key': window.API_KEY
+                },
+                body: JSON.stringify(jsonData)
+            });
+
+            const result = await response.json();
+
+            if (result.success) {
+                const imageUrl = result.image_url || result.download_url;
+                this.lastFrameImagePreview.src = imageUrl;
+                this.lastFrameImageLink.href = imageUrl;
+                this.showLastFrameResult();
+                this.showLastFrameAlert('success', 'Last frame extracted successfully.');
+            } else {
+                this.showLastFrameAlert('danger', `Error: ${result.error}`);
+            }
+        } catch (error) {
+            console.error('Last frame error:', error);
+            this.showLastFrameAlert('danger', `An error occurred: ${error.message}`);
+        } finally {
+            this.hideLastFrameProgress();
+        }
+    }
+
+    resetLastFrameForm() {
+        this.lastFrameForm.reset();
+        this.hideLastFrameAlert();
+        this.hideLastFrameResult();
+        this.lastFrameImagePreview.src = '';
+        this.lastFrameImageLink.href = '#';
+    }
+
+    showLastFrameProgress() {
+        this.lastFrameProgressContainer.style.display = 'block';
+        this.lastFrameSubmitBtn.disabled = true;
+    }
+
+    hideLastFrameProgress() {
+        this.lastFrameProgressContainer.style.display = 'none';
+        this.lastFrameSubmitBtn.disabled = false;
+    }
+
+    showLastFrameAlert(type, message) {
+        this.lastFrameAlertContainer.innerHTML = `
+            <div class="alert alert-${type} alert-dismissible fade show" role="alert">
+                <i class="fas fa-${this.getAlertIcon(type)} me-2"></i>
+                ${message}
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+        `;
+    }
+
+    hideLastFrameAlert() {
+        this.lastFrameAlertContainer.innerHTML = '';
+    }
+
+    showLastFrameResult() {
+        this.lastFrameResultContainer.style.display = 'block';
+    }
+
+    hideLastFrameResult() {
+        this.lastFrameResultContainer.style.display = 'none';
     }
 
     initializeConvertVerticalTab() {

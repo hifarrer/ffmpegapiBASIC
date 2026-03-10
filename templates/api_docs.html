@@ -120,6 +120,8 @@
                                 <a class="toc-link ms-3" href="#trim-audio">Trim Audio</a>
                                 <a class="toc-link ms-3" href="#trim-video">Trim Video</a>
                                 <a class="toc-link ms-3" href="#split-video">Split Video</a>
+                                <a class="toc-link ms-3" href="#get-first-frame-image">Get First Frame Image</a>
+                                <a class="toc-link ms-3" href="#get-last-frame-image">Get Last Frame Image</a>
                                 <a class="toc-link ms-3" href="#convert-to-vertical">Convert to Vertical</a>
                                 <a class="toc-link ms-3" href="#ai-captions-remotion">AI Captions (Remotion)</a>
                                 <a class="toc-link ms-3" href="#text-overlay-captions-remotion">Text Overlay Captions (Remotion)</a>
@@ -1716,6 +1718,315 @@ $result = json_decode(file_get_contents($url, false, $context), true);
 if ($result['success']) {
     echo "Part 1: " . $result['part1_url'] . "\n";
     echo "Part 2: " . $result['part2_url'] . "\n";
+} else {
+    echo "Error: " . $result['error'] . "\n";
+}</code></pre>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Get First Frame Image -->
+                    <div id="get-first-frame-image" class="api-endpoint">
+                        <div class="card">
+                            <div class="card-header">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <h4 class="mb-0">Get First Frame Image</h4>
+                                    <span class="method-badge method-post">POST</span>
+                                </div>
+                                <code class="text-muted">/api/get_first_frame_image</code>
+                            </div>
+                            <div class="card-body">
+                                <p>Extract the first frame of a video from a URL and return the image URL. The frame is exported as a JPEG image.</p>
+
+                                <h6 class="mt-4 mb-3">Request Parameters</h6>
+                                <div class="table-responsive">
+                                    <table class="table table-dark table-striped">
+                                        <thead>
+                                            <tr>
+                                                <th>Parameter</th>
+                                                <th>Type</th>
+                                                <th>Required</th>
+                                                <th>Description</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <tr>
+                                                <td><code>video_url</code></td>
+                                                <td>string</td>
+                                                <td>Yes</td>
+                                                <td>URL of the video file (supports MP4, MOV, AVI, MKV, WebM, FLV, WMV)</td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+
+                                <h6 class="mt-4 mb-3">Example Request</h6>
+                                <div class="code-block">
+                                    <pre><code class="language-bash">curl -X POST "https://www.ffmpegapi.net/api/get_first_frame_image" \
+     -H "X-API-Key: YOUR_API_KEY" \
+     -H "Content-Type: application/json" \
+     -d '{"video_url": "https://example.com/video.mp4"}'</code></pre>
+                                </div>
+
+                                <h6 class="mt-4 mb-3">Success Response</h6>
+                                <div class="code-block">
+                                    <pre><code class="language-json">{
+  "success": true,
+  "message": "First frame extracted successfully",
+  "image_url": "https://www.ffmpegapi.net/api/storage/abc123_frame.jpg",
+  "download_url": "https://www.ffmpegapi.net/api/storage/abc123_frame.jpg",
+  "filename": "abc123_frame.jpg"
+}</code></pre>
+                                </div>
+
+                                <h6 class="mt-4 mb-3">Error Response</h6>
+                                <div class="code-block">
+                                    <pre><code class="language-json">{
+  "success": false,
+  "error": "video_url is required"
+}</code></pre>
+                                </div>
+
+                                <h6 class="mt-4 mb-3">Notes</h6>
+                                <ul>
+                                    <li><strong>Format:</strong> Output is JPEG. Supports common video formats (MP4, MOV, AVI, MKV, WebM, FLV, WMV)</li>
+                                    <li><strong>File size:</strong> Video URLs must be publicly accessible; consider file size limits for your plan</li>
+                                </ul>
+
+                                <h6 class="mt-4 mb-3">Code Examples</h6>
+                                <ul class="nav nav-pills mb-3" id="firstFrameExampleTabs" role="tablist">
+                                    <li class="nav-item" role="presentation">
+                                        <button class="nav-link active" id="firstframe-curl-tab" data-bs-toggle="pill" data-bs-target="#firstframe-curl" type="button" role="tab">cURL</button>
+                                    </li>
+                                    <li class="nav-item" role="presentation">
+                                        <button class="nav-link" id="firstframe-python-tab" data-bs-toggle="pill" data-bs-target="#firstframe-python" type="button" role="tab">Python</button>
+                                    </li>
+                                    <li class="nav-item" role="presentation">
+                                        <button class="nav-link" id="firstframe-javascript-tab" data-bs-toggle="pill" data-bs-target="#firstframe-javascript" type="button" role="tab">JavaScript</button>
+                                    </li>
+                                    <li class="nav-item" role="presentation">
+                                        <button class="nav-link" id="firstframe-php-tab" data-bs-toggle="pill" data-bs-target="#firstframe-php" type="button" role="tab">PHP</button>
+                                    </li>
+                                </ul>
+                                <div class="tab-content" id="firstFrameExampleContent">
+                                    <div class="tab-pane fade show active" id="firstframe-curl" role="tabpanel">
+                                        <div class="code-block">
+                                            <pre><code class="language-bash">curl -X POST "https://www.ffmpegapi.net/api/get_first_frame_image" \
+     -H "X-API-Key: YOUR_API_KEY" \
+     -H "Content-Type: application/json" \
+     -d '{"video_url": "https://example.com/video.mp4"}'</code></pre>
+                                        </div>
+                                    </div>
+                                    <div class="tab-pane fade" id="firstframe-python" role="tabpanel">
+                                        <div class="code-block">
+                                            <pre><code class="language-python">import requests
+
+url = "https://www.ffmpegapi.net/api/get_first_frame_image"
+headers = {"X-API-Key": "YOUR_API_KEY", "Content-Type": "application/json"}
+data = {"video_url": "https://example.com/video.mp4"}
+
+response = requests.post(url, headers=headers, json=data)
+result = response.json()
+
+if result["success"]:
+    print("First frame image URL:", result["image_url"])
+else:
+    print("Error:", result["error"])</code></pre>
+                                        </div>
+                                    </div>
+                                    <div class="tab-pane fade" id="firstframe-javascript" role="tabpanel">
+                                        <div class="code-block">
+                                            <pre><code class="language-javascript">const response = await fetch('https://www.ffmpegapi.net/api/get_first_frame_image', {
+  method: 'POST',
+  headers: {
+    'X-API-Key': 'YOUR_API_KEY',
+    'Content-Type': 'application/json'
+  },
+  body: JSON.stringify({ video_url: 'https://example.com/video.mp4' })
+});
+const result = await response.json();
+
+if (result.success) {
+  console.log('Image URL:', result.image_url);
+} else {
+  console.error('Error:', result.error);
+}</code></pre>
+                                        </div>
+                                    </div>
+                                    <div class="tab-pane fade" id="firstframe-php" role="tabpanel">
+                                        <div class="code-block">
+                                            <pre><code class="language-php">$url = 'https://www.ffmpegapi.net/api/get_first_frame_image';
+$data = array('video_url' => 'https://example.com/video.mp4');
+$options = array(
+    'http' => array(
+        'header' => "X-API-Key: YOUR_API_KEY\r\nContent-Type: application/json\r\n",
+        'method' => 'POST',
+        'content' => json_encode($data)
+    )
+);
+$context = stream_context_create($options);
+$result = json_decode(file_get_contents($url, false, $context), true);
+
+if ($result['success']) {
+    echo "Image URL: " . $result['image_url'] . "\n";
+} else {
+    echo "Error: " . $result['error'] . "\n";
+}</code></pre>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Get Last Frame Image -->
+                    <div id="get-last-frame-image" class="api-endpoint">
+                        <div class="card">
+                            <div class="card-header">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <h4 class="mb-0">Get Last Frame Image</h4>
+                                    <span class="method-badge method-post">POST</span>
+                                </div>
+                                <code class="text-muted">/api/get_last_frame_image</code>
+                            </div>
+                            <div class="card-body">
+                                <p>Extract the last frame of a video from a URL and return the image URL. The frame is exported as a JPEG image. The API uses ffprobe to get the video duration and seeks to 0.1 seconds before the end.</p>
+
+                                <h6 class="mt-4 mb-3">Request Parameters</h6>
+                                <div class="table-responsive">
+                                    <table class="table table-dark table-striped">
+                                        <thead>
+                                            <tr>
+                                                <th>Parameter</th>
+                                                <th>Type</th>
+                                                <th>Required</th>
+                                                <th>Description</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <tr>
+                                                <td><code>video_url</code></td>
+                                                <td>string</td>
+                                                <td>Yes</td>
+                                                <td>URL of the video file (supports MP4, MOV, AVI, MKV, WebM, FLV, WMV)</td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+
+                                <h6 class="mt-4 mb-3">Example Request</h6>
+                                <div class="code-block">
+                                    <pre><code class="language-bash">curl -X POST "https://www.ffmpegapi.net/api/get_last_frame_image" \
+     -H "X-API-Key: YOUR_API_KEY" \
+     -H "Content-Type: application/json" \
+     -d '{"video_url": "https://example.com/video.mp4"}'</code></pre>
+                                </div>
+
+                                <h6 class="mt-4 mb-3">Success Response</h6>
+                                <div class="code-block">
+                                    <pre><code class="language-json">{
+  "success": true,
+  "message": "Last frame extracted successfully",
+  "image_url": "https://www.ffmpegapi.net/api/storage/abc123_frame.jpg",
+  "download_url": "https://www.ffmpegapi.net/api/storage/abc123_frame.jpg",
+  "filename": "abc123_frame.jpg"
+}</code></pre>
+                                </div>
+
+                                <h6 class="mt-4 mb-3">Error Response</h6>
+                                <div class="code-block">
+                                    <pre><code class="language-json">{
+  "success": false,
+  "error": "video_url is required"
+}</code></pre>
+                                </div>
+
+                                <h6 class="mt-4 mb-3">Notes</h6>
+                                <ul>
+                                    <li><strong>Format:</strong> Output is JPEG. Supports common video formats (MP4, MOV, AVI, MKV, WebM, FLV, WMV)</li>
+                                    <li><strong>Seek:</strong> Last frame is taken at 0.1 seconds before the end of the video</li>
+                                    <li><strong>File size:</strong> Video URLs must be publicly accessible; consider file size limits for your plan</li>
+                                </ul>
+
+                                <h6 class="mt-4 mb-3">Code Examples</h6>
+                                <ul class="nav nav-pills mb-3" id="lastFrameExampleTabs" role="tablist">
+                                    <li class="nav-item" role="presentation">
+                                        <button class="nav-link active" id="lastframe-curl-tab" data-bs-toggle="pill" data-bs-target="#lastframe-curl" type="button" role="tab">cURL</button>
+                                    </li>
+                                    <li class="nav-item" role="presentation">
+                                        <button class="nav-link" id="lastframe-python-tab" data-bs-toggle="pill" data-bs-target="#lastframe-python" type="button" role="tab">Python</button>
+                                    </li>
+                                    <li class="nav-item" role="presentation">
+                                        <button class="nav-link" id="lastframe-javascript-tab" data-bs-toggle="pill" data-bs-target="#lastframe-javascript" type="button" role="tab">JavaScript</button>
+                                    </li>
+                                    <li class="nav-item" role="presentation">
+                                        <button class="nav-link" id="lastframe-php-tab" data-bs-toggle="pill" data-bs-target="#lastframe-php" type="button" role="tab">PHP</button>
+                                    </li>
+                                </ul>
+                                <div class="tab-content" id="lastFrameExampleContent">
+                                    <div class="tab-pane fade show active" id="lastframe-curl" role="tabpanel">
+                                        <div class="code-block">
+                                            <pre><code class="language-bash">curl -X POST "https://www.ffmpegapi.net/api/get_last_frame_image" \
+     -H "X-API-Key: YOUR_API_KEY" \
+     -H "Content-Type: application/json" \
+     -d '{"video_url": "https://example.com/video.mp4"}'</code></pre>
+                                        </div>
+                                    </div>
+                                    <div class="tab-pane fade" id="lastframe-python" role="tabpanel">
+                                        <div class="code-block">
+                                            <pre><code class="language-python">import requests
+
+url = "https://www.ffmpegapi.net/api/get_last_frame_image"
+headers = {"X-API-Key": "YOUR_API_KEY", "Content-Type": "application/json"}
+data = {"video_url": "https://example.com/video.mp4"}
+
+response = requests.post(url, headers=headers, json=data)
+result = response.json()
+
+if result["success"]:
+    print("Last frame image URL:", result["image_url"])
+else:
+    print("Error:", result["error"])</code></pre>
+                                        </div>
+                                    </div>
+                                    <div class="tab-pane fade" id="lastframe-javascript" role="tabpanel">
+                                        <div class="code-block">
+                                            <pre><code class="language-javascript">const response = await fetch('https://www.ffmpegapi.net/api/get_last_frame_image', {
+  method: 'POST',
+  headers: {
+    'X-API-Key': 'YOUR_API_KEY',
+    'Content-Type': 'application/json'
+  },
+  body: JSON.stringify({ video_url: 'https://example.com/video.mp4' })
+});
+const result = await response.json();
+
+if (result.success) {
+  console.log('Image URL:', result.image_url);
+} else {
+  console.error('Error:', result.error);
+}</code></pre>
+                                        </div>
+                                    </div>
+                                    <div class="tab-pane fade" id="lastframe-php" role="tabpanel">
+                                        <div class="code-block">
+                                            <pre><code class="language-php">$url = 'https://www.ffmpegapi.net/api/get_last_frame_image';
+$data = array('video_url' => 'https://example.com/video.mp4');
+$options = array(
+    'http' => array(
+        'header' => "X-API-Key: YOUR_API_KEY\r\nContent-Type: application/json\r\n",
+        'method' => 'POST',
+        'content' => json_encode($data)
+    )
+);
+$context = stream_context_create($options);
+$result = json_decode(file_get_contents($url, false, $context), true);
+
+if ($result['success']) {
+    echo "Image URL: " . $result['image_url'] . "\n";
 } else {
     echo "Error: " . $result['error'] . "\n";
 }</code></pre>
