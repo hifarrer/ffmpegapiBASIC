@@ -5109,6 +5109,35 @@ def get_video_duration(video_path):
         return None, str(e)
 
 
+def get_media_duration(media_path):
+    """Get media (audio or video) duration in seconds using ffprobe"""
+    try:
+        probe_cmd = [
+            'ffprobe',
+            '-v', 'quiet',
+            '-show_entries', 'format=duration',
+            '-of', 'csv=p=0',
+            media_path
+        ]
+        result = subprocess.run(probe_cmd, capture_output=True, text=True, timeout=30)
+        if result.returncode != 0:
+            logging.error(f"[GET_MEDIA_DURATION] FFprobe error: {result.stderr}")
+            return None, f"Unable to get media duration: {result.stderr}"
+        try:
+            duration = float(result.stdout.strip())
+        except ValueError:
+            logging.error(f"[GET_MEDIA_DURATION] Invalid duration value: {result.stdout.strip()}")
+            return None, "Invalid media file or unable to determine duration"
+        if duration <= 0:
+            return None, "Media file appears to have zero duration"
+        return duration, None
+    except subprocess.TimeoutExpired:
+        return None, "Media duration probe timed out"
+    except Exception as e:
+        logging.error(f"[GET_MEDIA_DURATION] Error: {str(e)}")
+        return None, str(e)
+
+
 def extract_frame_at_time(video_path, output_image_path, time_seconds):
     """Extract a single frame at the given time using FFmpeg. Returns (success, error_message)."""
     try:
@@ -5409,6 +5438,166 @@ def split_video():
             raise e
     except Exception as e:
         logging.error(f"[SPLIT_VIDEO] Error: {str(e)}", exc_info=True)
+        return jsonify({'success': False, 'error': f'Server error: {str(e)}'}), 500
+
+
+@app.route('/api/video_loop', methods=['POST'])
+@log_api_request
+@require_api_key
+def video_loop():
+    """API endpoint to loop a single video a specified number of times or to match an audio track length."""
+    api_key = request.headers.get('X-API-Key') or request.args.get('api_key')
+    logging.info(f"[VIDEO_LOOP] Request received from API key: {api_key[:20] if api_key else 'None'}...")
+
+    try:
+        import math
+
+        request_id = str(uuid.uuid4())
+
+        if request.is_json:
+            data = request.get_json()
+            video_url = data.get('video_url')
+            number_of_loops = data.get('number_of_loops')
+            audio_url = data.get('audio_url')
+        else:
+            video_url = request.form.get('video_url')
+            number_of_loops = request.form.get('number_of_loops')
+            audio_url = request.form.get('audio_url')
+
+        if not video_url or not str(video_url).strip():
+            return jsonify({'success': False, 'error': 'video_url is required'}), 400
+
+        video_url = str(video_url).strip()
+        audio_url = str(audio_url).strip() if audio_url else None
+
+        # Parse number_of_loops if provided
+        loops = None
+        if number_of_loops is not None and str(number_of_loops).strip() != '':
+            try:
+                loops = int(number_of_loops)
+                if loops <= 0:
+                    return jsonify({'success': False, 'error': 'number_of_loops must be a positive integer'}), 400
+            except (ValueError, TypeError):
+                return jsonify({'success': False, 'error': 'number_of_loops must be a valid integer'}), 400
+
+        # If neither loops nor audio_url is provided, we cannot determine loop count
+        if loops is None and not audio_url:
+            return jsonify({
+                'success': False,
+                'error': 'Either number_of_loops or audio_url must be provided'
+            }), 400
+
+        # Prepare local paths
+        video_ext = video_url.split('.')[-1].split('?')[0].lower() if '.' in video_url else 'mp4'
+        if video_ext not in ['mp4', 'mov', 'avi', 'mkv', 'webm', 'flv', 'wmv']:
+            video_ext = 'mp4'
+        video_filename = f"{request_id}_video.{video_ext}"
+        video_path = os.path.join(UPLOAD_FOLDER, video_filename)
+
+        success, message = download_file_from_url(video_url, video_path, "video")
+        if not success:
+            return jsonify({'success': False, 'error': message}), 400
+
+        audio_path = None
+        try:
+            # Download audio if provided
+            if audio_url:
+                audio_ext = audio_url.split('.')[-1].split('?')[0].lower() if '.' in audio_url else 'mp3'
+                if audio_ext not in ['mp3', 'wav', 'm4a', 'aac', 'flac', 'ogg']:
+                    audio_ext = 'mp3'
+                audio_filename = f"{request_id}_audio.{audio_ext}"
+                audio_path = os.path.join(UPLOAD_FOLDER, audio_filename)
+
+                success, message = download_file_from_url(audio_url, audio_path, "audio")
+                if not success:
+                    cleanup_file(video_path)
+                    return jsonify({'success': False, 'error': message}), 400
+
+            # Determine number of loops if not explicitly provided and audio is present
+            video_duration, err = get_video_duration(video_path)
+            if err is not None:
+                cleanup_file(video_path)
+                if audio_path:
+                    cleanup_file(audio_path)
+                return jsonify({'success': False, 'error': err}), 400
+
+            audio_duration = None
+            if loops is None and audio_path:
+                audio_duration, audio_err = get_media_duration(audio_path)
+                if audio_err is not None:
+                    cleanup_file(video_path)
+                    cleanup_file(audio_path)
+                    return jsonify({'success': False, 'error': audio_err}), 400
+
+                if video_duration <= 0:
+                    cleanup_file(video_path)
+                    cleanup_file(audio_path)
+                    return jsonify({'success': False, 'error': 'Video duration must be greater than zero'}), 400
+
+                loops = max(1, int(math.ceil(audio_duration / video_duration)))
+
+            # At this point loops must be set
+            if loops is None:
+                # This should not happen due to earlier checks, but guard anyway
+                cleanup_file(video_path)
+                if audio_path:
+                    cleanup_file(audio_path)
+                return jsonify({
+                    'success': False,
+                    'error': 'Unable to determine number_of_loops'
+                }), 400
+
+            # Prepare list of video paths repeated loops times
+            video_paths = [video_path] * loops
+
+            # Generate output filename
+            output_filename = f"{request_id}_video_loop.mp4"
+            output_path = os.path.join(OUTPUT_FOLDER, output_filename)
+
+            success, merge_message = merge_videos_with_ffmpeg(video_paths, output_path, audio_path, dimensions=None)
+
+            # Cleanup downloaded inputs
+            cleanup_file(video_path)
+            if audio_path:
+                cleanup_file(audio_path)
+
+            if not success:
+                if os.path.exists(output_path):
+                    cleanup_file(output_path)
+                return jsonify({'success': False, 'error': merge_message or 'Video loop processing failed'}), 500
+
+            # Upload to storage for persistence
+            storage_url = upload_to_storage(output_path, output_filename)
+            if storage_url:
+                cleanup_file(output_path)
+                download_url = storage_url
+            else:
+                if os.environ.get('REPLIT_DEPLOYMENT'):
+                    download_url = f"https://ffmpegapi.net/download/{output_filename}"
+                elif os.environ.get('REPLIT_DEV_DOMAIN'):
+                    download_url = f"https://{os.environ['REPLIT_DEV_DOMAIN']}/download/{output_filename}"
+                else:
+                    download_url = url_for('download_file', filename=output_filename, _external=True)
+
+            estimated_total_duration = video_duration * loops if video_duration is not None else None
+
+            return jsonify({
+                'success': True,
+                'message': merge_message or 'Video loop created successfully',
+                'download_url': download_url,
+                'filename': output_filename,
+                'loops': loops,
+                'video_duration_seconds': video_duration,
+                'audio_duration_seconds': audio_duration,
+                'estimated_total_duration_seconds': estimated_total_duration
+            })
+        except Exception as e:
+            cleanup_file(video_path)
+            if audio_path:
+                cleanup_file(audio_path)
+            raise e
+    except Exception as e:
+        logging.error(f"[VIDEO_LOOP] Error: {str(e)}", exc_info=True)
         return jsonify({'success': False, 'error': f'Server error: {str(e)}'}), 500
 
 

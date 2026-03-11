@@ -112,6 +112,7 @@
                                 <a class="toc-link" href="#endpoints">API Endpoints</a>
                                 <a class="toc-link ms-3" href="#merge-image-audio">Image & Audio Merge</a>
                                 <a class="toc-link ms-3" href="#merge-videos">Video Merge</a>
+                                <a class="toc-link ms-3" href="#video-loop">Video Loop</a>
                                 <a class="toc-link ms-3" href="#picture-in-picture">Picture in Picture</a>
                                 <a class="toc-link ms-3" href="#add-subtitles">Add Subtitles</a>
                                 <a class="toc-link ms-3" href="#split-audio">Split Audio</a>
@@ -147,7 +148,7 @@
                 <!-- Overview -->
                 <section id="overview" class="mb-5">
                     <h2><i class="fas fa-info-circle me-2"></i>Overview</h2>
-                    <p>The FFMPEG Video Merger API provides eight powerful video processing capabilities:</p>
+                    <p>The FFMPEG Video Merger API provides nine powerful video processing capabilities:</p>
                     
                     <div class="row">
                         <div class="col-md-4 mb-3">
@@ -228,6 +229,15 @@
                                     <i class="fas fa-mobile-alt fa-2x text-primary mb-3"></i>
                                     <h5>Convert to Vertical</h5>
                                     <p class="small">Convert horizontal videos to vertical format (3:4 or 9:16)</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-3 mb-3">
+                            <div class="card h-100">
+                                <div class="card-body text-center">
+                                    <i class="fas fa-sync-alt fa-2x text-primary mb-3"></i>
+                                    <h5>Video Loop</h5>
+                                    <p class="small">Repeat a single video multiple times or automatically to match an audio track length</p>
                                 </div>
                             </div>
                         </div>
@@ -568,6 +578,104 @@
   "status_url": "https://www.ffmpegapi.net/api/job/550e8400-e29b-41d4-a716-446655440000/status"
 }</code></pre>
                                 </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Video Loop -->
+                    <div id="video-loop" class="api-endpoint">
+                        <div class="card">
+                            <div class="card-header">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <h4 class="mb-0">Video Loop</h4>
+                                    <span class="method-badge method-post">POST</span>
+                                </div>
+                                <code class="text-muted">/api/video_loop</code>
+                            </div>
+                            <div class="card-body">
+                                <p>Create a looping video from a single video URL. You can either specify an explicit number of loops or let the API estimate how many repetitions are needed to match a given audio track length.</p>
+
+                                <h6>Request Format</h6>
+                                <p><strong>Content-Type:</strong> <code>application/json</code> (form data is also supported)</p>
+
+                                <h6 class="mt-4 mb-3">Request Parameters</h6>
+                                <div class="table-responsive">
+                                    <table class="table table-dark table-striped">
+                                        <thead>
+                                            <tr>
+                                                <th>Parameter</th>
+                                                <th>Type</th>
+                                                <th>Required</th>
+                                                <th>Description</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <tr>
+                                                <td><code>video_url</code></td>
+                                                <td>string</td>
+                                                <td>Yes</td>
+                                                <td>URL of the video to loop (supports MP4, MOV, AVI, MKV, WebM, FLV, WMV)</td>
+                                            </tr>
+                                            <tr>
+                                                <td><code>number_of_loops</code></td>
+                                                <td>integer</td>
+                                                <td>No</td>
+                                                <td>Positive integer specifying how many times to repeat the video. If provided, this value is used directly.</td>
+                                            </tr>
+                                            <tr>
+                                                <td><code>audio_url</code></td>
+                                                <td>string</td>
+                                                <td>No*</td>
+                                                <td>Optional audio track URL. If <code>number_of_loops</code> is omitted and only <code>audio_url</code> is provided, the API estimates how many video loops are needed so that the final video approximately matches the audio duration (e.g. 10s video + 60s audio → 6 loops).</td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+
+                                <div class="alert alert-info mt-3">
+                                    <i class="fas fa-info-circle me-2"></i>
+                                    <strong>Looping logic:</strong> If <code>number_of_loops</code> is present, that value is used. If it is omitted but <code>audio_url</code> is provided, the API computes <code>ceil(audio_duration / video_duration)</code> and uses that as the loop count.
+                                </div>
+
+                                <h6 class="mt-4 mb-3">Example Request (explicit loops)</h6>
+                                <div class="code-block p-3">
+<pre><code class="language-bash">curl -X POST "https://www.ffmpegapi.net/api/video_loop" \
+  -H "Content-Type: application/json" \
+  -H "X-API-Key: your_api_key_here" \
+  -d '{
+    "video_url": "https://example.com/clip.mp4",
+    "number_of_loops": 5
+  }'</code></pre>
+                                </div>
+
+                                <h6 class="mt-4 mb-3">Example Request (match audio length)</h6>
+                                <div class="code-block p-3">
+<pre><code class="language-bash">curl -X POST "https://www.ffmpegapi.net/api/video_loop" \
+  -H "Content-Type: application/json" \
+  -H "X-API-Key: your_api_key_here" \
+  -d '{
+    "video_url": "https://example.com/clip.mp4",
+    "audio_url": "https://example.com/music.mp3"
+  }'</code></pre>
+                                </div>
+
+                                <h6 class="mt-4 mb-3">Success Response</h6>
+                                <div class="code-block p-3">
+<pre><code class="language-json">{
+  "success": true,
+  "message": "Video loop created successfully",
+  "download_url": "https://www.ffmpegapi.net/download/looped_video.mp4",
+  "filename": "550e8400-e29b-41d4-a716-446655440000_video_loop.mp4",
+  "loops": 6,
+  "video_duration_seconds": 10.0,
+  "audio_duration_seconds": 60.0,
+  "estimated_total_duration_seconds": 60.0
+}</code></pre>
+                                </div>
+
+                                <p class="small text-muted mt-2">
+                                    <strong>Note:</strong> Durations are estimated from ffprobe and may vary slightly depending on the source files.
+                                </p>
                             </div>
                         </div>
                     </div>
@@ -2845,8 +2953,19 @@ if (result.success) {
   -d '{
     "video_urls": [
       "https://example.com/video1.mp4",
-      "https://example.com/video2.mp4"
+                              "https://example.com/video2.mp4"
     ]
+  }'</code></pre>
+                            </div>
+
+                            <h5>Video Loop</h5>
+                            <div class="code-block p-3 mb-4">
+                                <pre><code class="language-bash">curl -X POST "https://www.ffmpegapi.net/api/video_loop" \
+  -H "Content-Type: application/json" \
+  -H "X-API-Key: your_api_key_here" \
+  -d '{
+    "video_url": "https://example.com/clip.mp4",
+    "audio_url": "https://example.com/music.mp3"
   }'</code></pre>
                             </div>
 
@@ -2911,6 +3030,31 @@ if response.status_code == 200:
     result = response.json()
     download_url = result["download_url"]
     print(f"Videos merged: {download_url}")
+else:
+    print(f"Error: {response.json()['error']}")</code></pre>
+                            </div>
+
+                            <h5>Video Loop</h5>
+                            <div class="code-block p-3 mb-4">
+                                <pre><code class="language-python">import requests
+import json
+
+url = "https://www.ffmpegapi.net/api/video_loop"
+headers = {
+    "Content-Type": "application/json",
+    "X-API-Key": "your_api_key_here"
+}
+data = {
+    "video_url": "https://example.com/clip.mp4",
+    "number_of_loops": 6
+}
+
+response = requests.post(url, headers=headers, json=data)
+
+if response.status_code == 200:
+    result = response.json()
+    print(f"Looped video URL: {result['download_url']}")
+    print(f"Loops: {result['loops']}")
 else:
     print(f"Error: {response.json()['error']}")</code></pre>
                             </div>
@@ -2988,7 +3132,33 @@ const response = await fetch('https://www.ffmpegapi.net/api/merge_videos', {
 const result = await response.json();
 
 if (result.success) {
-    console.log('Videos merged:', result.download_url);
+  console.log('Videos merged:', result.download_url);
+} else {
+  console.error('Error:', result.error);
+}</code></pre>
+                            </div>
+
+                            <h5>Video Loop</h5>
+                            <div class="code-block p-3 mb-4">
+                                <pre><code class="language-javascript">const data = {
+    video_url: 'https://example.com/clip.mp4',
+    audio_url: 'https://example.com/music.mp3'
+};
+
+const response = await fetch('https://www.ffmpegapi.net/api/video_loop', {
+    method: 'POST',
+    headers: {
+        'Content-Type': 'application/json',
+        'X-API-Key': 'your_api_key_here'
+    },
+    body: JSON.stringify(data)
+});
+
+const result = await response.json();
+
+if (result.success) {
+    console.log('Looped video URL:', result.download_url);
+    console.log('Loops:', result.loops);
 } else {
     console.error('Error:', result.error);
 }</code></pre>

@@ -4,6 +4,7 @@ class VideoMerger {
     constructor() {
         this.initializeImageAudioTab();
         this.initializeVideosTab();
+        this.initializeVideoLoopTab();
         this.initializePipTab();
         this.initializeSubtitlesTab();
         this.initializeSplitAudioTab();
@@ -88,6 +89,31 @@ class VideoMerger {
         // Initial validation
         this.validateVideosForm();
         this.setupVideoUrlEventListeners();
+    }
+
+    initializeVideoLoopTab() {
+        this.videoLoopForm = document.getElementById('videoLoopForm');
+        if (!this.videoLoopForm) {
+            return;
+        }
+
+        this.videoLoopSubmitBtn = document.getElementById('videoLoopSubmitBtn');
+        this.videoLoopProgressContainer = document.getElementById('videoLoopProgressContainer');
+        this.videoLoopAlertContainer = document.getElementById('videoLoopAlertContainer');
+        this.videoLoopResultContainer = document.getElementById('videoLoopResultContainer');
+        this.videoLoopDownloadBtn = document.getElementById('videoLoopDownloadBtn');
+        this.videoLoopResetBtn = document.getElementById('videoLoopResetBtn');
+        this.videoLoopDetails = document.getElementById('videoLoopDetails');
+        this.videoLoopFilename = null;
+
+        this.videoLoopForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            this.handleVideoLoopSubmit();
+        });
+
+        this.videoLoopResetBtn.addEventListener('click', () => {
+            this.resetVideoLoopForm();
+        });
     }
 
     initializePipTab() {
@@ -218,6 +244,87 @@ class VideoMerger {
         }
     }
 
+    async handleVideoLoopSubmit() {
+        const videoUrlInput = document.getElementById('videoLoopVideoUrl');
+        const loopsInput = document.getElementById('videoLoopLoops');
+        const audioUrlInput = document.getElementById('videoLoopAudioUrl');
+
+        const video_url = videoUrlInput.value.trim();
+        const number_of_loops_raw = loopsInput.value.trim();
+        const audio_url = audioUrlInput.value.trim();
+
+        if (!video_url) {
+            this.showVideoLoopAlert('danger', 'Video URL is required.');
+            return;
+        }
+
+        const payload = { video_url };
+
+        if (number_of_loops_raw !== '') {
+            const parsed = parseInt(number_of_loops_raw, 10);
+            if (isNaN(parsed) || parsed <= 0) {
+                this.showVideoLoopAlert('danger', 'Number of loops must be a positive integer.');
+                return;
+            }
+            payload.number_of_loops = parsed;
+        } else if (!audio_url) {
+            this.showVideoLoopAlert('danger', 'Either number of loops or an audio URL is required.');
+            return;
+        }
+
+        if (audio_url) {
+            payload.audio_url = audio_url;
+        }
+
+        this.showVideoLoopProgress();
+        this.hideVideoLoopAlert();
+        this.hideVideoLoopResult();
+
+        try {
+            const response = await fetch('/api/video_loop', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-API-Key': window.API_KEY
+                },
+                body: JSON.stringify(payload)
+            });
+
+            const result = await response.json();
+
+            if (result.success) {
+                this.videoLoopFilename = result.filename;
+                this.videoLoopDownloadBtn.href = result.download_url;
+                this.videoLoopDownloadBtn.download = result.filename;
+
+                const loops = result.loops;
+                const videoDur = result.video_duration_seconds;
+                const audioDur = result.audio_duration_seconds;
+                const estDur = result.estimated_total_duration_seconds;
+
+                const parts = [];
+                if (typeof loops === 'number') parts.push(`Loops: ${loops}`);
+                if (typeof videoDur === 'number') parts.push(`Video duration: ${videoDur.toFixed(2)}s`);
+                if (typeof audioDur === 'number') parts.push(`Audio duration: ${audioDur.toFixed(2)}s`);
+                if (typeof estDur === 'number') parts.push(`Estimated looped duration: ${estDur.toFixed(2)}s`);
+
+                if (this.videoLoopDetails) {
+                    this.videoLoopDetails.textContent = parts.join(' • ');
+                }
+
+                this.showVideoLoopResult();
+                this.showVideoLoopAlert('success', 'Loop video created successfully.');
+            } else {
+                this.showVideoLoopAlert('danger', `Error: ${result.error}`);
+            }
+        } catch (error) {
+            console.error('Video loop error:', error);
+            this.showVideoLoopAlert('danger', `An error occurred: ${error.message}`);
+        } finally {
+            this.hideVideoLoopProgress();
+        }
+    }
+
     async handleVideosSubmit() {
         const videoUrls = Array.from(document.querySelectorAll('.video-url'))
             .map(input => input.value.trim())
@@ -301,6 +408,65 @@ class VideoMerger {
         // Add event listeners to new elements
         this.setupVideoUrlEventListeners();
         this.validateVideosForm();
+    }
+
+    resetVideoLoopForm() {
+        if (!this.videoLoopForm) return;
+        this.videoLoopForm.reset();
+        this.hideVideoLoopAlert();
+        this.hideVideoLoopResult();
+        this.hideVideoLoopProgress();
+        this.videoLoopFilename = null;
+        if (this.videoLoopDetails) {
+            this.videoLoopDetails.textContent = '';
+        }
+    }
+
+    showVideoLoopProgress() {
+        if (this.videoLoopProgressContainer) {
+            this.videoLoopProgressContainer.style.display = 'block';
+        }
+        if (this.videoLoopSubmitBtn) {
+            this.videoLoopSubmitBtn.disabled = true;
+        }
+    }
+
+    hideVideoLoopProgress() {
+        if (this.videoLoopProgressContainer) {
+            this.videoLoopProgressContainer.style.display = 'none';
+        }
+        if (this.videoLoopSubmitBtn) {
+            this.videoLoopSubmitBtn.disabled = false;
+        }
+    }
+
+    showVideoLoopAlert(type, message) {
+        if (!this.videoLoopAlertContainer) return;
+        this.videoLoopAlertContainer.innerHTML = `
+            <div class="alert alert-${type} alert-dismissible fade show" role="alert">
+                <i class="fas fa-${this.getAlertIcon(type)} me-2"></i>
+                ${message}
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+        `;
+    }
+
+    hideVideoLoopAlert() {
+        if (this.videoLoopAlertContainer) {
+            this.videoLoopAlertContainer.innerHTML = '';
+        }
+    }
+
+    showVideoLoopResult() {
+        if (this.videoLoopResultContainer) {
+            this.videoLoopResultContainer.style.display = 'block';
+        }
+    }
+
+    hideVideoLoopResult() {
+        if (this.videoLoopResultContainer) {
+            this.videoLoopResultContainer.style.display = 'none';
+        }
     }
 
     setupVideoUrlEventListeners() {
