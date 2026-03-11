@@ -591,6 +591,16 @@
                                         <div class="form-text">If provided without a loop count, the API will repeat the video until it approximately matches this audio's length.</div>
                                     </div>
 
+                                    <div class="mb-4">
+                                        <label for="videoLoopWatermarkUrl" class="form-label">
+                                            <i class="fas fa-image me-2"></i>
+                                            Optional Watermark URL
+                                        </label>
+                                        <input type="url" class="form-control" id="videoLoopWatermarkUrl" name="watermark_url"
+                                               placeholder="https://example.com/logo.png">
+                                        <div class="form-text">Logo image URL to add in the bottom-right corner of the video (e.g. PNG, JPG).</div>
+                                    </div>
+
                                     <div class="d-grid">
                                         <button type="submit" class="btn btn-primary btn-lg" id="videoLoopSubmitBtn">
                                             <i class="fas fa-play me-2"></i>

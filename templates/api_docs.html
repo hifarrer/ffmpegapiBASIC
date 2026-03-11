@@ -628,6 +628,12 @@
                                                 <td>No*</td>
                                                 <td>Optional audio track URL. If <code>number_of_loops</code> is omitted and only <code>audio_url</code> is provided, the API estimates how many video loops are needed so that the final video approximately matches the audio duration (e.g. 10s video + 60s audio → 6 loops).</td>
                                             </tr>
+                                            <tr>
+                                                <td><code>watermark_url</code></td>
+                                                <td>string</td>
+                                                <td>No</td>
+                                                <td>Optional image URL for a watermark logo. The image is scaled and placed in the bottom-right corner of the final video (same behavior as the Video Merge endpoint).</td>
+                                            </tr>
                                         </tbody>
                                     </table>
                                 </div>
@@ -656,6 +662,18 @@
   -d '{
     "video_url": "https://example.com/clip.mp4",
     "audio_url": "https://example.com/music.mp3"
+  }'</code></pre>
+                                </div>
+
+                                <h6 class="mt-4 mb-3">Example Request (with watermark)</h6>
+                                <div class="code-block p-3">
+<pre><code class="language-bash">curl -X POST "https://www.ffmpegapi.net/api/video_loop" \
+  -H "Content-Type: application/json" \
+  -H "X-API-Key: your_api_key_here" \
+  -d '{
+    "video_url": "https://example.com/clip.mp4",
+    "number_of_loops": 4,
+    "watermark_url": "https://example.com/logo.png"
   }'</code></pre>
                                 </div>
 

@@ -248,10 +248,12 @@ class VideoMerger {
         const videoUrlInput = document.getElementById('videoLoopVideoUrl');
         const loopsInput = document.getElementById('videoLoopLoops');
         const audioUrlInput = document.getElementById('videoLoopAudioUrl');
+        const watermarkUrlInput = document.getElementById('videoLoopWatermarkUrl');
 
         const video_url = videoUrlInput.value.trim();
         const number_of_loops_raw = loopsInput.value.trim();
         const audio_url = audioUrlInput.value.trim();
+        const watermark_url = watermarkUrlInput ? watermarkUrlInput.value.trim() : '';
 
         if (!video_url) {
             this.showVideoLoopAlert('danger', 'Video URL is required.');
@@ -274,6 +276,9 @@ class VideoMerger {
 
         if (audio_url) {
             payload.audio_url = audio_url;
+        }
+        if (watermark_url) {
+            payload.watermark_url = watermark_url;
         }
 
         this.showVideoLoopProgress();

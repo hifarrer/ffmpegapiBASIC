@@ -5498,16 +5498,19 @@ def video_loop():
             video_url = data.get('video_url')
             number_of_loops = data.get('number_of_loops')
             audio_url = data.get('audio_url')
+            watermark_url = data.get('watermark_url')
         else:
             video_url = request.form.get('video_url')
             number_of_loops = request.form.get('number_of_loops')
             audio_url = request.form.get('audio_url')
+            watermark_url = request.form.get('watermark_url')
 
         if not video_url or not str(video_url).strip():
             return jsonify({'success': False, 'error': 'video_url is required'}), 400
 
         video_url = str(video_url).strip()
         audio_url = str(audio_url).strip() if audio_url else None
+        watermark_url = str(watermark_url).strip() if watermark_url else None
 
         # Parse number_of_loops if provided
         loops = None
@@ -5548,6 +5551,7 @@ def video_loop():
             return jsonify({'success': False, 'error': message}), 400
 
         audio_path = None
+        watermark_path = None
         try:
             # Download audio if provided
             if audio_url:
@@ -5571,12 +5575,40 @@ def video_loop():
                     cleanup_file(video_path)
                     return jsonify({'success': False, 'error': message}), 400
 
+            # Download watermark if provided
+            watermark_path = None
+            if watermark_url:
+                watermark_ext = watermark_url.split('.')[-1].split('?')[0].lower() if '.' in watermark_url else 'png'
+                if watermark_ext not in ['png', 'jpg', 'jpeg', 'webp']:
+                    watermark_ext = 'png'
+                watermark_filename = f"{request_id}_watermark.{watermark_ext}"
+                watermark_path = os.path.join(UPLOAD_FOLDER, watermark_filename)
+                resolved_wm, local_wm_path = resolve_local_download_url(watermark_url)
+                if resolved_wm:
+                    try:
+                        shutil.copy2(local_wm_path, watermark_path)
+                        logging.info(f"[VIDEO_LOOP] Using local file for watermark: {local_wm_path}")
+                    except Exception as e:
+                        cleanup_file(video_path)
+                        if audio_path:
+                            cleanup_file(audio_path)
+                        return jsonify({'success': False, 'error': f'Failed to copy watermark: {str(e)}'}), 400
+                else:
+                    success, message = download_file_from_url(watermark_url, watermark_path, "watermark image")
+                    if not success:
+                        cleanup_file(video_path)
+                        if audio_path:
+                            cleanup_file(audio_path)
+                        return jsonify({'success': False, 'error': f'Failed to download watermark: {message}'}), 400
+
             # Determine number of loops if not explicitly provided and audio is present
             video_duration, err = get_video_duration(video_path)
             if err is not None:
                 cleanup_file(video_path)
                 if audio_path:
                     cleanup_file(audio_path)
+                if watermark_path:
+                    cleanup_file(watermark_path)
                 return jsonify({'success': False, 'error': err}), 400
 
             audio_duration = None
@@ -5590,6 +5622,8 @@ def video_loop():
                 if video_duration <= 0:
                     cleanup_file(video_path)
                     cleanup_file(audio_path)
+                    if watermark_path:
+                        cleanup_file(watermark_path)
                     return jsonify({'success': False, 'error': 'Video duration must be greater than zero'}), 400
 
                 loops = max(1, int(math.ceil(audio_duration / video_duration)))
@@ -5600,6 +5634,8 @@ def video_loop():
                 cleanup_file(video_path)
                 if audio_path:
                     cleanup_file(audio_path)
+                if watermark_path:
+                    cleanup_file(watermark_path)
                 return jsonify({
                     'success': False,
                     'error': 'Unable to determine number_of_loops'
@@ -5622,7 +5658,31 @@ def video_loop():
             if not success:
                 if os.path.exists(output_path):
                     cleanup_file(output_path)
+                if watermark_path:
+                    cleanup_file(watermark_path)
                 return jsonify({'success': False, 'error': merge_message or 'Video loop processing failed'}), 500
+
+            # Add watermark if provided
+            if success and watermark_path:
+                watermarked_filename = f"{request_id}_video_loop_watermarked.mp4"
+                watermarked_output_path = os.path.join(OUTPUT_FOLDER, watermarked_filename)
+                watermark_success, watermark_message = add_watermark_with_ffmpeg(output_path, watermark_path, watermarked_output_path)
+                cleanup_file(watermark_path)
+                if watermark_success:
+                    cleanup_file(output_path)
+                    output_path = watermarked_output_path
+                    output_filename = watermarked_filename
+                    merge_message = "Video loop created with watermark successfully"
+                else:
+                    cleanup_file(watermarked_output_path)
+                    if watermark_path:
+                        cleanup_file(watermark_path)
+                    return jsonify({
+                        'success': False,
+                        'error': f'Video loop succeeded but watermark failed: {watermark_message}'
+                    }), 500
+            elif watermark_path:
+                cleanup_file(watermark_path)
 
             # Upload to storage for persistence
             storage_url = upload_to_storage(output_path, output_filename)
@@ -5653,6 +5713,8 @@ def video_loop():
             cleanup_file(video_path)
             if audio_path:
                 cleanup_file(audio_path)
+            if watermark_path:
+                cleanup_file(watermark_path)
             raise e
     except Exception as e:
         logging.error(f"[VIDEO_LOOP] Error: {str(e)}", exc_info=True)
