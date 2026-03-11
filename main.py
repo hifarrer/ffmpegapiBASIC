@@ -17,6 +17,7 @@ from werkzeug.exceptions import RequestEntityTooLarge
 from werkzeug.middleware.proxy_fix import ProxyFix
 import mimetypes
 import resend
+import shutil
 
 from models import db, User, ApiKey, SubscriptionPlan, StripeSettings, UserSubscription, SiteSettings, Job, ApiLog, SITE_DEFAULT_API_KEY
 import time
@@ -516,6 +517,42 @@ def download_file_from_url(url, output_path, file_type="file"):
     """Download any file from URL to local path"""
     return download_with_timeout(url, output_path, timeout=60, file_type=file_type)
 
+
+def resolve_local_download_url(url):
+    """If url points to our /download/ or /api/storage/ endpoint, resolve to local file path.
+    Returns (True, local_abspath) if found, else (False, None). Use this to avoid HTTP
+    download timeouts when video_loop or other endpoints use a previous output URL from the same server.
+    """
+    try:
+        from urllib.parse import urlparse
+        p = urlparse(url)
+        path = (p.path or '').strip('/')
+        if 'download/' in path or path.startswith('download'):
+            filename = path.split('download/')[-1] if 'download/' in path else path.replace('download', '', 1).lstrip('/')
+        elif 'api/storage/' in path or path.startswith('api/storage'):
+            filename = path.split('api/storage/')[-1] if 'api/storage/' in path else path.replace('api/storage', '', 1).lstrip('/')
+        else:
+            return False, None
+        filename = filename.split('?')[0]
+        if not filename:
+            return False, None
+        if '/' in filename:
+            parts = filename.split('/')
+            secure_name = '/'.join(secure_filename(part) for part in parts)
+        else:
+            secure_name = secure_filename(filename)
+        if not secure_name:
+            return False, None
+        for folder in (OUTPUT_FOLDER, UPLOAD_FOLDER):
+            full = os.path.abspath(os.path.join(folder, secure_name))
+            folder_abs = os.path.abspath(folder)
+            if full.startswith(folder_abs) and os.path.isfile(full):
+                return True, full
+        return False, None
+    except Exception as e:
+        logging.debug(f"resolve_local_download_url failed for {url}: {e}")
+        return False, None
+
 def get_resend_credentials():
     """Get Resend API credentials from Replit connector"""
     try:
@@ -867,28 +904,29 @@ def merge_videos_with_ffmpeg(video_paths, output_path, audio_path=None, dimensio
                     videos_with_audio.append(i)
             
             if videos_with_audio:
-                # When external audio is provided, completely ignore video audio
+                # When external audio is provided, completely ignore video audio and use external audio for full output
                 filter_complex = f"{video_concat}concat=n={num_videos}:v=1:a=0[outv]"
-                
+
                 cmd = [
                     'ffmpeg'
                 ] + inputs + [
                     '-i', audio_path,
                     '-filter_complex', filter_complex,
                     '-map', '[outv]',
-                    '-map', f'{num_videos}:a:0',  # Use only external audio
+                    '-map', f'{num_videos}:a:0',  # Use only external audio for full video
                     '-c:v', 'libx264',
                     '-c:a', 'aac',
+                    '-b:a', '192k',
                     '-preset', 'veryfast',
                     '-crf', '23',
-                    '-b:a', '192k',
+                    '-shortest',  # End when shortest stream ends so audio is in sync with video
                     '-y',
                     output_path
                 ]
             else:
                 # No videos have audio, just use custom audio
                 filter_complex = f"{video_concat}concat=n={num_videos}:v=1:a=0[outv]"
-                
+
                 cmd = [
                     'ffmpeg'
                 ] + inputs + [
@@ -898,9 +936,10 @@ def merge_videos_with_ffmpeg(video_paths, output_path, audio_path=None, dimensio
                     '-map', f'{num_videos}:a',
                     '-c:v', 'libx264',
                     '-c:a', 'aac',
+                    '-b:a', '192k',
                     '-preset', 'veryfast',
                     '-crf', '23',
-                    '-b:a', '192k',
+                    '-shortest',
                     '-y',
                     output_path
                 ]
@@ -5494,7 +5533,17 @@ def video_loop():
         video_filename = f"{request_id}_video.{video_ext}"
         video_path = os.path.join(UPLOAD_FOLDER, video_filename)
 
-        success, message = download_file_from_url(video_url, video_path, "video")
+        # Prefer local file copy when URL points to our own server to avoid timeout/self-request
+        resolved, local_path = resolve_local_download_url(video_url)
+        if resolved:
+            try:
+                shutil.copy2(local_path, video_path)
+                success, message = True, "Video copied from local storage"
+                logging.info(f"[VIDEO_LOOP] Using local file for video: {local_path}")
+            except Exception as e:
+                success, message = False, str(e)
+        else:
+            success, message = download_video_from_url(video_url, video_path)
         if not success:
             return jsonify({'success': False, 'error': message}), 400
 
@@ -5508,7 +5557,16 @@ def video_loop():
                 audio_filename = f"{request_id}_audio.{audio_ext}"
                 audio_path = os.path.join(UPLOAD_FOLDER, audio_filename)
 
-                success, message = download_file_from_url(audio_url, audio_path, "audio")
+                resolved_audio, local_audio_path = resolve_local_download_url(audio_url)
+                if resolved_audio:
+                    try:
+                        shutil.copy2(local_audio_path, audio_path)
+                        success, message = True, "Audio copied from local storage"
+                        logging.info(f"[VIDEO_LOOP] Using local file for audio: {local_audio_path}")
+                    except Exception as e:
+                        success, message = False, str(e)
+                else:
+                    success, message = download_file_from_url(audio_url, audio_path, "audio")
                 if not success:
                     cleanup_file(video_path)
                     return jsonify({'success': False, 'error': message}), 400
