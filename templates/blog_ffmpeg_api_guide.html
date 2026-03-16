@@ -39,7 +39,7 @@
 </div>
 
 <pre><code class="language-bash"># Example: Merge two videos with custom audio
-curl -X POST https://ffmpegapi.net/api/merge_videos \
+curl -X POST https://www.ffmpegapi.net/api/merge_videos \
   -H "X-API-Key: your_api_key_here" \
   -H "Content-Type: application/json" \
   -d '{
@@ -60,7 +60,7 @@ curl -X POST https://ffmpegapi.net/api/merge_videos \
 import requests
 
 response = requests.post(
-    'https://ffmpegapi.net/api/merge_image_audio',
+    'https://www.ffmpegapi.net/api/merge_image_audio',
     headers={'X-API-Key': 'your_api_key_here'},
     json={
         'image': 'https://example.com/cover.jpg',
@@ -90,7 +90,7 @@ print(f"Video URL: {result['download_url']}")
 </p>
 
 <pre><code class="language-javascript">// JavaScript Example
-const response = await fetch('https://ffmpegapi.net/api/add_subtitles', {
+const response = await fetch('https://www.ffmpegapi.net/api/add_subtitles', {
   method: 'POST',
   headers: {
     'X-API-Key': 'your_api_key_here',
@@ -145,7 +145,7 @@ console.log('Subtitled video:', result.download_url);
     Getting started with FFMPEG API is simple:
 </p>
 <ol>
-    <li><strong>Sign Up</strong> - Create a free account at <a href="https://ffmpegapi.net">ffmpegapi.net</a></li>
+    <li><strong>Sign Up</strong> - Create a free account at <a href="https://www.ffmpegapi.net">ffmpegapi.net</a></li>
     <li><strong>Get API Key</strong> - Generate your API key from the dashboard</li>
     <li><strong>Start Processing</strong> - Include your API key in the X-API-Key header</li>
 </ol>
