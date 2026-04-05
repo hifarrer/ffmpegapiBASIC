@@ -15,7 +15,8 @@ The FFMPEG API provides powerful video and audio processing capabilities through
 5. **Split Audio** - Split audio files into equal segments
 6. **Trim Audio** - Trim audio files to specific durations
 7. **Convert to Vertical** - Convert horizontal videos to vertical format (3:4 or 9:16)
-8. **Job Status** - Check status of asynchronous processing jobs
+8. **Convert video to GIF** - Encode a video as an animated GIF (optional chromakey transparency)
+9. **Job Status** - Check status of asynchronous processing jobs
 
 ---
 
@@ -472,7 +473,111 @@ curl -X POST "https://ffmpegapi.net/api/convert_to_vertical" \
 
 ---
 
-### 8. Job Status
+### 8. Convert video to GIF
+
+**Endpoint:** `POST /api/convert_video_to_gif`
+
+**Description:** Downloads a video from a URL and encodes it as an animated GIF using a palette for better quality. Audio is omitted. Optional **transparent background** uses FFmpeg **chromakey** (color-based keying): pixels near the chosen color become transparent. This works well for solid-color backdrops (for example greenscreen); it is not automatic background removal for arbitrary scenes.
+
+**Request Body:**
+```json
+{
+  "video_url": "https://example.com/clip.mp4",
+  "transparent_background": false,
+  "chromakey_color": "0x00FF00",
+  "fps": 10,
+  "max_width": 480
+}
+```
+
+**Parameters:**
+- `video_url` (required): URL of the source video (MP4, MOV, WebM, etc.)
+- `transparent_background` (optional): If `true`, apply chromakey before building the GIF palette (default: `false`)
+- `chromakey_color` (optional): Color to key out when `transparent_background` is true, as `0xRRGGBB`, `#RRGGBB`, or `RRGGBB` (default: `0x00FF00`)
+- `fps` (optional): Output frame rate, clamped between 1 and 30 (default: `10`)
+- `max_width` (optional): Maximum width in pixels; height scales proportionally, clamped between 64 and 1280 (default: `480`)
+
+**curl Example:**
+```bash
+curl -X POST "https://ffmpegapi.net/api/convert_video_to_gif" \
+  -H "X-API-Key: your_api_key_here" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "video_url": "https://example.com/clip.mp4",
+    "transparent_background": true,
+    "chromakey_color": "0x00FF00",
+    "fps": 10,
+    "max_width": 480
+  }'
+```
+
+**Python Example:**
+```python
+import requests
+
+url = "https://ffmpegapi.net/api/convert_video_to_gif"
+headers = {
+    "X-API-Key": "your_api_key_here",
+    "Content-Type": "application/json",
+}
+data = {
+    "video_url": "https://example.com/clip.mp4",
+    "transparent_background": False,
+    "fps": 10,
+    "max_width": 480,
+}
+response = requests.post(url, headers=headers, json=data)
+result = response.json()
+if result.get("success"):
+    print(result["download_url"])
+else:
+    print(result.get("error"))
+```
+
+**JavaScript Example:**
+```javascript
+const response = await fetch("https://ffmpegapi.net/api/convert_video_to_gif", {
+  method: "POST",
+  headers: {
+    "X-API-Key": "your_api_key_here",
+    "Content-Type": "application/json",
+  },
+  body: JSON.stringify({
+    video_url: "https://example.com/clip.mp4",
+    transparent_background: false,
+    fps: 10,
+    max_width: 480,
+  }),
+});
+const result = await response.json();
+if (result.success) {
+  console.log(result.download_url);
+} else {
+  console.error(result.error);
+}
+```
+
+**Success Response:**
+```json
+{
+  "success": true,
+  "message": "Video converted to GIF successfully",
+  "download_url": "https://ffmpegapi.net/api/storage/uuid_output.gif",
+  "filename": "uuid_output.gif"
+}
+```
+
+**Error Response:**
+```json
+{
+  "success": false,
+  "error": "GIF conversion failed: ..."
+}
+```
+
+---
+
+### 9. Job Status
 
 **Endpoint:** `GET /api/job/{job_id}/status`
 

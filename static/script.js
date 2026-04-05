@@ -16,6 +16,7 @@ class VideoMerger {
         this.initializeFirstFrameTab();
         this.initializeLastFrameTab();
         this.initializeConvertVerticalTab();
+        this.initializeConvertVideoToGifTab();
         this.initializeAutoCaptionTab();
         this.initializeTextOverlayTab();
     }
@@ -2179,6 +2180,154 @@ class VideoMerger {
 
     hideConvertVerticalResult() {
         this.convertVerticalResultContainer.style.display = 'none';
+    }
+
+    initializeConvertVideoToGifTab() {
+        this.convertVideoToGifForm = document.getElementById('convertVideoToGifForm');
+        if (!this.convertVideoToGifForm) {
+            return;
+        }
+
+        this.convertVideoToGifSubmitBtn = document.getElementById('convertVideoToGifSubmitBtn');
+        this.convertVideoToGifProgressContainer = document.getElementById('convertVideoToGifProgressContainer');
+        this.convertVideoToGifAlertContainer = document.getElementById('convertVideoToGifAlertContainer');
+        this.convertVideoToGifResultContainer = document.getElementById('convertVideoToGifResultContainer');
+        this.convertVideoToGifDownloadBtn = document.getElementById('convertVideoToGifDownloadBtn');
+        this.convertVideoToGifCleanupBtn = document.getElementById('convertVideoToGifCleanupBtn');
+        this.convertVideoToGifResetBtn = document.getElementById('convertVideoToGifResetBtn');
+        this.convertVideoToGifCurrentFilename = null;
+
+        this.convertVideoToGifForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            this.handleConvertVideoToGifSubmit();
+        });
+
+        this.convertVideoToGifCleanupBtn.addEventListener('click', () => {
+            this.handleConvertVideoToGifCleanup();
+        });
+
+        this.convertVideoToGifResetBtn.addEventListener('click', () => {
+            this.resetConvertVideoToGifForm();
+        });
+    }
+
+    async handleConvertVideoToGifSubmit() {
+        const jsonData = {
+            video_url: document.getElementById('convertVideoToGifVideoUrl').value.trim(),
+            transparent_background: document.getElementById('convertVideoToGifTransparent').checked,
+        };
+        const chroma = document.getElementById('convertVideoToGifChroma').value.trim();
+        if (chroma) {
+            jsonData.chromakey_color = chroma;
+        }
+        const fpsVal = document.getElementById('convertVideoToGifFps').value.trim();
+        if (fpsVal !== '') {
+            jsonData.fps = parseInt(fpsVal, 10);
+        }
+        const maxWVal = document.getElementById('convertVideoToGifMaxWidth').value.trim();
+        if (maxWVal !== '') {
+            jsonData.max_width = parseInt(maxWVal, 10);
+        }
+
+        this.showConvertVideoToGifProgress();
+        this.hideConvertVideoToGifAlert();
+        this.hideConvertVideoToGifResult();
+
+        try {
+            const response = await fetch('/api/convert_video_to_gif', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-API-Key': window.API_KEY,
+                },
+                body: JSON.stringify(jsonData),
+            });
+
+            const result = await response.json();
+
+            if (result.success) {
+                this.convertVideoToGifDownloadBtn.href = result.download_url;
+                this.convertVideoToGifDownloadBtn.download = result.filename;
+                this.convertVideoToGifCurrentFilename = result.filename;
+
+                const messageElement = document.getElementById('convertVideoToGifResultMessage');
+                messageElement.textContent = result.message || 'Your GIF is ready to download.';
+
+                this.showConvertVideoToGifResult();
+                this.showConvertVideoToGifAlert('success', result.message || 'GIF created successfully.');
+            } else {
+                this.showConvertVideoToGifAlert('danger', `Error: ${result.error}`);
+            }
+        } catch (error) {
+            console.error('Convert video to GIF error:', error);
+            this.showConvertVideoToGifAlert('danger', `An error occurred: ${error.message}`);
+        } finally {
+            this.hideConvertVideoToGifProgress();
+        }
+    }
+
+    async handleConvertVideoToGifCleanup() {
+        if (!this.convertVideoToGifCurrentFilename) return;
+
+        try {
+            const response = await fetch(`/api/cleanup/${this.convertVideoToGifCurrentFilename}`, {
+                method: 'DELETE',
+                headers: {
+                    'X-API-Key': window.API_KEY,
+                },
+            });
+
+            if (response.ok) {
+                this.showConvertVideoToGifAlert('info', 'File deleted from server successfully');
+                this.convertVideoToGifCurrentFilename = null;
+                this.hideConvertVideoToGifResult();
+            } else {
+                this.showConvertVideoToGifAlert('warning', 'File cleanup failed, but it will be automatically deleted after 24 hours');
+            }
+        } catch (error) {
+            console.error('Cleanup error:', error);
+            this.showConvertVideoToGifAlert('warning', 'File cleanup failed, but it will be automatically deleted after 24 hours');
+        }
+    }
+
+    resetConvertVideoToGifForm() {
+        this.convertVideoToGifForm.reset();
+        this.hideConvertVideoToGifAlert();
+        this.hideConvertVideoToGifResult();
+        this.hideConvertVideoToGifProgress();
+        this.convertVideoToGifCurrentFilename = null;
+    }
+
+    showConvertVideoToGifProgress() {
+        this.convertVideoToGifProgressContainer.style.display = 'block';
+        this.convertVideoToGifSubmitBtn.disabled = true;
+    }
+
+    hideConvertVideoToGifProgress() {
+        this.convertVideoToGifProgressContainer.style.display = 'none';
+        this.convertVideoToGifSubmitBtn.disabled = false;
+    }
+
+    showConvertVideoToGifAlert(type, message) {
+        this.convertVideoToGifAlertContainer.innerHTML = `
+            <div class="alert alert-${type} alert-dismissible fade show" role="alert">
+                <i class="fas fa-${this.getAlertIcon(type)} me-2"></i>
+                ${message}
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+        `;
+    }
+
+    hideConvertVideoToGifAlert() {
+        this.convertVideoToGifAlertContainer.innerHTML = '';
+    }
+
+    showConvertVideoToGifResult() {
+        this.convertVideoToGifResultContainer.style.display = 'block';
+    }
+
+    hideConvertVideoToGifResult() {
+        this.convertVideoToGifResultContainer.style.display = 'none';
     }
 
     initializeAutoCaptionTab() {

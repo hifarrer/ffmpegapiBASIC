@@ -88,6 +88,7 @@
         "Audio splitting and trimming",
         "Video trimming by start and end time",
         "Horizontal to vertical video conversion",
+        "Video to animated GIF conversion with optional transparency",
         "Image and audio to video merger",
         "RESTful API with comprehensive documentation"
       ]
@@ -1720,6 +1721,121 @@
                                                 <button id="convertVerticalResetBtn" class="btn btn-outline-primary">
                                                     <i class="fas fa-plus me-2"></i>
                                                     Convert Another Video
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Convert video to GIF -->
+                    <div class="accordion-item">
+                        <h2 class="accordion-header" id="convertVideoToGifHeading">
+                            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse"
+                                    data-bs-target="#convertVideoToGifCollapse" aria-expanded="false" aria-controls="convertVideoToGifCollapse">
+                                <i class="fas fa-film me-2"></i>
+                                Convert video to GIF
+                            </button>
+                        </h2>
+                        <div id="convertVideoToGifCollapse" class="accordion-collapse collapse"
+                             aria-labelledby="convertVideoToGifHeading" data-bs-parent="#videoProcessingAccordion">
+                            <div class="accordion-body">
+                                <p class="text-muted mb-4">
+                                    <i class="fas fa-info-circle me-1"></i>
+                                    Turn a video URL into an animated GIF. Optional transparent background uses chromakey (solid-color backdrop removal), not AI matting.
+                                </p>
+
+                                <form id="convertVideoToGifForm">
+                                    <div class="mb-4">
+                                        <label for="convertVideoToGifVideoUrl" class="form-label">
+                                            <i class="fas fa-video me-2"></i>
+                                            Video URL
+                                        </label>
+                                        <input type="url" class="form-control" id="convertVideoToGifVideoUrl" name="video_url"
+                                               placeholder="https://example.com/clip.mp4" required>
+                                        <div class="form-text">Source video URL (MP4, WebM, etc.)</div>
+                                    </div>
+
+                                    <div class="mb-4 form-check">
+                                        <input type="checkbox" class="form-check-input" id="convertVideoToGifTransparent" name="transparent_background" value="true">
+                                        <label class="form-check-label" for="convertVideoToGifTransparent">
+                                            Transparent background (chromakey)
+                                        </label>
+                                        <div class="form-text">Removes pixels near the key color below; best for greenscreen or flat backdrops.</div>
+                                    </div>
+
+                                    <div class="mb-4">
+                                        <label for="convertVideoToGifChroma" class="form-label">
+                                            <i class="fas fa-palette me-2"></i>
+                                            Chromakey color (optional)
+                                        </label>
+                                        <input type="text" class="form-control" id="convertVideoToGifChroma" name="chromakey_color"
+                                               placeholder="0x00FF00 or #FFFFFF">
+                                        <div class="form-text">Used when transparent background is enabled. Default greenscreen <code>0x00FF00</code>.</div>
+                                    </div>
+
+                                    <div class="row">
+                                        <div class="col-md-6 mb-4">
+                                            <label for="convertVideoToGifFps" class="form-label">FPS (optional)</label>
+                                            <input type="number" class="form-control" id="convertVideoToGifFps" name="fps"
+                                                   min="1" max="30" placeholder="10">
+                                            <div class="form-text">Default 10</div>
+                                        </div>
+                                        <div class="col-md-6 mb-4">
+                                            <label for="convertVideoToGifMaxWidth" class="form-label">Max width (px, optional)</label>
+                                            <input type="number" class="form-control" id="convertVideoToGifMaxWidth" name="max_width"
+                                                   min="64" max="1280" placeholder="480">
+                                            <div class="form-text">Default 480</div>
+                                        </div>
+                                    </div>
+
+                                    <div class="d-grid">
+                                        <button type="submit" class="btn btn-primary btn-lg" id="convertVideoToGifSubmitBtn">
+                                            <i class="fas fa-film me-2"></i>
+                                            Convert to GIF
+                                        </button>
+                                    </div>
+                                </form>
+
+                                <div id="convertVideoToGifProgressContainer" class="mt-4" style="display: none;">
+                                    <div class="d-flex align-items-center mb-2">
+                                        <div class="spinner-border spinner-border-sm me-2" role="status">
+                                            <span class="visually-hidden">Loading...</span>
+                                        </div>
+                                        <span>Encoding GIF...</span>
+                                    </div>
+                                    <div class="progress">
+                                        <div class="progress-bar progress-bar-striped progress-bar-animated"
+                                             role="progressbar" style="width: 100%"></div>
+                                    </div>
+                                </div>
+
+                                <div id="convertVideoToGifAlertContainer" class="mt-4"></div>
+
+                                <div id="convertVideoToGifResultContainer" class="mt-4" style="display: none;">
+                                    <div class="card">
+                                        <div class="card-header">
+                                            <h5 class="card-title mb-0">
+                                                <i class="fas fa-check-circle text-success me-2"></i>
+                                                GIF ready
+                                            </h5>
+                                        </div>
+                                        <div class="card-body">
+                                            <p class="card-text" id="convertVideoToGifResultMessage">Your GIF is ready to download.</p>
+                                            <div class="d-flex gap-2 flex-wrap">
+                                                <a id="convertVideoToGifDownloadBtn" href="#" class="btn btn-success" download>
+                                                    <i class="fas fa-download me-2"></i>
+                                                    Download GIF
+                                                </a>
+                                                <button id="convertVideoToGifCleanupBtn" class="btn btn-outline-secondary">
+                                                    <i class="fas fa-trash me-2"></i>
+                                                    Delete from Server
+                                                </button>
+                                                <button id="convertVideoToGifResetBtn" class="btn btn-outline-primary">
+                                                    <i class="fas fa-plus me-2"></i>
+                                                    Convert Another
                                                 </button>
                                             </div>
                                         </div>

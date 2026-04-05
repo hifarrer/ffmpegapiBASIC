@@ -1645,6 +1645,100 @@ def convert_to_vertical_with_ffmpeg(video_path, output_path, watermark_path=None
         logging.error(f"Video conversion error: {str(e)}")
         return False, f"Video conversion error: {str(e)}"
 
+
+def _normalize_chromakey_color_for_ffmpeg(color_raw):
+    """Normalize user chromakey color to FFmpeg 0xRRGGBB (lowercase hex)."""
+    if not color_raw or not str(color_raw).strip():
+        return '0x00ff00'
+    s = str(color_raw).strip()
+    if s.startswith('#'):
+        s = s[1:]
+    elif s.lower().startswith('0x'):
+        s = s[2:]
+    if len(s) != 6 or any(c not in '0123456789abcdefABCDEF' for c in s):
+        return None
+    return f'0x{s.lower()}'
+
+
+def _ffmpeg_error_message_from_stderr(stderr_text, stdout_text):
+    """Strip ffmpeg banner lines from stderr; match convert_to_vertical_with_ffmpeg behavior."""
+    stderr_text = (stderr_text or "").strip()
+    stderr_lines = stderr_text.split('\n') if stderr_text else []
+    error_lines = []
+    for line in stderr_lines:
+        if line.startswith('ffmpeg version') or \
+           line.startswith('built with') or \
+           (line.startswith('configuration:') and '--' in line) or \
+           (line.strip().startswith('lib') and '=' in line and 'version' in line.lower()):
+            continue
+        error_lines.append(line)
+    error_msg = '\n'.join(error_lines).strip()
+    if not error_msg:
+        error_msg = (stdout_text or "").strip() if stdout_text else "Unknown ffmpeg error occurred"
+    return error_msg
+
+
+def convert_video_to_gif_with_ffmpeg(
+    video_path,
+    output_path,
+    transparent_background=False,
+    chromakey_color='0x00ff00',
+    fps=10,
+    max_width=480,
+):
+    """Encode video to animated GIF using palettegen/paletteuse; optional chromakey transparency."""
+    try:
+        fps = max(1, min(int(fps), 30))
+        max_width = max(64, min(int(max_width), 1280))
+
+        scale_part = f"scale={max_width}:-1:flags=lanczos"
+        fps_part = f"fps={fps}"
+
+        if transparent_background:
+            ck = chromakey_color if chromakey_color else '0x00ff00'
+            # chromakey=color:similarity:blend — solid backdrop removal, not AI matting
+            pre = f"chromakey={ck}:0.35:0.2,format=rgba,{fps_part},{scale_part}"
+            palette = "palettegen=max_colors=256:reserve_transparent=1:stats_mode=full[p]"
+            puse = "paletteuse=alpha_threshold=128:dither=bayer:bayer_scale=5"
+        else:
+            pre = f"{fps_part},{scale_part}"
+            palette = "palettegen=stats_mode=full[p]"
+            puse = "paletteuse=dither=bayer:bayer_scale=5"
+
+        vf = f"{pre},split[s0][s1];[s0]{palette};[s1][p]{puse}"
+
+        cmd = [
+            'ffmpeg',
+            '-hide_banner',
+            '-i', video_path,
+            '-an',
+            '-vf', vf,
+            '-y',
+            output_path,
+        ]
+        logging.info(f"Running FFMPEG GIF command: {' '.join(cmd)}")
+
+        result = subprocess.run(
+            cmd,
+            capture_output=True,
+            text=True,
+            timeout=600,
+        )
+
+        if result.returncode == 0:
+            return True, "Video converted to GIF successfully"
+        error_msg = _ffmpeg_error_message_from_stderr(result.stderr, result.stdout)
+        logging.error(f"FFMPEG GIF error (returncode {result.returncode}): {error_msg}")
+        return False, f"GIF conversion failed: {error_msg}"
+
+    except subprocess.TimeoutExpired:
+        logging.error("GIF conversion timed out")
+        return False, "GIF conversion processing timed out"
+    except Exception as e:
+        logging.error(f"GIF conversion error: {str(e)}")
+        return False, f"GIF conversion error: {str(e)}"
+
+
 # Routes
 @app.route('/')
 def index():
@@ -5873,6 +5967,125 @@ def get_last_frame_image():
 
     except Exception as e:
         logging.error(f"[GET_LAST_FRAME] Error: {str(e)}", exc_info=True)
+        return jsonify({'success': False, 'error': f'Server error: {str(e)}'}), 500
+
+
+def _parse_json_or_form_bool(val):
+    if val is None:
+        return False
+    if isinstance(val, bool):
+        return val
+    s = str(val).strip().lower()
+    return s in ('1', 'true', 'yes', 'on')
+
+
+def _parse_optional_int_clamped(val, default, min_v, max_v):
+    if val is None or (isinstance(val, str) and not str(val).strip()):
+        return default
+    try:
+        n = int(val)
+        return max(min_v, min(n, max_v))
+    except (ValueError, TypeError):
+        return default
+
+
+@app.route('/api/convert_video_to_gif', methods=['POST'])
+@log_api_request
+@require_api_key
+def convert_video_to_gif():
+    """API: download video from URL, encode to GIF; optional chromakey-based transparency."""
+    api_key = request.headers.get('X-API-Key') or request.args.get('api_key')
+    logging.info(f"[CONVERT_VIDEO_TO_GIF] Request from API key: {api_key[:20] if api_key else 'None'}...")
+
+    try:
+        request_id = str(uuid.uuid4())
+
+        if request.is_json:
+            data = request.get_json() or {}
+            video_url = data.get('video_url')
+            transparent_background = _parse_json_or_form_bool(data.get('transparent_background'))
+            chromakey_color_raw = data.get('chromakey_color')
+            fps_val = data.get('fps')
+            max_width_val = data.get('max_width')
+        else:
+            video_url = request.form.get('video_url')
+            transparent_background = _parse_json_or_form_bool(request.form.get('transparent_background'))
+            chromakey_color_raw = request.form.get('chromakey_color')
+            fps_val = request.form.get('fps')
+            max_width_val = request.form.get('max_width')
+
+        if not video_url or not str(video_url).strip():
+            return jsonify({'success': False, 'error': 'video_url is required'}), 400
+
+        video_url = str(video_url).strip()
+        fps = _parse_optional_int_clamped(fps_val, 10, 1, 30)
+        max_width = _parse_optional_int_clamped(max_width_val, 480, 64, 1280)
+
+        chromakey_color = '0x00ff00'
+        if chromakey_color_raw and str(chromakey_color_raw).strip():
+            normalized = _normalize_chromakey_color_for_ffmpeg(chromakey_color_raw)
+            if not normalized:
+                return jsonify({
+                    'success': False,
+                    'error': 'chromakey_color must be 6 hex digits, e.g. 0x00FF00 or #00FF00',
+                }), 400
+            chromakey_color = normalized
+
+        video_ext = video_url.split('.')[-1].split('?')[0].lower() if '.' in video_url else 'mp4'
+        if video_ext not in ['mp4', 'mov', 'avi', 'mkv', 'webm', 'flv', 'wmv']:
+            video_ext = 'mp4'
+        video_filename = f"{request_id}_video.{video_ext}"
+        video_path = os.path.join(UPLOAD_FOLDER, video_filename)
+
+        success, message = download_file_from_url(video_url, video_path, "video")
+        if not success:
+            return jsonify({'success': False, 'error': message}), 400
+
+        output_filename = f"{request_id}_output.gif"
+        output_path = os.path.join(OUTPUT_FOLDER, output_filename)
+
+        try:
+            ok, msg = convert_video_to_gif_with_ffmpeg(
+                video_path,
+                output_path,
+                transparent_background=transparent_background,
+                chromakey_color=chromakey_color,
+                fps=fps,
+                max_width=max_width,
+            )
+            cleanup_file(video_path)
+
+            if not ok:
+                if os.path.exists(output_path):
+                    cleanup_file(output_path)
+                return jsonify({'success': False, 'error': msg}), 500
+
+            storage_url = upload_to_storage(output_path, output_filename)
+            if storage_url:
+                cleanup_file(output_path)
+                download_url = storage_url
+            else:
+                if os.environ.get('REPLIT_DEPLOYMENT'):
+                    download_url = f"https://www.ffmpegapi.net/download/{output_filename}"
+                elif os.environ.get('REPLIT_DEV_DOMAIN'):
+                    download_url = f"https://{os.environ['REPLIT_DEV_DOMAIN']}/download/{output_filename}"
+                else:
+                    download_url = url_for('download_file', filename=output_filename, _external=True)
+
+            return jsonify({
+                'success': True,
+                'message': msg,
+                'download_url': download_url,
+                'filename': output_filename,
+            })
+        except Exception as e:
+            cleanup_file(video_path)
+            if os.path.exists(output_path):
+                cleanup_file(output_path)
+            raise e
+
+    except Exception as e:
+        logging.error(f"[CONVERT_VIDEO_TO_GIF] Error: {str(e)}", exc_info=True)
         return jsonify({'success': False, 'error': f'Server error: {str(e)}'}), 500
 
 
