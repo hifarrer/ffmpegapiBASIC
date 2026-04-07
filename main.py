@@ -1683,8 +1683,8 @@ def convert_video_to_gif_with_ffmpeg(
     output_path,
     transparent_background=False,
     chromakey_color='0x00ff00',
-    similarity=0.15,
-    blend=0.1,
+    similarity=0.2,
+    blend=0.05,
     fps=10,
     max_width=480,
 ):
@@ -1698,12 +1698,16 @@ def convert_video_to_gif_with_ffmpeg(
 
         if transparent_background:
             ck = chromakey_color if chromakey_color else '0x00ff00'
-            # colorkey works in RGB space — much more precise than chromakey (YUV).
-            # Low similarity targets only pixels very close to the key color;
-            # small blend gives a thin soft edge instead of harsh aliasing.
             sim = max(0.01, min(float(similarity), 1.0))
             bld = max(0.0, min(float(blend), 1.0))
-            pre = f"colorkey={ck}:{sim}:{bld},format=rgba,{fps_part},{scale_part}"
+            # Two-pass keying: colorkey (RGB, precise) then chromakey (YUV,
+            # catches lighting variation). This removes the solid backdrop
+            # without eating skin/clothing that merely contain some green.
+            pre = (
+                f"colorkey={ck}:{sim}:{bld},"
+                f"chromakey={ck}:{sim}:{bld},"
+                f"format=rgba,{fps_part},{scale_part}"
+            )
             palette = "palettegen=max_colors=256:reserve_transparent=1:stats_mode=full[p]"
             puse = "paletteuse=alpha_threshold=128:dither=bayer:bayer_scale=5"
         else:
@@ -6031,14 +6035,14 @@ def convert_video_to_gif():
         fps = _parse_optional_int_clamped(fps_val, 10, 1, 30)
         max_width = _parse_optional_int_clamped(max_width_val, 480, 64, 1280)
 
-        similarity = 0.15
+        similarity = 0.2
         if similarity_val is not None and str(similarity_val).strip():
             try:
                 similarity = max(0.01, min(float(similarity_val), 1.0))
             except (ValueError, TypeError):
                 pass
 
-        blend = 0.1
+        blend = 0.05
         if blend_val is not None and str(blend_val).strip():
             try:
                 blend = max(0.0, min(float(blend_val), 1.0))
