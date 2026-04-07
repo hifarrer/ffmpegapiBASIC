@@ -1700,13 +1700,22 @@ def convert_video_to_gif_with_ffmpeg(
             ck = chromakey_color if chromakey_color else '0x00ff00'
             sim = max(0.01, min(float(similarity), 1.0))
             bld = max(0.0, min(float(blend), 1.0))
-            # Two-pass keying: colorkey (RGB, precise) then chromakey (YUV,
-            # catches lighting variation). This removes the solid backdrop
-            # without eating skin/clothing that merely contain some green.
+            # Wider similarity for fringe cleanup (capped at 1.0)
+            fringe_sim = min(sim * 1.5, 1.0)
+            # Three-stage keying:
+            #  1) colorkey  — RGB, removes the bulk of the solid backdrop
+            #  2) chromakey — YUV, catches lighting variation the RGB pass missed
+            #  3) colorkey  — wider similarity, cleans residual green fringe pixels
+            # Then despill: a 1px alpha erosion removes semi-transparent edge
+            # artifacts, followed by 1px dilation to restore the silhouette shape.
             pre = (
                 f"colorkey={ck}:{sim}:{bld},"
                 f"chromakey={ck}:{sim}:{bld},"
-                f"format=rgba,{fps_part},{scale_part}"
+                f"colorkey={ck}:{fringe_sim}:{bld},"
+                f"format=rgba,"
+                f"erosion=threshold0=0:threshold1=0:threshold2=0:threshold3=128:radius=1,"
+                f"dilation=threshold0=0:threshold1=0:threshold2=0:threshold3=128:radius=1,"
+                f"{fps_part},{scale_part}"
             )
             palette = "palettegen=max_colors=256:reserve_transparent=1:stats_mode=full[p]"
             puse = "paletteuse=alpha_threshold=128:dither=bayer:bayer_scale=5"
