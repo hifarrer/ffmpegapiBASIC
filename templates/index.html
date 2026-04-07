@@ -1778,6 +1778,21 @@
 
                                     <div class="row">
                                         <div class="col-md-6 mb-4">
+                                            <label for="convertVideoToGifSimilarity" class="form-label">Similarity (optional)</label>
+                                            <input type="number" class="form-control" id="convertVideoToGifSimilarity" name="similarity"
+                                                   min="0.01" max="1" step="0.01" placeholder="0.15">
+                                            <div class="form-text">How close a pixel must match the key color (0.01–1.0). Lower = more precise. Default 0.15.</div>
+                                        </div>
+                                        <div class="col-md-6 mb-4">
+                                            <label for="convertVideoToGifBlend" class="form-label">Blend (optional)</label>
+                                            <input type="number" class="form-control" id="convertVideoToGifBlend" name="blend"
+                                                   min="0" max="1" step="0.01" placeholder="0.1">
+                                            <div class="form-text">Edge softness (0.0–1.0). Default 0.1.</div>
+                                        </div>
+                                    </div>
+
+                                    <div class="row">
+                                        <div class="col-md-6 mb-4">
                                             <label for="convertVideoToGifFps" class="form-label">FPS (optional)</label>
                                             <input type="number" class="form-control" id="convertVideoToGifFps" name="fps"
                                                    min="1" max="30" placeholder="10">

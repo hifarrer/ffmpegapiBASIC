@@ -477,7 +477,7 @@ curl -X POST "https://ffmpegapi.net/api/convert_to_vertical" \
 
 **Endpoint:** `POST /api/convert_video_to_gif`
 
-**Description:** Downloads a video from a URL and encodes it as an animated GIF using a palette for better quality. Audio is omitted. Optional **transparent background** uses FFmpeg **chromakey** (color-based keying): pixels near the chosen color become transparent. This works well for solid-color backdrops (for example greenscreen); it is not automatic background removal for arbitrary scenes.
+**Description:** Downloads a video from a URL and encodes it as an animated GIF using a palette for better quality. Audio is omitted. Optional **transparent background** uses FFmpeg **colorkey** (RGB color-based keying): pixels close to the chosen color become transparent. This works well for solid-color backdrops (for example greenscreen); it is not automatic background removal for arbitrary scenes.
 
 **Request Body:**
 ```json
@@ -485,6 +485,8 @@ curl -X POST "https://ffmpegapi.net/api/convert_to_vertical" \
   "video_url": "https://example.com/clip.mp4",
   "transparent_background": false,
   "chromakey_color": "0x00FF00",
+  "similarity": 0.15,
+  "blend": 0.1,
   "fps": 10,
   "max_width": 480
 }
@@ -492,8 +494,10 @@ curl -X POST "https://ffmpegapi.net/api/convert_to_vertical" \
 
 **Parameters:**
 - `video_url` (required): URL of the source video (MP4, MOV, WebM, etc.)
-- `transparent_background` (optional): If `true`, apply chromakey before building the GIF palette (default: `false`)
+- `transparent_background` (optional): If `true`, apply colorkey before building the GIF palette (default: `false`)
 - `chromakey_color` (optional): Color to key out when `transparent_background` is true, as `0xRRGGBB`, `#RRGGBB`, or `RRGGBB` (default: `0x00FF00`)
+- `similarity` (optional): How close a pixel must be to `chromakey_color` to be keyed out, 0.01–1.0 (default: `0.15`). Lower values are more precise; increase if edges of the backdrop remain.
+- `blend` (optional): Softness of the transparency edge, 0.0–1.0 (default: `0.1`). Higher values produce a smoother falloff.
 - `fps` (optional): Output frame rate, clamped between 1 and 30 (default: `10`)
 - `max_width` (optional): Maximum width in pixels; height scales proportionally, clamped between 64 and 1280 (default: `480`)
 
@@ -506,6 +510,8 @@ curl -X POST "https://ffmpegapi.net/api/convert_video_to_gif" \
     "video_url": "https://example.com/clip.mp4",
     "transparent_background": true,
     "chromakey_color": "0x00FF00",
+    "similarity": 0.15,
+    "blend": 0.1,
     "fps": 10,
     "max_width": 480
   }'
@@ -522,7 +528,10 @@ headers = {
 }
 data = {
     "video_url": "https://example.com/clip.mp4",
-    "transparent_background": False,
+    "transparent_background": True,
+    "chromakey_color": "0x00FF00",
+    "similarity": 0.15,
+    "blend": 0.1,
     "fps": 10,
     "max_width": 480,
 }
@@ -544,7 +553,10 @@ const response = await fetch("https://ffmpegapi.net/api/convert_video_to_gif", {
   },
   body: JSON.stringify({
     video_url: "https://example.com/clip.mp4",
-    transparent_background: false,
+    transparent_background: true,
+    chromakey_color: "0x00FF00",
+    similarity: 0.15,
+    blend: 0.1,
     fps: 10,
     max_width: 480,
   }),

@@ -1683,6 +1683,8 @@ def convert_video_to_gif_with_ffmpeg(
     output_path,
     transparent_background=False,
     chromakey_color='0x00ff00',
+    similarity=0.15,
+    blend=0.1,
     fps=10,
     max_width=480,
 ):
@@ -1696,8 +1698,12 @@ def convert_video_to_gif_with_ffmpeg(
 
         if transparent_background:
             ck = chromakey_color if chromakey_color else '0x00ff00'
-            # chromakey=color:similarity:blend — solid backdrop removal, not AI matting
-            pre = f"chromakey={ck}:0.35:0.2,format=rgba,{fps_part},{scale_part}"
+            # colorkey works in RGB space — much more precise than chromakey (YUV).
+            # Low similarity targets only pixels very close to the key color;
+            # small blend gives a thin soft edge instead of harsh aliasing.
+            sim = max(0.01, min(float(similarity), 1.0))
+            bld = max(0.0, min(float(blend), 1.0))
+            pre = f"colorkey={ck}:{sim}:{bld},format=rgba,{fps_part},{scale_part}"
             palette = "palettegen=max_colors=256:reserve_transparent=1:stats_mode=full[p]"
             puse = "paletteuse=alpha_threshold=128:dither=bayer:bayer_scale=5"
         else:
@@ -6007,12 +6013,16 @@ def convert_video_to_gif():
             chromakey_color_raw = data.get('chromakey_color')
             fps_val = data.get('fps')
             max_width_val = data.get('max_width')
+            similarity_val = data.get('similarity')
+            blend_val = data.get('blend')
         else:
             video_url = request.form.get('video_url')
             transparent_background = _parse_json_or_form_bool(request.form.get('transparent_background'))
             chromakey_color_raw = request.form.get('chromakey_color')
             fps_val = request.form.get('fps')
             max_width_val = request.form.get('max_width')
+            similarity_val = request.form.get('similarity')
+            blend_val = request.form.get('blend')
 
         if not video_url or not str(video_url).strip():
             return jsonify({'success': False, 'error': 'video_url is required'}), 400
@@ -6020,6 +6030,20 @@ def convert_video_to_gif():
         video_url = str(video_url).strip()
         fps = _parse_optional_int_clamped(fps_val, 10, 1, 30)
         max_width = _parse_optional_int_clamped(max_width_val, 480, 64, 1280)
+
+        similarity = 0.15
+        if similarity_val is not None and str(similarity_val).strip():
+            try:
+                similarity = max(0.01, min(float(similarity_val), 1.0))
+            except (ValueError, TypeError):
+                pass
+
+        blend = 0.1
+        if blend_val is not None and str(blend_val).strip():
+            try:
+                blend = max(0.0, min(float(blend_val), 1.0))
+            except (ValueError, TypeError):
+                pass
 
         chromakey_color = '0x00ff00'
         if chromakey_color_raw and str(chromakey_color_raw).strip():
@@ -6050,6 +6074,8 @@ def convert_video_to_gif():
                 output_path,
                 transparent_background=transparent_background,
                 chromakey_color=chromakey_color,
+                similarity=similarity,
+                blend=blend,
                 fps=fps,
                 max_width=max_width,
             )

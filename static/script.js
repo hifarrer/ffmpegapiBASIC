@@ -2220,6 +2220,14 @@ class VideoMerger {
         if (chroma) {
             jsonData.chromakey_color = chroma;
         }
+        const simVal = document.getElementById('convertVideoToGifSimilarity').value.trim();
+        if (simVal !== '') {
+            jsonData.similarity = parseFloat(simVal);
+        }
+        const blendVal = document.getElementById('convertVideoToGifBlend').value.trim();
+        if (blendVal !== '') {
+            jsonData.blend = parseFloat(blendVal);
+        }
         const fpsVal = document.getElementById('convertVideoToGifFps').value.trim();
         if (fpsVal !== '') {
             jsonData.fps = parseInt(fpsVal, 10);
