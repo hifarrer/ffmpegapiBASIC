@@ -1700,28 +1700,18 @@ def convert_video_to_gif_with_ffmpeg(
             ck = chromakey_color if chromakey_color else '0x00ff00'
             sim = max(0.01, min(float(similarity), 1.0))
             bld = max(0.0, min(float(blend), 1.0))
-            # Progressively wider similarity for fringe cleanup (capped at 1.0)
+            # Wider similarity for fringe cleanup (capped at 1.0)
             fringe_sim = min(sim * 1.5, 1.0)
-            fringe_bld = min(bld + 0.15, 1.0)
-            despill_sim = min(sim * 2.0, 1.0)
-            despill_bld = min(bld + 0.25, 1.0)
-            # Four-stage keying + despill:
+            fringe_bld = min(bld + 0.1, 1.0)
+            # Three-stage keying:
             #  1) colorkey  — RGB, removes the bulk of the solid backdrop
             #  2) chromakey — YUV, catches lighting variation the RGB pass missed
             #  3) colorkey  — wider similarity + blend, cleans residual fringe
-            #  4) colorkey  — even wider, very soft blend for green spill at edges
-            # Then colorchannelmixer reduces the green channel slightly to
-            # neutralize green light spill on edge pixels (the reflected green
-            # glow from the backdrop). The 0.8 multiplier on gg dims green
-            # just enough; the 0.1 added to rr/bb compensates so edges
-            # shift toward neutral instead of looking magenta.
             pre = (
                 f"colorkey={ck}:{sim}:{bld},"
                 f"chromakey={ck}:{sim}:{bld},"
                 f"colorkey={ck}:{fringe_sim}:{fringe_bld},"
-                f"colorkey={ck}:{despill_sim}:{despill_bld},"
                 f"format=rgba,"
-                f"colorchannelmixer=rr=1.05:gg=0.75:bb=1.05:aa=1,"
                 f"{fps_part},{scale_part}"
             )
             palette = "palettegen=max_colors=256:reserve_transparent=1:stats_mode=full[p]"
