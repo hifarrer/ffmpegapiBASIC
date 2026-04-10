@@ -5012,12 +5012,12 @@ def add_watermark_with_ffmpeg(video_path, watermark_path, output_path, position=
 
         overlay_pos = position_map.get(position, position_map['bottom-right'])
 
-        # Scale logo to a fixed width first, then let FFmpeg compute height automatically (-1)
-        # to preserve the logo's aspect ratio before overlaying on the video.
+        # Normalize SAR to square pixels first, then scale with -1 to preserve logo proportions.
         watermark_filter = (
-            f"[1:v]scale={target_watermark_width}:-1:flags=lanczos[watermark];"
-            f"[watermark]setsar=1[watermark_square];"
-            f"[0:v][watermark_square]overlay={overlay_pos}"
+            f"[0:v]setsar=1[video_square];"
+            f"[1:v]format=rgba,setsar=1[watermark_src];"
+            f"[watermark_src]scale={target_watermark_width}:-1:flags=lanczos[watermark_scaled];"
+            f"[video_square][watermark_scaled]overlay={overlay_pos}:format=auto[outv]"
         )
 
         cmd = [
@@ -5025,7 +5025,11 @@ def add_watermark_with_ffmpeg(video_path, watermark_path, output_path, position=
             '-i', video_path,
             '-i', watermark_path,
             '-filter_complex', watermark_filter,
+            '-map', '[outv]',
+            '-map', '0:a?',
+            '-c:v', 'libx264',
             '-c:a', 'copy',
+            '-pix_fmt', 'yuv420p',
             '-y',
             output_path
         ]
