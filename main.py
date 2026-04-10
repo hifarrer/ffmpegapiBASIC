@@ -5006,10 +5006,11 @@ def add_watermark_with_ffmpeg(video_path, watermark_path, output_path, position=
 
         overlay_pos = position_map.get(position, position_map['bottom-right'])
 
-        # Height from pixel aspect ratio (ih/iw); avoid ow/dar — many logos lack correct DAR.
+        # Preserve display aspect ratio using SAR-aware formula, then normalize watermark SAR.
         watermark_filter = (
-            f"[1:v][0:v]scale2ref=main_w*{scale}:ih*main_w*{scale}/iw[watermark][video];"
-            f"[video][watermark]overlay={overlay_pos}"
+            f"[1:v][0:v]scale2ref=main_w*{scale}:ih*main_w*{scale}/(iw*sar)[watermark][video];"
+            f"[watermark]setsar=1[watermark_square];"
+            f"[video][watermark_square]overlay={overlay_pos}"
         )
 
         cmd = [
