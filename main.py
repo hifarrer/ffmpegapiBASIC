@@ -5007,8 +5007,8 @@ def add_watermark_with_ffmpeg(video_path, watermark_path, output_path, position=
         overlay_pos = position_map.get(position, position_map['bottom-right'])
 
         watermark_filter = (
-            f"[1:v]scale='if(gt(iw,ih),{scale}*main_w,-2)':'if(gt(iw,ih),-2,{scale}*main_h)'[watermark];"
-            f"[0:v][watermark]overlay={overlay_pos}"
+            f"[1:v][0:v]scale2ref=main_w*{scale}:ow/dar[watermark][video];"
+            f"[video][watermark]overlay={overlay_pos}"
         )
 
         cmd = [
