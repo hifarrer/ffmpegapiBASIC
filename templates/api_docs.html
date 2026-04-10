@@ -114,6 +114,7 @@
                                 <a class="toc-link ms-3" href="#merge-videos">Video Merge</a>
                                 <a class="toc-link ms-3" href="#video-loop">Video Loop</a>
                                 <a class="toc-link ms-3" href="#picture-in-picture">Picture in Picture</a>
+                                <a class="toc-link ms-3" href="#add-watermark">Add Watermark</a>
                                 <a class="toc-link ms-3" href="#add-subtitles">Add Subtitles</a>
                                 <a class="toc-link ms-3" href="#split-audio">Split Audio</a>
                                 <a class="toc-link ms-3" href="#split-audio-segments">Split Audio by Segments</a>
@@ -789,6 +790,105 @@
   "message": "Picture-in-picture video created successfully",
   "download_url": "https://www.ffmpegapi.net/download/pip_filename.mp4",
   "filename": "unique_pip_filename.mp4"
+}</code></pre>
+                                </div>
+
+                                <h6>Async Response</h6>
+                                <div class="code-block p-3">
+                                    <pre><code class="language-json">{
+  "success": true,
+  "job_id": "550e8400-e29b-41d4-a716-446655440000",
+  "status": "pending",
+  "message": "Job submitted for async processing. Use /api/job/{job_id}/status to check progress.",
+  "status_url": "https://www.ffmpegapi.net/api/job/550e8400-e29b-41d4-a716-446655440000/status"
+}</code></pre>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Add Watermark -->
+                    <div id="add-watermark" class="api-endpoint">
+                        <div class="card">
+                            <div class="card-header">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <h4 class="mb-0">Add Watermark</h4>
+                                    <span class="method-badge method-post">POST</span>
+                                </div>
+                                <code class="text-muted">/api/add_watermark</code>
+                            </div>
+                            <div class="card-body">
+                                <p>Add a watermark image to a video with configurable position and scale. Supports PNG watermarks with transparency. The watermark is scaled relative to the video dimensions so it works correctly across different aspect ratios.</p>
+
+                                <h6>Request Format</h6>
+                                <p><strong>Content-Type:</strong> <code>application/json</code></p>
+
+                                <h6>Parameters</h6>
+                                <div class="table-responsive">
+                                    <table class="table table-sm">
+                                        <thead>
+                                            <tr>
+                                                <th>Parameter</th>
+                                                <th>Type</th>
+                                                <th>Required</th>
+                                                <th>Description</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <tr>
+                                                <td><code>video_url</code></td>
+                                                <td>String</td>
+                                                <td>Yes</td>
+                                                <td>URL of the input video</td>
+                                            </tr>
+                                            <tr>
+                                                <td><code>watermark_url</code></td>
+                                                <td>String</td>
+                                                <td>Yes</td>
+                                                <td>URL of the watermark image (PNG with transparency recommended)</td>
+                                            </tr>
+                                            <tr>
+                                                <td><code>position</code></td>
+                                                <td>String</td>
+                                                <td>No</td>
+                                                <td>Position of watermark. Options: top-left, top-center, top-right, middle-left, middle, middle-right, bottom-left, bottom-center, bottom-right. Default: bottom-right</td>
+                                            </tr>
+                                            <tr>
+                                                <td><code>scale</code></td>
+                                                <td>Number</td>
+                                                <td>No</td>
+                                                <td>Watermark size as a fraction of the video width (0.05 to 1.0). Default: 0.25 (25% of video width)</td>
+                                            </tr>
+                                            <tr>
+                                                <td><code>async</code></td>
+                                                <td>Boolean</td>
+                                                <td>No</td>
+                                                <td>Process job asynchronously (default: false)</td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+
+                                <h6>Request Example</h6>
+                                <div class="code-block p-3">
+                                    <pre><code class="language-bash">curl -X POST "https://www.ffmpegapi.net/api/add_watermark" \
+  -H "Content-Type: application/json" \
+  -H "X-API-Key: your_api_key_here" \
+  -d '{
+    "video_url": "https://example.com/video.mp4",
+    "watermark_url": "https://example.com/logo.png",
+    "position": "bottom-right",
+    "scale": 0.25
+  }'</code></pre>
+                                </div>
+
+                                <h6>Response</h6>
+                                <div class="code-block p-3">
+                                    <pre><code class="language-json">{
+  "success": true,
+  "message": "Watermark added successfully",
+  "download_url": "https://www.ffmpegapi.net/download/watermarked_filename.mp4",
+  "filename": "unique_watermarked_filename.mp4"
 }</code></pre>
                                 </div>
 
@@ -3465,7 +3565,7 @@ if (result.success) {
 
                     <div class="alert alert-info">
                         <i class="fas fa-info-circle me-2"></i>
-                        <strong>Best Practices:</strong> For video merging, ensure all videos have the same resolution and aspect ratio. For picture-in-picture, the overlay video should be smaller than the main video for best results.
+                        <strong>Best Practices:</strong> For video merging, ensure all videos have the same resolution and aspect ratio. For picture-in-picture, the overlay video should be smaller than the main video for best results. For watermarks, use PNG images with transparency and a scale of 0.15-0.30 for a subtle, professional look.
                     </div>
                 </section>
 

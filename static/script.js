@@ -6,6 +6,7 @@ class VideoMerger {
         this.initializeVideosTab();
         this.initializeVideoLoopTab();
         this.initializePipTab();
+        this.initializeWatermarkTab();
         this.initializeSubtitlesTab();
         this.initializeSplitAudioTab();
         this.initializeSplitAudioSegmentsTab();
@@ -850,6 +851,175 @@ class VideoMerger {
 
     hidePipResult() {
         this.pipResultContainer.style.display = 'none';
+    }
+
+    // Watermark methods
+    initializeWatermarkTab() {
+        this.watermarkForm = document.getElementById('watermarkForm');
+        if (!this.watermarkForm) return;
+
+        this.watermarkSubmitBtn = document.getElementById('watermarkSubmitBtn');
+        this.watermarkProgressContainer = document.getElementById('watermarkProgressContainer');
+        this.watermarkAlertContainer = document.getElementById('watermarkAlertContainer');
+        this.watermarkResultContainer = document.getElementById('watermarkResultContainer');
+        this.watermarkDownloadBtn = document.getElementById('watermarkDownloadBtn');
+        this.watermarkCleanupBtn = document.getElementById('watermarkCleanupBtn');
+        this.watermarkResetBtn = document.getElementById('watermarkResetBtn');
+        this.watermarkCurrentFilename = null;
+
+        this.watermarkForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            this.handleWatermarkSubmit();
+        });
+
+        document.getElementById('watermarkVideoUrl').addEventListener('input', () => {
+            this.validateWatermarkForm();
+        });
+
+        document.getElementById('watermarkImageUrl').addEventListener('input', () => {
+            this.validateWatermarkForm();
+        });
+
+        this.watermarkCleanupBtn.addEventListener('click', () => {
+            this.handleWatermarkCleanup();
+        });
+
+        this.watermarkResetBtn.addEventListener('click', () => {
+            this.resetWatermarkForm();
+        });
+
+        this.validateWatermarkForm();
+    }
+
+    validateWatermarkForm() {
+        const videoUrl = document.getElementById('watermarkVideoUrl').value.trim();
+        const imageUrl = document.getElementById('watermarkImageUrl').value.trim();
+        this.watermarkSubmitBtn.disabled = !videoUrl || !imageUrl;
+    }
+
+    async handleWatermarkSubmit() {
+        const videoUrl = document.getElementById('watermarkVideoUrl').value.trim();
+        const imageUrl = document.getElementById('watermarkImageUrl').value.trim();
+
+        if (!videoUrl || !imageUrl) {
+            this.showWatermarkAlert('danger', 'Both video URL and watermark image URL are required.');
+            return;
+        }
+
+        const requestData = {
+            video_url: videoUrl,
+            watermark_url: imageUrl,
+            position: document.getElementById('watermarkPosition').value,
+            scale: parseFloat(document.getElementById('watermarkScale').value)
+        };
+
+        this.setWatermarkLoadingState(true);
+        this.hideWatermarkAlert();
+        this.hideWatermarkResult();
+
+        try {
+            const response = await fetch('/api/add_watermark', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-API-Key': window.API_KEY || ''
+                },
+                body: JSON.stringify(requestData)
+            });
+
+            const result = await response.json();
+
+            if (result.success) {
+                this.handleWatermarkSuccess(result);
+            } else {
+                this.handleWatermarkError(result.error);
+            }
+
+        } catch (error) {
+            console.error('Watermark processing error:', error);
+            this.handleWatermarkError('Network error occurred. Please try again.');
+        } finally {
+            this.setWatermarkLoadingState(false);
+        }
+    }
+
+    setWatermarkLoadingState(loading) {
+        if (loading) {
+            this.watermarkSubmitBtn.disabled = true;
+            this.watermarkSubmitBtn.classList.add('loading');
+            this.watermarkProgressContainer.style.display = 'block';
+        } else {
+            this.watermarkSubmitBtn.disabled = false;
+            this.watermarkSubmitBtn.classList.remove('loading');
+            this.watermarkProgressContainer.style.display = 'none';
+        }
+    }
+
+    handleWatermarkSuccess(result) {
+        this.watermarkCurrentFilename = result.filename;
+        this.watermarkDownloadBtn.href = result.download_url;
+        this.watermarkDownloadBtn.download = result.filename;
+
+        this.showWatermarkAlert('success', result.message);
+        this.showWatermarkResult();
+    }
+
+    handleWatermarkError(errorMessage) {
+        this.showWatermarkAlert('danger', `Error: ${errorMessage}`);
+    }
+
+    async handleWatermarkCleanup() {
+        if (!this.watermarkCurrentFilename) return;
+
+        try {
+            const response = await fetch(`/api/cleanup/${this.watermarkCurrentFilename}`, {
+                method: 'POST'
+            });
+
+            const result = await response.json();
+
+            if (result.success) {
+                this.showWatermarkAlert('info', 'File successfully deleted from server.');
+                this.hideWatermarkResult();
+                this.watermarkCurrentFilename = null;
+            } else {
+                this.showWatermarkAlert('warning', 'Could not delete file from server.');
+            }
+        } catch (error) {
+            this.showWatermarkAlert('danger', 'Error deleting file.');
+        }
+    }
+
+    resetWatermarkForm() {
+        this.watermarkForm.reset();
+        document.getElementById('watermarkPosition').value = 'bottom-right';
+        document.getElementById('watermarkScale').value = '0.25';
+        this.hideWatermarkAlert();
+        this.hideWatermarkResult();
+        this.validateWatermarkForm();
+        this.watermarkCurrentFilename = null;
+    }
+
+    showWatermarkAlert(type, message) {
+        this.watermarkAlertContainer.innerHTML = `
+            <div class="alert alert-${type} alert-dismissible fade show" role="alert">
+                <i class="fas fa-${this.getAlertIcon(type)} me-2"></i>
+                ${message}
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+        `;
+    }
+
+    hideWatermarkAlert() {
+        this.watermarkAlertContainer.innerHTML = '';
+    }
+
+    showWatermarkResult() {
+        this.watermarkResultContainer.style.display = 'block';
+    }
+
+    hideWatermarkResult() {
+        this.watermarkResultContainer.style.display = 'none';
     }
 
     initializeSubtitlesTab() {

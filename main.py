@@ -2801,6 +2801,154 @@ def picture_in_picture():
             'error': f'Server error: {str(e)}'
         }), 500
 
+@app.route('/api/add_watermark', methods=['POST'])
+@log_api_request
+@require_api_key
+def add_watermark():
+    """API endpoint to add a watermark image to a video (sync/async)"""
+    api_key = request.headers.get('X-API-Key') or request.args.get('api_key')
+    logging.info(f"[ADD_WATERMARK] Request received from API key: {api_key[:20]}...")
+
+    try:
+        data = request.get_json()
+        async_processing = data.get('async', False) if data else False
+
+        if async_processing:
+            api_key = request.headers.get('X-API-Key') or request.args.get('api_key')
+            key_record = ApiKey.query.filter_by(key=api_key, is_active=True).first()
+
+            job = Job()
+            job.user_id = key_record.user_id
+            job.job_type = 'add_watermark'
+            job.status = 'pending'
+            job.set_input_data(data)
+
+            db.session.add(job)
+            db.session.commit()
+
+            thread = threading.Thread(target=process_job_async, args=(job.job_id,))
+            thread.daemon = True
+            thread.start()
+
+            return jsonify({
+                'success': True,
+                'job_id': job.job_id,
+                'status': 'pending',
+                'message': 'Job submitted for async processing. Use /api/job/{job_id}/status to check progress.',
+                'status_url': url_for('get_job_status', job_id=job.job_id, _external=True)
+            }), 202
+
+        if not data or 'video_url' not in data or 'watermark_url' not in data:
+            return jsonify({
+                'success': False,
+                'error': 'video_url and watermark_url are required'
+            }), 400
+
+        video_url = data['video_url']
+        watermark_url = data['watermark_url']
+        position = data.get('position', 'bottom-right')
+        scale = data.get('scale', 0.25)
+
+        valid_positions = [
+            'top-left', 'top-center', 'top-right',
+            'middle-left', 'middle', 'middle-right',
+            'bottom-left', 'bottom-center', 'bottom-right'
+        ]
+        if position not in valid_positions:
+            return jsonify({
+                'success': False,
+                'error': f'Invalid position. Must be one of: {", ".join(valid_positions)}'
+            }), 400
+
+        try:
+            scale = float(scale)
+            if scale < 0.05 or scale > 1.0:
+                raise ValueError()
+        except (ValueError, TypeError):
+            return jsonify({
+                'success': False,
+                'error': 'scale must be a number between 0.05 and 1.0'
+            }), 400
+
+        request_id = str(uuid.uuid4())
+        video_path = None
+        watermark_path = None
+
+        try:
+            video_filename = f"{request_id}_video.mp4"
+            video_path = os.path.join(UPLOAD_FOLDER, video_filename)
+            success, message = download_video_from_url(video_url, video_path)
+            if not success:
+                return jsonify({
+                    'success': False,
+                    'error': f'Failed to download video: {message}'
+                }), 400
+
+            watermark_filename = f"{request_id}_watermark.png"
+            watermark_path = os.path.join(UPLOAD_FOLDER, watermark_filename)
+            success, message = download_file_from_url(watermark_url, watermark_path, "watermark image")
+            if not success:
+                cleanup_file(video_path)
+                return jsonify({
+                    'success': False,
+                    'error': f'Failed to download watermark image: {message}'
+                }), 400
+
+            output_filename = f"{request_id}_watermarked.mp4"
+            output_path = os.path.join(OUTPUT_FOLDER, output_filename)
+
+            db.session.remove()
+
+            success, message = add_watermark_with_ffmpeg(video_path, watermark_path, output_path, position, scale)
+
+            cleanup_file(video_path)
+            cleanup_file(watermark_path)
+
+            if success:
+                storage_url = upload_to_storage(output_path, output_filename)
+
+                if storage_url:
+                    cleanup_file(output_path)
+                    return jsonify({
+                        'success': True,
+                        'message': 'Watermark added successfully',
+                        'download_url': storage_url,
+                        'filename': output_filename
+                    })
+                else:
+                    logging.warning("Storage upload failed, falling back to local download")
+                    if os.environ.get('REPLIT_DEPLOYMENT'):
+                        download_url = f"https://www.ffmpegapi.net/download/{output_filename}"
+                    elif os.environ.get('REPLIT_DEV_DOMAIN'):
+                        download_url = f"https://{os.environ['REPLIT_DEV_DOMAIN']}/download/{output_filename}"
+                    else:
+                        download_url = url_for('download_file', filename=output_filename, _external=True)
+                    return jsonify({
+                        'success': True,
+                        'message': 'Watermark added successfully (Note: Using temporary local storage - download soon)',
+                        'download_url': download_url,
+                        'filename': output_filename
+                    })
+            else:
+                return jsonify({
+                    'success': False,
+                    'error': message
+                }), 500
+
+        except Exception as e:
+            if video_path:
+                cleanup_file(video_path)
+            if watermark_path:
+                cleanup_file(watermark_path)
+            raise e
+
+    except Exception as e:
+        logging.error(f"[ADD_WATERMARK] Error: {str(e)}", exc_info=True)
+        return jsonify({
+            'success': False,
+            'error': f'Server error: {str(e)}'
+        }), 500
+
 @app.route('/api/storage/<path:filename>')
 def serve_from_storage(filename):
     """Serve a file from storage. On Railway serves from volume (OUTPUT_FOLDER/UPLOAD_FOLDER)."""
@@ -3337,6 +3485,8 @@ def process_job_async(job_id):
                 result = process_convert_to_vertical_job(job, input_data)
             elif job.job_type == 'neonvideo_merge_videos':
                 result = process_neonvideo_merge_videos_job(job, input_data)
+            elif job.job_type == 'add_watermark':
+                result = process_add_watermark_job(job, input_data)
             else:
                 safe_update_job_status_by_id(job_id, 'failed', f'Unknown job type: {job.job_type}')
                 return
@@ -3844,6 +3994,71 @@ def process_picture_in_picture_job(job, input_data):
             
     except Exception as e:
         logging.error(f"Error in process_picture_in_picture_job: {str(e)}")
+        return {'success': False, 'error': f'Server error: {str(e)}'}
+
+def process_add_watermark_job(job, input_data):
+    """Process add_watermark job"""
+    try:
+        request_id = str(uuid.uuid4())
+        video_url = input_data['video_url']
+        watermark_url = input_data['watermark_url']
+        position = input_data.get('position', 'bottom-right')
+        scale = float(input_data.get('scale', 0.25))
+
+        video_filename = f"{request_id}_video.mp4"
+        video_path = os.path.join(UPLOAD_FOLDER, video_filename)
+
+        success, message = download_video_from_url(video_url, video_path)
+        if not success:
+            return {'success': False, 'error': f'Failed to download video: {message}'}
+
+        watermark_filename = f"{request_id}_watermark.png"
+        watermark_path = os.path.join(UPLOAD_FOLDER, watermark_filename)
+
+        success, message = download_file_from_url(watermark_url, watermark_path, "watermark image")
+        if not success:
+            cleanup_file(video_path)
+            return {'success': False, 'error': f'Failed to download watermark image: {message}'}
+
+        output_filename = f"{request_id}_watermarked.mp4"
+        output_path = os.path.join(OUTPUT_FOLDER, output_filename)
+
+        db.session.remove()
+
+        success, message = add_watermark_with_ffmpeg(video_path, watermark_path, output_path, position, scale)
+
+        cleanup_file(video_path)
+        cleanup_file(watermark_path)
+
+        if success:
+            storage_url = upload_to_storage(output_path, output_filename)
+
+            if storage_url:
+                cleanup_file(output_path)
+                return {
+                    'success': True,
+                    'message': 'Watermark added successfully',
+                    'download_url': storage_url,
+                    'filename': output_filename
+                }
+            else:
+                if os.environ.get('REPLIT_DEPLOYMENT'):
+                    download_url = f"https://www.ffmpegapi.net/download/{output_filename}"
+                elif os.environ.get('REPLIT_DEV_DOMAIN'):
+                    download_url = f"https://{os.environ['REPLIT_DEV_DOMAIN']}/download/{output_filename}"
+                else:
+                    download_url = url_for('download_file', filename=output_filename, _external=True)
+                return {
+                    'success': True,
+                    'message': 'Watermark added successfully',
+                    'download_url': download_url,
+                    'filename': output_filename
+                }
+        else:
+            return {'success': False, 'error': message}
+
+    except Exception as e:
+        logging.error(f"Error in process_add_watermark_job: {str(e)}")
         return {'success': False, 'error': f'Server error: {str(e)}'}
 
 def process_split_audio_job(job, input_data):
@@ -4766,16 +4981,36 @@ def add_subtitles_with_ffmpeg(video_path, subtitle_path, output_path):
         logging.error(f"Subtitle processing error: {str(e)}")
         return False, f"Subtitle error: {str(e)}"
 
-def add_watermark_with_ffmpeg(video_path, watermark_path, output_path):
-    """Add watermark to video using FFMPEG with dynamic scaling"""
+def add_watermark_with_ffmpeg(video_path, watermark_path, output_path, position='bottom-right', scale=0.25):
+    """Add watermark to video using FFMPEG with dynamic scaling and configurable position.
+    
+    Args:
+        position: One of top-left, top-center, top-right, middle-left, middle,
+                  middle-right, bottom-left, bottom-center, bottom-right
+        scale: Watermark width as a fraction of the video width (0.05 to 1.0)
+    """
     try:
-        # Create filter that scales watermark to 30% of video width and positions at bottom right
-        # The watermark is scaled dynamically and positioned with 20px padding from edges
+        padding = 20
+
+        position_map = {
+            'top-left':      f'{padding}:{padding}',
+            'top-center':    f'(main_w-overlay_w)/2:{padding}',
+            'top-right':     f'main_w-overlay_w-{padding}:{padding}',
+            'middle-left':   f'{padding}:(main_h-overlay_h)/2',
+            'middle':        f'(main_w-overlay_w)/2:(main_h-overlay_h)/2',
+            'middle-right':  f'main_w-overlay_w-{padding}:(main_h-overlay_h)/2',
+            'bottom-left':   f'{padding}:main_h-overlay_h-{padding}',
+            'bottom-center': f'(main_w-overlay_w)/2:main_h-overlay_h-{padding}',
+            'bottom-right':  f'main_w-overlay_w-{padding}:main_h-overlay_h-{padding}',
+        }
+
+        overlay_pos = position_map.get(position, position_map['bottom-right'])
+
         watermark_filter = (
-            f"[1:v]scale=iw*0.5:-1[watermark];"
-            f"[0:v][watermark]overlay=main_w-overlay_w-20:main_h-overlay_h-20"
+            f"[1:v]scale='if(gt(iw,ih),{scale}*main_w,-2)':'if(gt(iw,ih),-2,{scale}*main_h)'[watermark];"
+            f"[0:v][watermark]overlay={overlay_pos}"
         )
-        
+
         cmd = [
             'ffmpeg',
             '-i', video_path,
@@ -4787,7 +5022,7 @@ def add_watermark_with_ffmpeg(video_path, watermark_path, output_path):
         ]
         
         logging.info(f"Running FFMPEG watermark command: {' '.join(cmd)}")
-        result = subprocess.run(cmd, capture_output=True, text=True, timeout=1800)  # 30 minutes
+        result = subprocess.run(cmd, capture_output=True, text=True, timeout=1800)
         
         if result.returncode == 0:
             logging.info("Watermark processing completed successfully")
