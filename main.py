@@ -1686,14 +1686,19 @@ def convert_video_to_gif_with_ffmpeg(
     similarity=0.2,
     blend=0.05,
     fps=10,
-    max_width=480,
 ):
     """Encode video to animated GIF using palettegen/paletteuse; optional chromakey transparency."""
     try:
         fps = max(1, min(int(fps), 30))
-        max_width = max(64, min(int(max_width), 1280))
+        dims_ok, dims_data = get_video_dimensions(video_path)
+        if not dims_ok:
+            return False, f"Could not read source video dimensions: {dims_data}"
 
-        scale_part = f"scale={max_width}:-1:flags=lanczos"
+        source_width, source_height = dims_data
+        scale_part = (
+            f"scale={source_width}:{source_height}:"
+            f"force_original_aspect_ratio=disable:flags=lanczos,setsar=1"
+        )
         fps_part = f"fps={fps}"
 
         if transparent_background:
@@ -6022,7 +6027,6 @@ def convert_video_to_gif():
             transparent_background = _parse_json_or_form_bool(data.get('transparent_background'))
             chromakey_color_raw = data.get('chromakey_color')
             fps_val = data.get('fps')
-            max_width_val = data.get('max_width')
             similarity_val = data.get('similarity')
             blend_val = data.get('blend')
         else:
@@ -6030,7 +6034,6 @@ def convert_video_to_gif():
             transparent_background = _parse_json_or_form_bool(request.form.get('transparent_background'))
             chromakey_color_raw = request.form.get('chromakey_color')
             fps_val = request.form.get('fps')
-            max_width_val = request.form.get('max_width')
             similarity_val = request.form.get('similarity')
             blend_val = request.form.get('blend')
 
@@ -6039,7 +6042,6 @@ def convert_video_to_gif():
 
         video_url = str(video_url).strip()
         fps = _parse_optional_int_clamped(fps_val, 10, 1, 30)
-        max_width = _parse_optional_int_clamped(max_width_val, 480, 64, 1280)
 
         similarity = 0.2
         if similarity_val is not None and str(similarity_val).strip():
@@ -6087,7 +6089,6 @@ def convert_video_to_gif():
                 similarity=similarity,
                 blend=blend,
                 fps=fps,
-                max_width=max_width,
             )
             cleanup_file(video_path)
 
