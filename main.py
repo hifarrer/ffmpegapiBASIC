@@ -4991,6 +4991,12 @@ def add_watermark_with_ffmpeg(video_path, watermark_path, output_path, position=
     """
     try:
         padding = 20
+        dims_success, dims_data = get_video_dimensions(video_path)
+        if not dims_success:
+            return False, f"Could not determine video dimensions: {dims_data}"
+
+        video_width, _video_height = dims_data
+        target_watermark_width = max(1, int(round(video_width * float(scale))))
 
         position_map = {
             'top-left':      f'{padding}:{padding}',
@@ -5006,11 +5012,12 @@ def add_watermark_with_ffmpeg(video_path, watermark_path, output_path, position=
 
         overlay_pos = position_map.get(position, position_map['bottom-right'])
 
-        # Preserve display aspect ratio using SAR-aware formula, then normalize watermark SAR.
+        # Scale logo to a fixed width first, then let FFmpeg compute height automatically (-1)
+        # to preserve the logo's aspect ratio before overlaying on the video.
         watermark_filter = (
-            f"[1:v][0:v]scale2ref=main_w*{scale}:ih*main_w*{scale}/(iw*sar)[watermark][video];"
+            f"[1:v]scale={target_watermark_width}:-1:flags=lanczos[watermark];"
             f"[watermark]setsar=1[watermark_square];"
-            f"[video][watermark_square]overlay={overlay_pos}"
+            f"[0:v][watermark_square]overlay={overlay_pos}"
         )
 
         cmd = [
