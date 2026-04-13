@@ -72,6 +72,17 @@
             border-left-color: var(--bs-primary);
             text-decoration: none;
         }
+        .toc-container {
+            max-height: calc(100vh - 2rem);
+            overflow-y: auto;
+            overflow-x: hidden;
+        }
+        @media (max-width: 991.98px) {
+            .toc-container {
+                max-height: none;
+                overflow: visible;
+            }
+        }
     </style>
 </head>
 <body>
@@ -98,7 +109,7 @@
         <div class="row">
             <!-- Table of Contents -->
             <div class="col-lg-3">
-                <div class="sticky-top" style="top: 1rem;">
+                <div class="sticky-top toc-container" style="top: 1rem;">
                     <div class="card">
                         <div class="card-header">
                             <h6 class="mb-0"><i class="fas fa-list me-2"></i>Table of Contents</h6>
