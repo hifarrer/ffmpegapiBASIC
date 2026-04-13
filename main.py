@@ -5,6 +5,7 @@ import uuid
 import tempfile
 import threading
 import json
+import re
 import requests
 from datetime import datetime, timedelta
 from functools import wraps
@@ -7007,6 +7008,121 @@ def add_text_overlay_captions():
     finally:
         for f in temp_files:
             cleanup_file(f)
+
+
+@app.route('/api/youtube_to_mp4', methods=['POST'])
+@log_api_request
+@require_api_key
+def youtube_to_mp4():
+    """API endpoint to download a YouTube video as MP4"""
+    api_key = request.headers.get('X-API-Key') or request.args.get('api_key')
+    logging.info(f"[YOUTUBE_TO_MP4] Request received from API key: {api_key[:20]}...")
+
+    YOUTUBE_URL_PATTERN = re.compile(
+        r'^https?://(www\.|m\.)?(youtube\.com/(watch\?.*v=|shorts/|embed/|v/)|youtu\.be/)[^\s]+'
+    )
+
+    output_path = None
+    try:
+        request_id = str(uuid.uuid4())
+
+        if request.is_json:
+            data = request.get_json()
+            youtube_url = data.get('youtube_url')
+        else:
+            youtube_url = request.form.get('youtube_url')
+
+        if not youtube_url:
+            return jsonify({
+                'success': False,
+                'error': 'youtube_url is required'
+            }), 400
+
+        youtube_url = youtube_url.strip()
+        if not YOUTUBE_URL_PATTERN.match(youtube_url):
+            return jsonify({
+                'success': False,
+                'error': 'Invalid YouTube URL. Supported formats: youtube.com/watch?v=, youtu.be/, youtube.com/shorts/'
+            }), 400
+
+        output_filename = f"{request_id}_youtube.mp4"
+        output_path = os.path.join(OUTPUT_FOLDER, output_filename)
+
+        ydl_opts = {
+            'format': 'bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best',
+            'merge_output_format': 'mp4',
+            'outtmpl': output_path,
+            'noplaylist': True,
+            'max_filesize': 500 * 1024 * 1024,
+            'socket_timeout': 30,
+            'retries': 3,
+            'quiet': True,
+            'no_warnings': True,
+        }
+
+        import yt_dlp
+
+        video_title = None
+        try:
+            with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+                info = ydl.extract_info(youtube_url, download=True)
+                video_title = info.get('title', 'Unknown')
+                logging.info(f"[YOUTUBE_TO_MP4] Downloaded: {video_title}")
+        except yt_dlp.utils.DownloadError as e:
+            logging.error(f"[YOUTUBE_TO_MP4] yt-dlp download error: {str(e)}")
+            return jsonify({
+                'success': False,
+                'error': f'Failed to download YouTube video: {str(e)}'
+            }), 400
+
+        if not os.path.exists(output_path):
+            return jsonify({
+                'success': False,
+                'error': 'Download completed but output file not found'
+            }), 500
+
+        storage_url = upload_to_storage(output_path, output_filename)
+
+        if storage_url:
+            cleanup_file(output_path)
+            output_path = None
+
+            return jsonify({
+                'success': True,
+                'message': 'YouTube video downloaded successfully',
+                'download_url': storage_url,
+                'filename': output_filename,
+                'title': video_title
+            })
+        else:
+            logging.warning("[YOUTUBE_TO_MP4] Storage upload failed, falling back to local download")
+
+            if os.environ.get('REPLIT_DEPLOYMENT'):
+                download_url = f"https://www.ffmpegapi.net/download/{output_filename}"
+            elif os.environ.get('REPLIT_DEV_DOMAIN'):
+                download_url = f"https://{os.environ['REPLIT_DEV_DOMAIN']}/download/{output_filename}"
+            else:
+                download_url = url_for('download_file', filename=output_filename, _external=True)
+
+            output_path = None
+
+            return jsonify({
+                'success': True,
+                'message': 'YouTube video downloaded successfully (Note: Using temporary local storage - download soon)',
+                'download_url': download_url,
+                'filename': output_filename,
+                'title': video_title
+            })
+
+    except Exception as e:
+        logging.error(f"[YOUTUBE_TO_MP4] Error: {str(e)}", exc_info=True)
+        return jsonify({
+            'success': False,
+            'error': f'Server error: {str(e)}'
+        }), 500
+    finally:
+        if output_path:
+            cleanup_file(output_path)
 
 
 if __name__ == '__main__':

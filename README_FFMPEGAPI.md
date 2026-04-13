@@ -16,7 +16,8 @@ The FFMPEG API provides powerful video and audio processing capabilities through
 6. **Trim Audio** - Trim audio files to specific durations
 7. **Convert to Vertical** - Convert horizontal videos to vertical format (3:4 or 9:16)
 8. **Convert video to GIF** - Encode a video as an animated GIF (optional chromakey transparency)
-9. **Job Status** - Check status of asynchronous processing jobs
+9. **YouTube to MP4** - Download a YouTube video as an MP4 file
+10. **Job Status** - Check status of asynchronous processing jobs
 
 ---
 
@@ -589,7 +590,63 @@ if (result.success) {
 
 ---
 
-### 9. Job Status
+### 9. YouTube to MP4
+
+**Endpoint:** `POST /api/youtube_to_mp4`
+
+**Description:** Downloads a YouTube video and returns it as an MP4 file. Supports standard YouTube URLs, short links, and Shorts.
+
+**Request Body:**
+```json
+{
+  "youtube_url": "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
+}
+```
+
+**Parameters:**
+- `youtube_url` (required): A valid YouTube URL. Supported formats:
+  - `https://www.youtube.com/watch?v=VIDEO_ID`
+  - `https://youtu.be/VIDEO_ID`
+  - `https://www.youtube.com/shorts/VIDEO_ID`
+  - `https://www.youtube.com/embed/VIDEO_ID`
+
+**curl Example:**
+```bash
+curl -X POST "https://ffmpegapi.net/api/youtube_to_mp4" \
+  -H "X-API-Key: your_api_key_here" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "youtube_url": "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
+  }'
+```
+
+**Success Response:**
+```json
+{
+  "success": true,
+  "message": "YouTube video downloaded successfully",
+  "download_url": "https://ffmpegapi.net/download/abc123_youtube.mp4",
+  "filename": "abc123_youtube.mp4",
+  "title": "Video Title From YouTube"
+}
+```
+
+**Error Response:**
+```json
+{
+  "success": false,
+  "error": "Invalid YouTube URL. Supported formats: youtube.com/watch?v=, youtu.be/, youtube.com/shorts/"
+}
+```
+
+**Notes:**
+- Only YouTube URLs are accepted; other video platforms are not supported.
+- Playlists are not supported; only single videos can be downloaded.
+- Maximum file size is 500MB.
+
+---
+
+### 10. Job Status
 
 **Endpoint:** `GET /api/job/{job_id}/status`
 

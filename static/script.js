@@ -20,6 +20,7 @@ class VideoMerger {
         this.initializeConvertVideoToGifTab();
         this.initializeAutoCaptionTab();
         this.initializeTextOverlayTab();
+        this.initializeYoutubeMp4Tab();
     }
 
     initializeImageAudioTab() {
@@ -2737,6 +2738,143 @@ class VideoMerger {
 
     hideTextOverlayResult() {
         this.textOverlayResultContainer.style.display = 'none';
+    }
+
+    initializeYoutubeMp4Tab() {
+        this.youtubeMp4Form = document.getElementById('youtubeMp4Form');
+        this.youtubeMp4SubmitBtn = document.getElementById('youtubeMp4SubmitBtn');
+        this.youtubeMp4ProgressContainer = document.getElementById('youtubeMp4ProgressContainer');
+        this.youtubeMp4AlertContainer = document.getElementById('youtubeMp4AlertContainer');
+        this.youtubeMp4ResultContainer = document.getElementById('youtubeMp4ResultContainer');
+        this.youtubeMp4DownloadBtn = document.getElementById('youtubeMp4DownloadBtn');
+        this.youtubeMp4CleanupBtn = document.getElementById('youtubeMp4CleanupBtn');
+        this.youtubeMp4ResetBtn = document.getElementById('youtubeMp4ResetBtn');
+        this.youtubeMp4ResultMessage = document.getElementById('youtubeMp4ResultMessage');
+        this.youtubeMp4CurrentFilename = null;
+
+        if (!this.youtubeMp4Form) return;
+
+        this.youtubeMp4Form.addEventListener('submit', (e) => {
+            e.preventDefault();
+            this.handleYoutubeMp4Submit();
+        });
+
+        this.youtubeMp4CleanupBtn.addEventListener('click', () => {
+            this.handleYoutubeMp4Cleanup();
+        });
+
+        this.youtubeMp4ResetBtn.addEventListener('click', () => {
+            this.resetYoutubeMp4Form();
+        });
+    }
+
+    async handleYoutubeMp4Submit() {
+        const formData = new FormData(this.youtubeMp4Form);
+
+        const jsonData = {};
+        formData.forEach((value, key) => {
+            jsonData[key] = value;
+        });
+
+        this.showYoutubeMp4Progress();
+        this.hideYoutubeMp4Alert();
+        this.hideYoutubeMp4Result();
+
+        try {
+            const response = await fetch('/api/youtube_to_mp4', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-API-Key': window.API_KEY
+                },
+                body: JSON.stringify(jsonData)
+            });
+
+            const result = await response.json();
+
+            if (result.success) {
+                this.youtubeMp4DownloadBtn.href = result.download_url;
+                this.youtubeMp4DownloadBtn.download = result.filename;
+                this.youtubeMp4CurrentFilename = result.filename;
+
+                const title = result.title || 'YouTube video';
+                this.youtubeMp4ResultMessage.textContent = `"${title}" is ready for download.`;
+
+                this.showYoutubeMp4Result();
+                this.showYoutubeMp4Alert('success', `YouTube video downloaded successfully: ${title}`);
+            } else {
+                this.showYoutubeMp4Alert('danger', `Error: ${result.error}`);
+            }
+        } catch (error) {
+            console.error('YouTube to MP4 error:', error);
+            this.showYoutubeMp4Alert('danger', `An error occurred: ${error.message}`);
+        } finally {
+            this.hideYoutubeMp4Progress();
+        }
+    }
+
+    async handleYoutubeMp4Cleanup() {
+        if (!this.youtubeMp4CurrentFilename) return;
+
+        try {
+            const response = await fetch(`/api/cleanup/${this.youtubeMp4CurrentFilename}`, {
+                method: 'DELETE',
+                headers: {
+                    'X-API-Key': window.API_KEY
+                }
+            });
+
+            if (response.ok) {
+                this.showYoutubeMp4Alert('info', 'File deleted from server successfully');
+                this.youtubeMp4CurrentFilename = null;
+                this.hideYoutubeMp4Result();
+            } else {
+                this.showYoutubeMp4Alert('warning', 'File cleanup failed, but it will be automatically deleted after 24 hours');
+            }
+        } catch (error) {
+            console.error('Cleanup error:', error);
+            this.showYoutubeMp4Alert('warning', 'File cleanup failed, but it will be automatically deleted after 24 hours');
+        }
+    }
+
+    resetYoutubeMp4Form() {
+        this.youtubeMp4Form.reset();
+        this.hideYoutubeMp4Alert();
+        this.hideYoutubeMp4Result();
+        this.hideYoutubeMp4Progress();
+        this.youtubeMp4CurrentFilename = null;
+    }
+
+    showYoutubeMp4Progress() {
+        this.youtubeMp4ProgressContainer.style.display = 'block';
+        this.youtubeMp4SubmitBtn.disabled = true;
+    }
+
+    hideYoutubeMp4Progress() {
+        this.youtubeMp4ProgressContainer.style.display = 'none';
+        this.youtubeMp4SubmitBtn.disabled = false;
+    }
+
+    showYoutubeMp4Alert(type, message) {
+        this.youtubeMp4AlertContainer.innerHTML = `
+            <div class="alert alert-${type} alert-dismissible fade show" role="alert">
+                <i class="fas fa-${this.getAlertIcon(type)} me-2"></i>
+                ${message}
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+        `;
+    }
+
+    hideYoutubeMp4Alert() {
+        this.youtubeMp4AlertContainer.innerHTML = '';
+    }
+
+    showYoutubeMp4Result() {
+        this.youtubeMp4ResultContainer.style.display = 'block';
+    }
+
+    hideYoutubeMp4Result() {
+        this.youtubeMp4ResultContainer.style.display = 'none';
     }
 }
 
