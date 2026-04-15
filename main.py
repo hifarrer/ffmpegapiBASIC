@@ -7023,6 +7023,40 @@ def youtube_to_mp4():
     )
 
     try:
+        def normalize_youtube_url(raw_url):
+            """Keep only the canonical single-video URL to avoid playlist-related stalls."""
+            try:
+                from urllib.parse import urlparse, parse_qs
+
+                parsed = urlparse(raw_url)
+                host = (parsed.netloc or "").lower()
+                path = parsed.path or ""
+                query = parse_qs(parsed.query or "")
+
+                # youtu.be/<id>
+                if "youtu.be" in host:
+                    video_id = path.strip("/").split("/")[0] if path.strip("/") else ""
+                    if video_id:
+                        return f"https://www.youtube.com/watch?v={video_id}"
+                    return raw_url
+
+                # youtube.com/watch?v=<id>[...]
+                if "youtube.com" in host and path.startswith("/watch"):
+                    video_id = (query.get("v") or [""])[0]
+                    if video_id:
+                        return f"https://www.youtube.com/watch?v={video_id}"
+                    return raw_url
+
+                # youtube.com/shorts/<id> or /embed/<id> or /v/<id>
+                if "youtube.com" in host:
+                    parts = [p for p in path.split("/") if p]
+                    if len(parts) >= 2 and parts[0] in {"shorts", "embed", "v"}:
+                        return f"https://www.youtube.com/watch?v={parts[1]}"
+
+                return raw_url
+            except Exception:
+                return raw_url
+
         if request.is_json:
             data = request.get_json()
             youtube_url = data.get('youtube_url')
@@ -7041,6 +7075,9 @@ def youtube_to_mp4():
                 'success': False,
                 'error': 'Invalid YouTube URL. Supported formats: youtube.com/watch?v=, youtu.be/, youtube.com/shorts/'
             }), 400
+
+        youtube_url = normalize_youtube_url(youtube_url)
+        logging.info(f"[YOUTUBE_TO_MP4] Normalized URL: {youtube_url}")
 
         rapidapi_key = os.environ.get("RAPIDAPI_KEY")
         if not rapidapi_key:
@@ -7123,8 +7160,28 @@ def youtube_to_mp4():
             if progress_result.get("error"):
                 raise RuntimeError(str(progress_result.get("error")))
 
-            if progress_result.get("success") == 1 and progress_result.get("download_url"):
-                download_url = progress_result.get("download_url")
+            success_value = progress_result.get("success")
+            success_flag = success_value in (1, "1", True)
+
+            download_url = progress_result.get("download_url")
+            if not download_url:
+                alternatives = progress_result.get("alternative_download_urls") or []
+                if isinstance(alternatives, list):
+                    # Prefer HTTPS alternatives when primary URL is missing.
+                    for alt in alternatives:
+                        if not isinstance(alt, dict):
+                            continue
+                        alt_url = alt.get("url")
+                        if isinstance(alt_url, str) and alt_url.startswith("https://"):
+                            download_url = alt_url
+                            break
+                    if not download_url:
+                        for alt in alternatives:
+                            if isinstance(alt, dict) and isinstance(alt.get("url"), str):
+                                download_url = alt.get("url")
+                                break
+
+            if success_flag and download_url:
                 return jsonify({
                     'success': True,
                     'message': 'YouTube video downloaded successfully',
@@ -7132,6 +7189,13 @@ def youtube_to_mp4():
                     'filename': None,
                     'title': video_title
                 })
+
+            if attempt % 6 == 0:
+                logging.info(
+                    f"[YOUTUBE_TO_MP4] Poll status attempt={attempt + 1}/60 "
+                    f"success={success_value} progress={progress_result.get('progress')} "
+                    f"text={progress_result.get('text')}"
+                )
 
         raise RuntimeError("YouTube to MP4 conversion timed out")
 
