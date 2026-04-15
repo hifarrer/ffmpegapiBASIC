@@ -2328,6 +2328,12 @@ if ($result['success']) {
                                                 <td>URL to watermark/logo image (PNG recommended) to overlay in top right corner</td>
                                             </tr>
                                             <tr>
+                                                <td><code>outro_video_url</code></td>
+                                                <td>String</td>
+                                                <td>No</td>
+                                                <td>URL to an outro video to append after the TikTok portrait output</td>
+                                            </tr>
+                                            <tr>
                                                 <td><code>async</code></td>
                                                 <td>Boolean</td>
                                                 <td>No</td>
@@ -2533,6 +2539,7 @@ convertVideo();</code></pre>
                                     <pre><code class="language-json">{
   "video_url": "https://example.com/landscape_video.mp4",
   "watermark_url": "https://example.com/logo.png",
+  "outro_video_url": "https://example.com/outro.mp4",
   "async": false
 }</code></pre>
                                 </div>
@@ -2618,7 +2625,8 @@ convertVideo();</code></pre>
   -H "Content-Type: application/json" \
   -d '{
     "video_url": "https://example.com/landscape_video.mp4",
-    "watermark_url": "https://example.com/logo.png"
+    "watermark_url": "https://example.com/logo.png",
+    "outro_video_url": "https://example.com/outro.mp4"
   }'</code></pre>
                                         </div>
                                     </div>
@@ -2633,7 +2641,8 @@ headers = {
 }
 data = {
     "video_url": "https://example.com/landscape_video.mp4",
-    "watermark_url": "https://example.com/logo.png"
+    "watermark_url": "https://example.com/logo.png",
+    "outro_video_url": "https://example.com/outro.mp4"
 }
 
 response = requests.post(url, headers=headers, json=data)
@@ -2657,7 +2666,8 @@ else:
     },
     body: JSON.stringify({
       video_url: 'https://example.com/landscape_video.mp4',
-      watermark_url: 'https://example.com/logo.png'
+      watermark_url: 'https://example.com/logo.png',
+      outro_video_url: 'https://example.com/outro.mp4'
     })
   });
   

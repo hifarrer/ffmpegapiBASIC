@@ -4601,6 +4601,7 @@ def process_convert_to_tiktok_portrait_job(job, input_data):
         request_id = str(uuid.uuid4())
         video_url = input_data.get('video_url')
         watermark_url = input_data.get('watermark_url')
+        outro_video_url = input_data.get('outro_video_url')
         
         if video_url:
             video_ext = video_url.split('.')[-1].lower() if '.' in video_url else 'mp4'
@@ -4613,6 +4614,8 @@ def process_convert_to_tiktok_portrait_job(job, input_data):
             
             try:
                 watermark_path = None
+                outro_path = None
+                converted_output_path = None
                 if watermark_url:
                     watermark_ext = watermark_url.split('.')[-1].lower() if '.' in watermark_url else 'png'
                     watermark_filename = f"{request_id}_watermark.{watermark_ext}"
@@ -4625,6 +4628,7 @@ def process_convert_to_tiktok_portrait_job(job, input_data):
                 
                 output_filename = f"{request_id}_tiktok_portrait.mp4"
                 output_path = os.path.join(OUTPUT_FOLDER, output_filename)
+                converted_output_path = output_path
                 
                 success, message = convert_to_tiktok_portrait_with_ffmpeg(video_path, output_path, watermark_path)
                 
@@ -4633,6 +4637,33 @@ def process_convert_to_tiktok_portrait_job(job, input_data):
                     cleanup_file(watermark_path)
                 
                 if success:
+                    if outro_video_url:
+                        outro_ext = outro_video_url.split('.')[-1].lower() if '.' in outro_video_url else 'mp4'
+                        outro_filename = f"{request_id}_outro.{outro_ext}"
+                        outro_path = os.path.join(UPLOAD_FOLDER, outro_filename)
+
+                        success, outro_message = download_file_from_url(outro_video_url, outro_path, "outro video")
+                        if not success:
+                            cleanup_file(output_path)
+                            return {'success': False, 'error': f'Failed to download outro video: {outro_message}'}
+
+                        final_output_filename = f"{request_id}_tiktok_portrait_with_outro.mp4"
+                        final_output_path = os.path.join(OUTPUT_FOLDER, final_output_filename)
+                        success, merge_message = merge_videos_with_ffmpeg(
+                            [output_path, outro_path],
+                            final_output_path,
+                            dimensions='1080x1920'
+                        )
+                        cleanup_file(outro_path)
+                        cleanup_file(output_path)
+
+                        if not success:
+                            return {'success': False, 'error': f'Failed to append outro video: {merge_message}'}
+
+                        output_filename = final_output_filename
+                        output_path = final_output_path
+                        message = f"{message} Outro video appended successfully."
+
                     storage_url = upload_to_storage(output_path, output_filename)
                     
                     if storage_url:
@@ -4666,6 +4697,10 @@ def process_convert_to_tiktok_portrait_job(job, input_data):
                 cleanup_file(video_path)
                 if watermark_path:
                     cleanup_file(watermark_path)
+                if outro_path:
+                    cleanup_file(outro_path)
+                if converted_output_path and converted_output_path != output_path:
+                    cleanup_file(converted_output_path)
                 raise e
         else:
             return {'success': False, 'error': 'video_url is required'}
@@ -6841,6 +6876,7 @@ def convert_to_tiktok_portrait():
         data = request.get_json()
         video_url = data.get('video_url')
         watermark_url = data.get('watermark_url')
+        outro_video_url = data.get('outro_video_url')
         async_processing = data.get('async', False)
         
         if not video_url:
@@ -6857,7 +6893,8 @@ def convert_to_tiktok_portrait():
             )
             job.set_input_data({
                 'video_url': video_url,
-                'watermark_url': watermark_url
+                'watermark_url': watermark_url,
+                'outro_video_url': outro_video_url
             })
             db.session.add(job)
             db.session.commit()
@@ -6890,6 +6927,8 @@ def convert_to_tiktok_portrait():
         
         try:
             watermark_path = None
+            outro_path = None
+            converted_output_path = None
             if watermark_url:
                 watermark_ext = watermark_url.split('.')[-1].lower() if '.' in watermark_url else 'png'
                 watermark_filename = f"{request_id}_watermark.{watermark_ext}"
@@ -6905,6 +6944,7 @@ def convert_to_tiktok_portrait():
             
             output_filename = f"{request_id}_tiktok_portrait.mp4"
             output_path = os.path.join(OUTPUT_FOLDER, output_filename)
+            converted_output_path = output_path
             
             success, message = convert_to_tiktok_portrait_with_ffmpeg(video_path, output_path, watermark_path)
             
@@ -6913,6 +6953,39 @@ def convert_to_tiktok_portrait():
                 cleanup_file(watermark_path)
             
             if success:
+                if outro_video_url:
+                    outro_ext = outro_video_url.split('.')[-1].lower() if '.' in outro_video_url else 'mp4'
+                    outro_filename = f"{request_id}_outro.{outro_ext}"
+                    outro_path = os.path.join(UPLOAD_FOLDER, outro_filename)
+
+                    success, outro_message = download_file_from_url(outro_video_url, outro_path, "outro video")
+                    if not success:
+                        cleanup_file(output_path)
+                        return jsonify({
+                            'success': False,
+                            'error': f'Failed to download outro video: {outro_message}'
+                        }), 400
+
+                    final_output_filename = f"{request_id}_tiktok_portrait_with_outro.mp4"
+                    final_output_path = os.path.join(OUTPUT_FOLDER, final_output_filename)
+                    success, merge_message = merge_videos_with_ffmpeg(
+                        [output_path, outro_path],
+                        final_output_path,
+                        dimensions='1080x1920'
+                    )
+                    cleanup_file(outro_path)
+                    cleanup_file(output_path)
+
+                    if not success:
+                        return jsonify({
+                            'success': False,
+                            'error': f'Failed to append outro video: {merge_message}'
+                        }), 500
+
+                    output_filename = final_output_filename
+                    output_path = final_output_path
+                    message = f"{message} Outro video appended successfully."
+
                 storage_url = upload_to_storage(output_path, output_filename)
                 
                 if storage_url:
@@ -6950,6 +7023,10 @@ def convert_to_tiktok_portrait():
             cleanup_file(video_path)
             if watermark_path:
                 cleanup_file(watermark_path)
+            if outro_path:
+                cleanup_file(outro_path)
+            if converted_output_path and converted_output_path != output_path:
+                cleanup_file(converted_output_path)
             raise e
             
     except Exception as e:
