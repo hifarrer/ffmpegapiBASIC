@@ -474,6 +474,16 @@ def validate_url(url):
 
 def download_with_timeout(url, output_path, timeout=60, file_type="file"):
     """Download file from URL with timeout and proper error handling"""
+    # Fast-path for files already produced by this app (e.g. /download/<file> URLs).
+    # This avoids round-tripping over HTTPS to ourselves and hitting socket read timeouts.
+    resolved_local, local_path = resolve_local_download_url(url)
+    if resolved_local and local_path:
+        try:
+            shutil.copy2(local_path, output_path)
+            logging.info(f"Copied local {file_type} from {local_path} to {output_path}")
+            return True, f"{file_type.capitalize()} copied from local storage"
+        except Exception as e:
+            logging.warning(f"Failed local copy for {file_type} from {local_path}: {str(e)}")
     
     # First validate the URL
     is_valid, validation_msg = validate_url(url)
@@ -481,34 +491,40 @@ def download_with_timeout(url, output_path, timeout=60, file_type="file"):
         logging.error(f"URL validation failed for {url}: {validation_msg}")
         return False, validation_msg
     
-    try:
-        logging.info(f"Downloading {file_type} from: {url}")
-        
-        # Use requests with timeout for both connect and read
-        response = requests.get(url, timeout=(10, timeout), stream=True)
-        response.raise_for_status()
-        
-        # Download in chunks to handle large files
-        with open(output_path, 'wb') as f:
-            for chunk in response.iter_content(chunk_size=8192):
-                if chunk:
-                    f.write(chunk)
-        
-        logging.info(f"Successfully downloaded {file_type} to {output_path}")
-        return True, f"{file_type.capitalize()} downloaded successfully"
-        
-    except requests.exceptions.Timeout:
-        logging.error(f"Timeout downloading {file_type} from {url}")
-        return False, f"Download timed out after {timeout} seconds"
-    except requests.exceptions.ConnectionError as e:
-        logging.error(f"Connection error downloading {file_type} from {url}: {str(e)}")
-        return False, f"Connection error: Could not connect to {url}"
-    except requests.exceptions.HTTPError as e:
-        logging.error(f"HTTP error downloading {file_type} from {url}: {str(e)}")
-        return False, f"HTTP error: {e.response.status_code} - {e.response.reason}"
-    except Exception as e:
-        logging.error(f"Failed to download {file_type} from {url}: {str(e)}")
-        return False, f"Failed to download {file_type}: {str(e)}"
+    max_attempts = 2
+    for attempt in range(1, max_attempts + 1):
+        try:
+            logging.info(f"Downloading {file_type} from: {url} (attempt {attempt}/{max_attempts})")
+            
+            # Use requests with timeout for both connect and read.
+            response = requests.get(url, timeout=(10, timeout), stream=True)
+            response.raise_for_status()
+            
+            # Download in chunks to handle large files
+            with open(output_path, 'wb') as f:
+                for chunk in response.iter_content(chunk_size=8192):
+                    if chunk:
+                        f.write(chunk)
+            
+            logging.info(f"Successfully downloaded {file_type} to {output_path}")
+            return True, f"{file_type.capitalize()} downloaded successfully"
+
+        except requests.exceptions.Timeout:
+            logging.error(f"Timeout downloading {file_type} from {url} on attempt {attempt}/{max_attempts}")
+            if attempt == max_attempts:
+                return False, f"Download timed out after {timeout} seconds"
+            time.sleep(1)
+        except requests.exceptions.ConnectionError as e:
+            logging.error(f"Connection error downloading {file_type} from {url}: {str(e)}")
+            return False, f"Connection error: Could not connect to {url}"
+        except requests.exceptions.HTTPError as e:
+            logging.error(f"HTTP error downloading {file_type} from {url}: {str(e)}")
+            return False, f"HTTP error: {e.response.status_code} - {e.response.reason}"
+        except Exception as e:
+            logging.error(f"Failed to download {file_type} from {url}: {str(e)}")
+            return False, f"Failed to download {file_type}: {str(e)}"
+
+    return False, f"Failed to download {file_type}"
 
 def download_video_from_url(url, output_path):
     """Download video from URL to local path"""
@@ -516,7 +532,7 @@ def download_video_from_url(url, output_path):
 
 def download_file_from_url(url, output_path, file_type="file"):
     """Download any file from URL to local path"""
-    return download_with_timeout(url, output_path, timeout=60, file_type=file_type)
+    return download_with_timeout(url, output_path, timeout=180, file_type=file_type)
 
 
 def resolve_local_download_url(url):
