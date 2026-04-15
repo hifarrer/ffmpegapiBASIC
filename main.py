@@ -7014,7 +7014,7 @@ def add_text_overlay_captions():
 @log_api_request
 @require_api_key
 def youtube_to_mp4():
-    """API endpoint to download a YouTube video as MP4"""
+    """API endpoint to convert a YouTube URL to an MP4 download URL via RapidAPI"""
     api_key = request.headers.get('X-API-Key') or request.args.get('api_key')
     logging.info(f"[YOUTUBE_TO_MP4] Request received from API key: {api_key[:20]}...")
 
@@ -7022,10 +7022,7 @@ def youtube_to_mp4():
         r'^https?://(www\.|m\.)?(youtube\.com/(watch\?.*v=|shorts/|embed/|v/)|youtu\.be/)[^\s]+'
     )
 
-    output_path = None
     try:
-        request_id = str(uuid.uuid4())
-
         if request.is_json:
             data = request.get_json()
             youtube_url = data.get('youtube_url')
@@ -7045,74 +7042,98 @@ def youtube_to_mp4():
                 'error': 'Invalid YouTube URL. Supported formats: youtube.com/watch?v=, youtu.be/, youtube.com/shorts/'
             }), 400
 
-        output_filename = f"{request_id}_youtube.mp4"
-        output_path = os.path.join(OUTPUT_FOLDER, output_filename)
-
-        ydl_opts = {
-            'format': 'bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best',
-            'merge_output_format': 'mp4',
-            'outtmpl': output_path,
-            'noplaylist': True,
-            'max_filesize': 500 * 1024 * 1024,
-            'socket_timeout': 30,
-            'retries': 3,
-            'quiet': True,
-            'no_warnings': True,
-        }
-
-        import yt_dlp
-
-        video_title = None
-        try:
-            with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-                info = ydl.extract_info(youtube_url, download=True)
-                video_title = info.get('title', 'Unknown')
-                logging.info(f"[YOUTUBE_TO_MP4] Downloaded: {video_title}")
-        except yt_dlp.utils.DownloadError as e:
-            logging.error(f"[YOUTUBE_TO_MP4] yt-dlp download error: {str(e)}")
+        rapidapi_key = os.environ.get("RAPIDAPI_KEY")
+        if not rapidapi_key:
             return jsonify({
                 'success': False,
-                'error': f'Failed to download YouTube video: {str(e)}'
-            }), 400
-
-        if not os.path.exists(output_path):
-            return jsonify({
-                'success': False,
-                'error': 'Download completed but output file not found'
+                'error': 'RAPIDAPI_KEY is not configured'
             }), 500
 
-        storage_url = upload_to_storage(output_path, output_filename)
+        rapidapi_host = "youtube-info-download-api.p.rapidapi.com"
+        submit_url = f"https://{rapidapi_host}/ajax/download.php"
+        submit_params = {
+            "format": "1080",
+            "add_info": "0",
+            "url": youtube_url,
+            "audio_quality": "128",
+            "allow_extended_duration": "false",
+            "no_merge": "false",
+            "audio_language": "en",
+        }
 
-        if storage_url:
-            cleanup_file(output_path)
-            output_path = None
+        submit_headers = {
+            "Content-Type": "application/json",
+            "x-rapidapi-host": rapidapi_host,
+            "x-rapidapi-key": rapidapi_key,
+        }
 
-            return jsonify({
-                'success': True,
-                'message': 'YouTube video downloaded successfully',
-                'download_url': storage_url,
-                'filename': output_filename,
-                'title': video_title
-            })
-        else:
-            logging.warning("[YOUTUBE_TO_MP4] Storage upload failed, falling back to local download")
+        logging.info("[YOUTUBE_TO_MP4] Submitting conversion request to RapidAPI")
+        try:
+            submit_response = requests.get(
+                submit_url,
+                headers=submit_headers,
+                params=submit_params,
+                timeout=30
+            )
+        except requests.RequestException as e:
+            raise RuntimeError(f"YouTube download API request failed: {str(e)}")
 
-            if os.environ.get('REPLIT_DEPLOYMENT'):
-                download_url = f"https://www.ffmpegapi.net/download/{output_filename}"
-            elif os.environ.get('REPLIT_DEV_DOMAIN'):
-                download_url = f"https://{os.environ['REPLIT_DEV_DOMAIN']}/download/{output_filename}"
-            else:
-                download_url = url_for('download_file', filename=output_filename, _external=True)
+        if submit_response.status_code < 200 or submit_response.status_code >= 300:
+            raise RuntimeError(
+                f"YouTube download API error: {submit_response.status_code} - {submit_response.text}"
+            )
 
-            output_path = None
+        try:
+            submit_result = submit_response.json()
+        except ValueError:
+            raise RuntimeError("YouTube download API returned invalid JSON")
 
-            return jsonify({
-                'success': True,
-                'message': 'YouTube video downloaded successfully (Note: Using temporary local storage - download soon)',
-                'download_url': download_url,
-                'filename': output_filename,
-                'title': video_title
-            })
+        if not submit_result.get("success"):
+            raise RuntimeError(submit_result.get("message") or "YouTube download submission failed")
+
+        progress_url = submit_result.get("progress_url")
+        if not progress_url:
+            raise RuntimeError("No progress_url returned from YouTube download API")
+
+        video_title = submit_result.get("title") or "YouTube Video"
+        logging.info("[YOUTUBE_TO_MP4] Conversion queued; polling progress endpoint")
+
+        # Poll up to 5 minutes (60 * 5 seconds).
+        for attempt in range(60):
+            time.sleep(5)
+            try:
+                progress_response = requests.get(progress_url, timeout=30)
+            except requests.RequestException as e:
+                logging.warning(f"[YOUTUBE_TO_MP4] Progress poll request failed (attempt {attempt + 1}/60): {str(e)}")
+                continue
+
+            if progress_response.status_code < 200 or progress_response.status_code >= 300:
+                logging.warning(
+                    f"[YOUTUBE_TO_MP4] Progress poll non-2xx status {progress_response.status_code} "
+                    f"(attempt {attempt + 1}/60)"
+                )
+                continue
+
+            try:
+                progress_result = progress_response.json()
+            except ValueError:
+                logging.warning(f"[YOUTUBE_TO_MP4] Progress poll returned invalid JSON (attempt {attempt + 1}/60)")
+                continue
+
+            if progress_result.get("error"):
+                raise RuntimeError(str(progress_result.get("error")))
+
+            if progress_result.get("success") == 1 and progress_result.get("download_url"):
+                download_url = progress_result.get("download_url")
+                return jsonify({
+                    'success': True,
+                    'message': 'YouTube video downloaded successfully',
+                    'download_url': download_url,
+                    'filename': None,
+                    'title': video_title
+                })
+
+        raise RuntimeError("YouTube to MP4 conversion timed out")
 
     except Exception as e:
         logging.error(f"[YOUTUBE_TO_MP4] Error: {str(e)}", exc_info=True)
@@ -7120,9 +7141,6 @@ def youtube_to_mp4():
             'success': False,
             'error': f'Server error: {str(e)}'
         }), 500
-    finally:
-        if output_path:
-            cleanup_file(output_path)
 
 
 if __name__ == '__main__':
