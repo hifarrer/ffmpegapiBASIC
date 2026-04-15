@@ -17,6 +17,7 @@ class VideoMerger {
         this.initializeFirstFrameTab();
         this.initializeLastFrameTab();
         this.initializeConvertVerticalTab();
+        this.initializeTiktokPortraitTab();
         this.initializeExtractAudioMp3Tab();
         this.initializeConvertVideoToGifTab();
         this.initializeAutoCaptionTab();
@@ -2352,6 +2353,142 @@ class VideoMerger {
 
     hideConvertVerticalResult() {
         this.convertVerticalResultContainer.style.display = 'none';
+    }
+
+    initializeTiktokPortraitTab() {
+        this.tiktokPortraitForm = document.getElementById('tiktokPortraitForm');
+        this.tiktokPortraitSubmitBtn = document.getElementById('tiktokPortraitSubmitBtn');
+        this.tiktokPortraitProgressContainer = document.getElementById('tiktokPortraitProgressContainer');
+        this.tiktokPortraitAlertContainer = document.getElementById('tiktokPortraitAlertContainer');
+        this.tiktokPortraitResultContainer = document.getElementById('tiktokPortraitResultContainer');
+        this.tiktokPortraitDownloadBtn = document.getElementById('tiktokPortraitDownloadBtn');
+        this.tiktokPortraitCleanupBtn = document.getElementById('tiktokPortraitCleanupBtn');
+        this.tiktokPortraitResetBtn = document.getElementById('tiktokPortraitResetBtn');
+        this.tiktokPortraitCurrentFilename = null;
+
+        this.tiktokPortraitForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            this.handleTiktokPortraitSubmit();
+        });
+
+        this.tiktokPortraitCleanupBtn.addEventListener('click', () => {
+            this.handleTiktokPortraitCleanup();
+        });
+
+        this.tiktokPortraitResetBtn.addEventListener('click', () => {
+            this.resetTiktokPortraitForm();
+        });
+    }
+
+    async handleTiktokPortraitSubmit() {
+        const formData = new FormData(this.tiktokPortraitForm);
+        
+        const jsonData = {};
+        formData.forEach((value, key) => {
+            if (value) {
+                jsonData[key] = value;
+            }
+        });
+
+        this.showTiktokPortraitProgress();
+        this.hideTiktokPortraitAlert();
+        this.hideTiktokPortraitResult();
+
+        try {
+            const response = await fetch('/api/convert_to_tiktok_portrait', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-API-Key': window.API_KEY
+                },
+                body: JSON.stringify(jsonData)
+            });
+
+            const result = await response.json();
+
+            if (result.success) {
+                this.tiktokPortraitDownloadBtn.href = result.download_url;
+                this.tiktokPortraitDownloadBtn.download = result.filename;
+                this.tiktokPortraitCurrentFilename = result.filename;
+                
+                const messageElement = document.getElementById('tiktokPortraitResultMessage');
+                messageElement.textContent = result.message || 'Your video has been converted to TikTok portrait format and is ready for download.';
+                
+                this.showTiktokPortraitResult();
+                this.showTiktokPortraitAlert('success', result.message || 'TikTok portrait created successfully!');
+            } else {
+                this.showTiktokPortraitAlert('danger', `Error: ${result.error}`);
+            }
+        } catch (error) {
+            console.error('TikTok portrait error:', error);
+            this.showTiktokPortraitAlert('danger', `An error occurred: ${error.message}`);
+        } finally {
+            this.hideTiktokPortraitProgress();
+        }
+    }
+
+    async handleTiktokPortraitCleanup() {
+        if (!this.tiktokPortraitCurrentFilename) return;
+
+        try {
+            const response = await fetch(`/api/cleanup/${this.tiktokPortraitCurrentFilename}`, {
+                method: 'DELETE',
+                headers: {
+                    'X-API-Key': window.API_KEY
+                }
+            });
+
+            if (response.ok) {
+                this.showTiktokPortraitAlert('info', 'File deleted from server successfully');
+                this.tiktokPortraitCurrentFilename = null;
+                this.hideTiktokPortraitResult();
+            } else {
+                this.showTiktokPortraitAlert('warning', 'File cleanup failed, but it will be automatically deleted after 24 hours');
+            }
+        } catch (error) {
+            console.error('Cleanup error:', error);
+            this.showTiktokPortraitAlert('warning', 'File cleanup failed, but it will be automatically deleted after 24 hours');
+        }
+    }
+
+    resetTiktokPortraitForm() {
+        this.tiktokPortraitForm.reset();
+        this.hideTiktokPortraitAlert();
+        this.hideTiktokPortraitResult();
+        this.hideTiktokPortraitProgress();
+        this.tiktokPortraitCurrentFilename = null;
+    }
+
+    showTiktokPortraitProgress() {
+        this.tiktokPortraitProgressContainer.style.display = 'block';
+        this.tiktokPortraitSubmitBtn.disabled = true;
+    }
+
+    hideTiktokPortraitProgress() {
+        this.tiktokPortraitProgressContainer.style.display = 'none';
+        this.tiktokPortraitSubmitBtn.disabled = false;
+    }
+
+    showTiktokPortraitAlert(type, message) {
+        this.tiktokPortraitAlertContainer.innerHTML = `
+            <div class="alert alert-${type} alert-dismissible fade show" role="alert">
+                <i class="fas fa-${this.getAlertIcon(type)} me-2"></i>
+                ${message}
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+        `;
+    }
+
+    hideTiktokPortraitAlert() {
+        this.tiktokPortraitAlertContainer.innerHTML = '';
+    }
+
+    showTiktokPortraitResult() {
+        this.tiktokPortraitResultContainer.style.display = 'block';
+    }
+
+    hideTiktokPortraitResult() {
+        this.tiktokPortraitResultContainer.style.display = 'none';
     }
 
     initializeExtractAudioMp3Tab() {

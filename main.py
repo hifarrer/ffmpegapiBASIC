@@ -1663,6 +1663,88 @@ def convert_to_vertical_with_ffmpeg(video_path, output_path, watermark_path=None
         return False, f"Video conversion error: {str(e)}"
 
 
+def convert_to_tiktok_portrait_with_ffmpeg(video_path, output_path, watermark_path=None):
+    """Convert landscape video to TikTok-style 9:16 portrait by scaling up and center-cropping (no black bars)"""
+    try:
+        success, dimensions = get_video_dimensions(video_path)
+        if not success:
+            return False, f"Could not analyze video dimensions: {dimensions}"
+        
+        width, height = dimensions
+        logging.info(f"Original video dimensions: {width}x{height}")
+        
+        target_width = 1080
+        target_height = 1920
+        
+        # Scale so the smaller dimension matches the target, then crop overflow
+        scale_filter = f"[0:v]scale={target_width}:{target_height}:force_original_aspect_ratio=increase,crop={target_width}:{target_height}[v]"
+        
+        if watermark_path:
+            watermark_filter = f"[v][1:v]overlay=W-w-20:20:format=auto,format=yuv420p[outv]"
+            video_output = '[outv]'
+            inputs = ['-i', video_path, '-i', watermark_path]
+            filter_complex = scale_filter + ';' + watermark_filter
+        else:
+            video_output = '[v]'
+            inputs = ['-i', video_path]
+            filter_complex = scale_filter
+        
+        cmd = [
+            'ffmpeg',
+            '-hide_banner',
+            *inputs,
+            '-filter_complex', filter_complex,
+            '-map', video_output,
+            '-map', '0:a?',
+            '-c:v', 'libx264',
+            '-c:a', 'aac',
+            '-b:a', '192k',
+            '-pix_fmt', 'yuv420p',
+            '-y',
+            output_path
+        ]
+        
+        logging.info(f"Running FFMPEG command: {' '.join(cmd)}")
+        
+        result = subprocess.run(
+            cmd,
+            capture_output=True,
+            text=True,
+            timeout=600
+        )
+        
+        if result.returncode == 0:
+            logging.info(f"Successfully converted to TikTok portrait format (9:16)")
+            return True, "Video successfully converted to TikTok portrait format (9:16)"
+        else:
+            stderr_text = result.stderr.strip() if result.stderr else ""
+            stderr_lines = stderr_text.split('\n') if stderr_text else []
+            
+            error_lines = []
+            for line in stderr_lines:
+                if line.startswith('ffmpeg version') or \
+                   line.startswith('built with') or \
+                   (line.startswith('configuration:') and '--' in line) or \
+                   (line.strip().startswith('lib') and '=' in line and 'version' in line.lower()):
+                    continue
+                error_lines.append(line)
+            
+            error_msg = '\n'.join(error_lines).strip()
+            
+            if not error_msg:
+                error_msg = result.stdout.strip() if result.stdout else "Unknown ffmpeg error occurred"
+            
+            logging.error(f"FFMPEG error (returncode {result.returncode}): {error_msg}")
+            return False, f"Video conversion failed: {error_msg}"
+            
+    except subprocess.TimeoutExpired:
+        logging.error("TikTok portrait conversion timed out")
+        return False, "Video conversion processing timed out"
+    except Exception as e:
+        logging.error(f"TikTok portrait conversion error: {str(e)}")
+        return False, f"Video conversion error: {str(e)}"
+
+
 def _normalize_chromakey_color_for_ffmpeg(color_raw):
     """Normalize user chromakey color to FFmpeg 0xRRGGBB (lowercase hex)."""
     if not color_raw or not str(color_raw).strip():
@@ -3534,6 +3616,8 @@ def process_job_async(job_id):
                 result = process_add_subtitles_job(job, input_data)
             elif job.job_type == 'convert_to_vertical':
                 result = process_convert_to_vertical_job(job, input_data)
+            elif job.job_type == 'convert_to_tiktok_portrait':
+                result = process_convert_to_tiktok_portrait_job(job, input_data)
             elif job.job_type == 'neonvideo_merge_videos':
                 result = process_neonvideo_merge_videos_job(job, input_data)
             elif job.job_type == 'add_watermark':
@@ -4509,6 +4593,85 @@ def process_convert_to_vertical_job(job, input_data):
             
     except Exception as e:
         logging.error(f"Error in process_convert_to_vertical_job: {str(e)}")
+        return {'success': False, 'error': f'Server error: {str(e)}'}
+
+def process_convert_to_tiktok_portrait_job(job, input_data):
+    """Process convert_to_tiktok_portrait job"""
+    try:
+        request_id = str(uuid.uuid4())
+        video_url = input_data.get('video_url')
+        watermark_url = input_data.get('watermark_url')
+        
+        if video_url:
+            video_ext = video_url.split('.')[-1].lower() if '.' in video_url else 'mp4'
+            video_filename = f"{request_id}_video.{video_ext}"
+            video_path = os.path.join(UPLOAD_FOLDER, video_filename)
+            
+            success, message = download_file_from_url(video_url, video_path, "video")
+            if not success:
+                return {'success': False, 'error': message}
+            
+            try:
+                watermark_path = None
+                if watermark_url:
+                    watermark_ext = watermark_url.split('.')[-1].lower() if '.' in watermark_url else 'png'
+                    watermark_filename = f"{request_id}_watermark.{watermark_ext}"
+                    watermark_path = os.path.join(UPLOAD_FOLDER, watermark_filename)
+                    
+                    success, message = download_file_from_url(watermark_url, watermark_path, "watermark")
+                    if not success:
+                        cleanup_file(video_path)
+                        return {'success': False, 'error': f'Failed to download watermark: {message}'}
+                
+                output_filename = f"{request_id}_tiktok_portrait.mp4"
+                output_path = os.path.join(OUTPUT_FOLDER, output_filename)
+                
+                success, message = convert_to_tiktok_portrait_with_ffmpeg(video_path, output_path, watermark_path)
+                
+                cleanup_file(video_path)
+                if watermark_path:
+                    cleanup_file(watermark_path)
+                
+                if success:
+                    storage_url = upload_to_storage(output_path, output_filename)
+                    
+                    if storage_url:
+                        cleanup_file(output_path)
+                        
+                        return {
+                            'success': True,
+                            'message': message,
+                            'download_url': storage_url,
+                            'filename': output_filename
+                        }
+                    else:
+                        logging.warning("Storage upload failed, falling back to local download")
+                        
+                        if os.environ.get('REPLIT_DEPLOYMENT'):
+                            download_url = f"https://www.ffmpegapi.net/download/{output_filename}"
+                        elif os.environ.get('REPLIT_DEV_DOMAIN'):
+                            download_url = f"https://{os.environ['REPLIT_DEV_DOMAIN']}/download/{output_filename}"
+                        else:
+                            download_url = url_for('download_file', filename=output_filename, _external=True)
+                        
+                        return {
+                            'success': True,
+                            'message': f"{message} (Note: Using temporary local storage - download soon)",
+                            'download_url': download_url,
+                            'filename': output_filename
+                        }
+                else:
+                    return {'success': False, 'error': message}
+            except Exception as e:
+                cleanup_file(video_path)
+                if watermark_path:
+                    cleanup_file(watermark_path)
+                raise e
+        else:
+            return {'success': False, 'error': 'video_url is required'}
+            
+    except Exception as e:
+        logging.error(f"Error in process_convert_to_tiktok_portrait_job: {str(e)}")
         return {'success': False, 'error': f'Server error: {str(e)}'}
 
 # Job status endpoint
@@ -6655,6 +6818,143 @@ def convert_to_vertical():
     except Exception as e:
         logging.error(f"[CONVERT_TO_VERTICAL] Error: {str(e)}")
         logging.error(f"[CONVERT_TO_VERTICAL] Full traceback:", exc_info=True)
+        return jsonify({
+            'success': False,
+            'error': f'Server error: {str(e)}'
+        }), 500
+
+@app.route('/api/convert_to_tiktok_portrait', methods=['POST'])
+@log_api_request
+@require_api_key
+def convert_to_tiktok_portrait():
+    """API endpoint to convert landscape videos to TikTok-style 9:16 portrait (crop, no black bars)"""
+    api_key = request.headers.get('X-API-Key') or request.args.get('api_key')
+    logging.info(f"[TIKTOK_PORTRAIT] Request received from API key: {api_key[:20] if api_key else 'None'}...")
+    
+    try:
+        if not request.is_json:
+            return jsonify({
+                'success': False,
+                'error': 'Content-Type must be application/json'
+            }), 400
+        
+        data = request.get_json()
+        video_url = data.get('video_url')
+        watermark_url = data.get('watermark_url')
+        async_processing = data.get('async', False)
+        
+        if not video_url:
+            return jsonify({
+                'success': False,
+                'error': 'video_url is required'
+            }), 400
+        
+        if async_processing:
+            job = Job(
+                user_id=current_user.id,
+                job_type='convert_to_tiktok_portrait',
+                status='pending'
+            )
+            job.set_input_data({
+                'video_url': video_url,
+                'watermark_url': watermark_url
+            })
+            db.session.add(job)
+            db.session.commit()
+            
+            thread = threading.Thread(target=process_job_async, args=(job.job_id,))
+            thread.start()
+            
+            status_url = url_for('get_job_status', job_id=job.job_id, _external=True)
+            
+            return jsonify({
+                'success': True,
+                'job_id': job.job_id,
+                'status': 'pending',
+                'message': 'Job submitted for async processing. Use /api/job/{job_id}/status to check progress.',
+                'status_url': status_url
+            })
+        
+        request_id = str(uuid.uuid4())
+        
+        video_ext = video_url.split('.')[-1].lower() if '.' in video_url else 'mp4'
+        video_filename = f"{request_id}_video.{video_ext}"
+        video_path = os.path.join(UPLOAD_FOLDER, video_filename)
+        
+        success, message = download_file_from_url(video_url, video_path, "video")
+        if not success:
+            return jsonify({
+                'success': False,
+                'error': message
+            }), 400
+        
+        try:
+            watermark_path = None
+            if watermark_url:
+                watermark_ext = watermark_url.split('.')[-1].lower() if '.' in watermark_url else 'png'
+                watermark_filename = f"{request_id}_watermark.{watermark_ext}"
+                watermark_path = os.path.join(UPLOAD_FOLDER, watermark_filename)
+                
+                success, message = download_file_from_url(watermark_url, watermark_path, "watermark")
+                if not success:
+                    cleanup_file(video_path)
+                    return jsonify({
+                        'success': False,
+                        'error': f'Failed to download watermark: {message}'
+                    }), 400
+            
+            output_filename = f"{request_id}_tiktok_portrait.mp4"
+            output_path = os.path.join(OUTPUT_FOLDER, output_filename)
+            
+            success, message = convert_to_tiktok_portrait_with_ffmpeg(video_path, output_path, watermark_path)
+            
+            cleanup_file(video_path)
+            if watermark_path:
+                cleanup_file(watermark_path)
+            
+            if success:
+                storage_url = upload_to_storage(output_path, output_filename)
+                
+                if storage_url:
+                    cleanup_file(output_path)
+                    
+                    return jsonify({
+                        'success': True,
+                        'message': message,
+                        'download_url': storage_url,
+                        'filename': output_filename
+                    })
+                else:
+                    logging.warning("Storage upload failed, falling back to local download")
+                    
+                    if os.environ.get('REPLIT_DEPLOYMENT'):
+                        download_url = f"https://www.ffmpegapi.net/download/{output_filename}"
+                    elif os.environ.get('REPLIT_DEV_DOMAIN'):
+                        download_url = f"https://{os.environ['REPLIT_DEV_DOMAIN']}/download/{output_filename}"
+                    else:
+                        download_url = url_for('download_file', filename=output_filename, _external=True)
+                    
+                    return jsonify({
+                        'success': True,
+                        'message': f"{message} (Note: Using temporary local storage - download soon)",
+                        'download_url': download_url,
+                        'filename': output_filename
+                    })
+            else:
+                return jsonify({
+                    'success': False,
+                    'error': message
+                }), 500
+                
+        except Exception as e:
+            cleanup_file(video_path)
+            if watermark_path:
+                cleanup_file(watermark_path)
+            raise e
+            
+    except Exception as e:
+        logging.error(f"[TIKTOK_PORTRAIT] Error: {str(e)}")
+        logging.error(f"[TIKTOK_PORTRAIT] Full traceback:", exc_info=True)
         return jsonify({
             'success': False,
             'error': f'Server error: {str(e)}'

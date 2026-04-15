@@ -136,6 +136,7 @@
                                 <a class="toc-link ms-3" href="#get-first-frame-image">Get First Frame Image</a>
                                 <a class="toc-link ms-3" href="#get-last-frame-image">Get Last Frame Image</a>
                                 <a class="toc-link ms-3" href="#convert-to-vertical">Convert to Vertical</a>
+                                <a class="toc-link ms-3" href="#convert-to-tiktok-portrait">TikTok Portrait Converter</a>
                                 <a class="toc-link ms-3" href="#extract-audio-mp3">Extract Audio as MP3</a>
                                 <a class="toc-link ms-3" href="#convert-video-to-gif">Convert video to GIF</a>
                                 <a class="toc-link ms-3" href="#ai-captions-remotion">AI Captions (Remotion)</a>
@@ -244,6 +245,15 @@
                                     <i class="fas fa-mobile-alt fa-2x text-primary mb-3"></i>
                                     <h5>Convert to Vertical</h5>
                                     <p class="small">Convert horizontal videos to vertical format (3:4 or 9:16)</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-3 mb-3">
+                            <div class="card h-100">
+                                <div class="card-body text-center">
+                                    <i class="fab fa-tiktok fa-2x text-primary mb-3"></i>
+                                    <h5>TikTok Portrait</h5>
+                                    <p class="small">Full-bleed 9:16 crop — no black bars, like native TikTok</p>
                                 </div>
                             </div>
                         </div>
@@ -2454,6 +2464,214 @@ else:
 };
 
 convertVideo();</code></pre>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- TikTok Portrait Converter -->
+                    <div id="convert-to-tiktok-portrait" class="api-endpoint">
+                        <div class="card">
+                            <div class="card-header">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <h4 class="mb-0">TikTok Portrait Converter</h4>
+                                    <span class="method-badge method-post">POST</span>
+                                </div>
+                                <code class="text-muted">/api/convert_to_tiktok_portrait</code>
+                            </div>
+                            <div class="card-body">
+                                <p>Convert landscape videos to TikTok-style 9:16 portrait format. Unlike <a href="#convert-to-vertical">Convert to Vertical</a> which adds black bars, this endpoint scales the video to <strong>fill the entire frame</strong> and center-crops the sides — producing a full-bleed result that looks like native TikTok content.</p>
+
+                                <h6>How It Works</h6>
+                                <ul>
+                                    <li>The video is scaled <strong>up</strong> so its height fills the 1920px target (maintaining aspect ratio)</li>
+                                    <li>The overflowing width is <strong>center-cropped</strong> to 1080px</li>
+                                    <li>Result: <strong>1080×1920</strong> with no black bars and no distortion</li>
+                                </ul>
+
+                                <h6>Request Format</h6>
+                                <p><strong>Content-Type:</strong> <code>application/json</code></p>
+
+                                <h6>Parameters</h6>
+                                <div class="table-responsive">
+                                    <table class="table table-sm">
+                                        <thead>
+                                            <tr>
+                                                <th>Parameter</th>
+                                                <th>Type</th>
+                                                <th>Required</th>
+                                                <th>Description</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <tr>
+                                                <td><code>video_url</code></td>
+                                                <td>String</td>
+                                                <td>Yes</td>
+                                                <td>URL to the landscape video file to convert</td>
+                                            </tr>
+                                            <tr>
+                                                <td><code>watermark_url</code></td>
+                                                <td>String</td>
+                                                <td>No</td>
+                                                <td>URL to watermark/logo image (PNG recommended) to overlay in top right corner</td>
+                                            </tr>
+                                            <tr>
+                                                <td><code>async</code></td>
+                                                <td>Boolean</td>
+                                                <td>No</td>
+                                                <td>Process job asynchronously (default: false)</td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+
+                                <h6>Request Example</h6>
+                                <div class="code-block p-3">
+                                    <pre><code class="language-json">{
+  "video_url": "https://example.com/landscape_video.mp4",
+  "watermark_url": "https://example.com/logo.png",
+  "async": false
+}</code></pre>
+                                </div>
+
+                                <h6>Sync Response</h6>
+                                <div class="code-block p-3">
+                                    <pre><code class="language-json">{
+  "success": true,
+  "message": "Video successfully converted to TikTok portrait format (9:16)",
+  "download_url": "https://www.ffmpegapi.net/api/storage/tiktok_portrait.mp4",
+  "filename": "unique_filename_tiktok_portrait.mp4"
+}</code></pre>
+                                </div>
+
+                                <h6>Async Response</h6>
+                                <div class="code-block p-3">
+                                    <pre><code class="language-json">{
+  "success": true,
+  "job_id": "550e8400-e29b-41d4-a716-446655440000",
+  "status": "pending",
+  "message": "Job submitted for async processing. Use /api/job/{job_id}/status to check progress.",
+  "status_url": "https://www.ffmpegapi.net/api/job/550e8400-e29b-41d4-a716-446655440000/status"
+}</code></pre>
+                                </div>
+
+                                <h6 class="mt-4">Convert to Vertical vs TikTok Portrait</h6>
+                                <div class="table-responsive">
+                                    <table class="table table-sm">
+                                        <thead>
+                                            <tr>
+                                                <th>Feature</th>
+                                                <th>Convert to Vertical</th>
+                                                <th>TikTok Portrait</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <tr>
+                                                <td>Strategy</td>
+                                                <td>Scale down + pad (black bars)</td>
+                                                <td>Scale up + center-crop (full bleed)</td>
+                                            </tr>
+                                            <tr>
+                                                <td>Output ratio</td>
+                                                <td>3:4 or 9:16 (auto-detected)</td>
+                                                <td>Always 9:16 (1080×1920)</td>
+                                            </tr>
+                                            <tr>
+                                                <td>Black bars</td>
+                                                <td>Yes</td>
+                                                <td>No</td>
+                                            </tr>
+                                            <tr>
+                                                <td>Side cropping</td>
+                                                <td>No</td>
+                                                <td>Yes (centered)</td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+
+                                <div class="alert alert-info mt-3">
+                                    <i class="fas fa-lightbulb me-2"></i>
+                                    <strong>Tip:</strong> This endpoint works best with standard landscape (16:9) videos. Very wide aspect ratios (e.g. 21:9 ultrawide) will have more of the sides cropped. The crop is always centered — the middle of the frame is preserved.
+                                </div>
+
+                                <h6 class="mt-4 mb-3">Code Examples</h6>
+                                <ul class="nav nav-pills mb-3" id="tiktokPortraitExampleTabs" role="tablist">
+                                    <li class="nav-item" role="presentation">
+                                        <button class="nav-link active" id="tiktok-curl-tab" data-bs-toggle="pill" data-bs-target="#tiktok-curl" type="button" role="tab">cURL</button>
+                                    </li>
+                                    <li class="nav-item" role="presentation">
+                                        <button class="nav-link" id="tiktok-python-tab" data-bs-toggle="pill" data-bs-target="#tiktok-python" type="button" role="tab">Python</button>
+                                    </li>
+                                    <li class="nav-item" role="presentation">
+                                        <button class="nav-link" id="tiktok-javascript-tab" data-bs-toggle="pill" data-bs-target="#tiktok-javascript" type="button" role="tab">JavaScript</button>
+                                    </li>
+                                </ul>
+                                <div class="tab-content" id="tiktokPortraitExampleContent">
+                                    <div class="tab-pane fade show active" id="tiktok-curl" role="tabpanel">
+                                        <div class="code-block">
+                                            <pre><code class="language-bash">curl -X POST "https://www.ffmpegapi.net/api/convert_to_tiktok_portrait" \
+  -H "X-API-Key: YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "video_url": "https://example.com/landscape_video.mp4",
+    "watermark_url": "https://example.com/logo.png"
+  }'</code></pre>
+                                        </div>
+                                    </div>
+                                    <div class="tab-pane fade" id="tiktok-python" role="tabpanel">
+                                        <div class="code-block">
+                                            <pre><code class="language-python">import requests
+
+url = "https://www.ffmpegapi.net/api/convert_to_tiktok_portrait"
+headers = {
+    "X-API-Key": "YOUR_API_KEY",
+    "Content-Type": "application/json"
+}
+data = {
+    "video_url": "https://example.com/landscape_video.mp4",
+    "watermark_url": "https://example.com/logo.png"
+}
+
+response = requests.post(url, headers=headers, json=data)
+result = response.json()
+
+if result["success"]:
+    print(f"TikTok portrait created!")
+    print(f"Download URL: {result['download_url']}")
+else:
+    print(f"Error: {result['error']}")</code></pre>
+                                        </div>
+                                    </div>
+                                    <div class="tab-pane fade" id="tiktok-javascript" role="tabpanel">
+                                        <div class="code-block">
+                                            <pre><code class="language-javascript">const convertToTikTok = async () => {
+  const response = await fetch('https://www.ffmpegapi.net/api/convert_to_tiktok_portrait', {
+    method: 'POST',
+    headers: {
+      'X-API-Key': 'YOUR_API_KEY',
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({
+      video_url: 'https://example.com/landscape_video.mp4',
+      watermark_url: 'https://example.com/logo.png'
+    })
+  });
+  
+  const result = await response.json();
+  
+  if (result.success) {
+    console.log('TikTok portrait created!');
+    console.log('Download URL:', result.download_url);
+  } else {
+    console.error('Error:', result.error);
+  }
+};
+
+convertToTikTok();</code></pre>
                                         </div>
                                     </div>
                                 </div>

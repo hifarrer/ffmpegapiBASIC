@@ -1853,6 +1853,101 @@
                         </div>
                     </div>
 
+                    <!-- TikTok Portrait Converter -->
+                    <div class="accordion-item">
+                        <h2 class="accordion-header" id="tiktokPortraitHeading">
+                            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" 
+                                    data-bs-target="#tiktokPortraitCollapse" aria-expanded="false" aria-controls="tiktokPortraitCollapse">
+                                <i class="fab fa-tiktok me-2"></i>
+                                TikTok Portrait Converter
+                            </button>
+                        </h2>
+                        <div id="tiktokPortraitCollapse" class="accordion-collapse collapse" 
+                             aria-labelledby="tiktokPortraitHeading" data-bs-parent="#videoProcessingAccordion">
+                            <div class="accordion-body">
+                                <p class="text-muted mb-4">
+                                    <i class="fas fa-info-circle me-1"></i>
+                                    Convert landscape videos to TikTok-style 9:16 portrait. Scales up and center-crops — no black bars, full-bleed result like native TikTok content.
+                                </p>
+
+                                <form id="tiktokPortraitForm">
+                                    <div class="mb-4">
+                                        <label for="tiktokPortraitVideoUrl" class="form-label">
+                                            <i class="fas fa-video me-2"></i>
+                                            Video URL
+                                        </label>
+                                        <input type="url" class="form-control" id="tiktokPortraitVideoUrl" name="video_url" 
+                                               placeholder="https://example.com/landscape_video.mp4" required>
+                                        <div class="form-text">Enter the URL of the landscape video to convert</div>
+                                    </div>
+
+                                    <div class="mb-4">
+                                        <label for="tiktokPortraitWatermarkUrl" class="form-label">
+                                            <i class="fas fa-image me-2"></i>
+                                            Watermark URL (Optional)
+                                        </label>
+                                        <input type="url" class="form-control" id="tiktokPortraitWatermarkUrl" name="watermark_url" 
+                                               placeholder="https://example.com/logo.png">
+                                        <div class="form-text">Optional: Add a watermark in the top right corner (PNG recommended)</div>
+                                    </div>
+
+                                    <div class="d-grid">
+                                        <button type="submit" class="btn btn-primary btn-lg" id="tiktokPortraitSubmitBtn">
+                                            <i class="fab fa-tiktok me-2"></i>
+                                            Convert to TikTok Portrait
+                                        </button>
+                                    </div>
+                                </form>
+
+                                <!-- Progress Bar -->
+                                <div id="tiktokPortraitProgressContainer" class="mt-4" style="display: none;">
+                                    <div class="d-flex align-items-center mb-2">
+                                        <div class="spinner-border spinner-border-sm me-2" role="status">
+                                            <span class="visually-hidden">Loading...</span>
+                                        </div>
+                                        <span>Converting to TikTok portrait format...</span>
+                                    </div>
+                                    <div class="progress">
+                                        <div class="progress-bar progress-bar-striped progress-bar-animated" 
+                                             role="progressbar" style="width: 100%"></div>
+                                    </div>
+                                </div>
+
+                                <!-- Alert Messages -->
+                                <div id="tiktokPortraitAlertContainer" class="mt-4"></div>
+
+                                <!-- Results -->
+                                <div id="tiktokPortraitResultContainer" class="mt-4" style="display: none;">
+                                    <div class="card">
+                                        <div class="card-header">
+                                            <h5 class="card-title mb-0">
+                                                <i class="fas fa-check-circle text-success me-2"></i>
+                                                TikTok Portrait Created Successfully
+                                            </h5>
+                                        </div>
+                                        <div class="card-body">
+                                            <p class="card-text" id="tiktokPortraitResultMessage">Your video has been converted to TikTok portrait format and is ready for download.</p>
+                                            <div class="d-flex gap-2 flex-wrap">
+                                                <a id="tiktokPortraitDownloadBtn" href="#" class="btn btn-success" download>
+                                                    <i class="fas fa-download me-2"></i>
+                                                    Download TikTok Portrait
+                                                </a>
+                                                <button id="tiktokPortraitCleanupBtn" class="btn btn-outline-secondary">
+                                                    <i class="fas fa-trash me-2"></i>
+                                                    Delete from Server
+                                                </button>
+                                                <button id="tiktokPortraitResetBtn" class="btn btn-outline-primary">
+                                                    <i class="fas fa-plus me-2"></i>
+                                                    Convert Another Video
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
                     <!-- Extract audio as MP3 -->
                     <div class="accordion-item">
                         <h2 class="accordion-header" id="extractAudioMp3Heading">
