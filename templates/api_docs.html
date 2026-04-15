@@ -136,6 +136,7 @@
                                 <a class="toc-link ms-3" href="#get-first-frame-image">Get First Frame Image</a>
                                 <a class="toc-link ms-3" href="#get-last-frame-image">Get Last Frame Image</a>
                                 <a class="toc-link ms-3" href="#convert-to-vertical">Convert to Vertical</a>
+                                <a class="toc-link ms-3" href="#extract-audio-mp3">Extract Audio as MP3</a>
                                 <a class="toc-link ms-3" href="#convert-video-to-gif">Convert video to GIF</a>
                                 <a class="toc-link ms-3" href="#ai-captions-remotion">AI Captions (Remotion)</a>
                                 <a class="toc-link ms-3" href="#text-overlay-captions-remotion">Text Overlay Captions (Remotion)</a>
@@ -2453,6 +2454,142 @@ else:
 };
 
 convertVideo();</code></pre>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Extract audio as MP3 -->
+                    <div id="extract-audio-mp3" class="api-endpoint">
+                        <div class="card">
+                            <div class="card-header">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <h4 class="mb-0">Extract Audio as MP3</h4>
+                                    <span class="method-badge method-post">POST</span>
+                                </div>
+                                <code class="text-muted">/api/extract_audio_mp3</code>
+                            </div>
+                            <div class="card-body">
+                                <p>Download a video from URL and extract its audio track as an MP3 file. Useful for podcast clips, transcription preprocessing, and audio-only exports from MP4 content.</p>
+
+                                <h6>Request Format</h6>
+                                <p><strong>Content-Type:</strong> <code>application/json</code> (form fields are also accepted)</p>
+
+                                <h6>Parameters</h6>
+                                <div class="table-responsive">
+                                    <table class="table table-sm">
+                                        <thead>
+                                            <tr>
+                                                <th>Parameter</th>
+                                                <th>Type</th>
+                                                <th>Required</th>
+                                                <th>Description</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <tr>
+                                                <td><code>video_url</code></td>
+                                                <td>String</td>
+                                                <td>Yes</td>
+                                                <td>URL of the source video (MP4 recommended)</td>
+                                            </tr>
+                                            <tr>
+                                                <td><code>bitrate</code></td>
+                                                <td>String</td>
+                                                <td>No</td>
+                                                <td>Output MP3 bitrate. Allowed values: <code>96k</code>, <code>128k</code>, <code>192k</code>, <code>256k</code>, <code>320k</code>. Default: <code>192k</code></td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+
+                                <h6>Request Example</h6>
+                                <div class="code-block p-3">
+                                    <pre><code class="language-json">{
+  "video_url": "https://example.com/video.mp4",
+  "bitrate": "192k"
+}</code></pre>
+                                </div>
+
+                                <h6>Success Response</h6>
+                                <div class="code-block p-3">
+                                    <pre><code class="language-json">{
+  "success": true,
+  "message": "Audio extracted to MP3 successfully (192k)",
+  "download_url": "https://www.ffmpegapi.net/api/storage/uuid_output.mp3",
+  "filename": "uuid_output.mp3"
+}</code></pre>
+                                </div>
+
+                                <h6 class="mt-4 mb-3">Code Examples</h6>
+                                <ul class="nav nav-pills mb-3" id="extractMp3ExampleTabs" role="tablist">
+                                    <li class="nav-item" role="presentation">
+                                        <button class="nav-link active" id="extract-mp3-curl-tab" data-bs-toggle="pill" data-bs-target="#extract-mp3-curl" type="button" role="tab">cURL</button>
+                                    </li>
+                                    <li class="nav-item" role="presentation">
+                                        <button class="nav-link" id="extract-mp3-python-tab" data-bs-toggle="pill" data-bs-target="#extract-mp3-python" type="button" role="tab">Python</button>
+                                    </li>
+                                    <li class="nav-item" role="presentation">
+                                        <button class="nav-link" id="extract-mp3-javascript-tab" data-bs-toggle="pill" data-bs-target="#extract-mp3-javascript" type="button" role="tab">JavaScript</button>
+                                    </li>
+                                </ul>
+                                <div class="tab-content" id="extractMp3ExampleContent">
+                                    <div class="tab-pane fade show active" id="extract-mp3-curl" role="tabpanel">
+                                        <div class="code-block">
+                                            <pre><code class="language-bash">curl -X POST "https://www.ffmpegapi.net/api/extract_audio_mp3" \
+  -H "X-API-Key: YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "video_url": "https://example.com/video.mp4",
+    "bitrate": "192k"
+  }'</code></pre>
+                                        </div>
+                                    </div>
+                                    <div class="tab-pane fade" id="extract-mp3-python" role="tabpanel">
+                                        <div class="code-block">
+                                            <pre><code class="language-python">import requests
+
+url = "https://www.ffmpegapi.net/api/extract_audio_mp3"
+headers = {
+    "X-API-Key": "YOUR_API_KEY",
+    "Content-Type": "application/json"
+}
+data = {
+    "video_url": "https://example.com/video.mp4",
+    "bitrate": "256k"
+}
+
+response = requests.post(url, headers=headers, json=data)
+result = response.json()
+
+if result["success"]:
+    print("MP3 URL:", result["download_url"])
+else:
+    print("Error:", result["error"])</code></pre>
+                                        </div>
+                                    </div>
+                                    <div class="tab-pane fade" id="extract-mp3-javascript" role="tabpanel">
+                                        <div class="code-block">
+                                            <pre><code class="language-javascript">const response = await fetch('https://www.ffmpegapi.net/api/extract_audio_mp3', {
+  method: 'POST',
+  headers: {
+    'X-API-Key': 'YOUR_API_KEY',
+    'Content-Type': 'application/json'
+  },
+  body: JSON.stringify({
+    video_url: 'https://example.com/video.mp4',
+    bitrate: '192k'
+  })
+});
+
+const result = await response.json();
+if (result.success) {
+  console.log('MP3 URL:', result.download_url);
+} else {
+  console.error('Error:', result.error);
+}</code></pre>
                                         </div>
                                     </div>
                                 </div>

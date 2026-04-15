@@ -500,10 +500,10 @@ def merge_videos():
                 if value.strip():
                     video_urls.append(value.strip())
         
-        if len(video_urls) < 2:
+        if len(video_urls) < 1:
             return jsonify({
                 'success': False,
-                'error': 'At least 2 video URLs are required'
+                'error': 'At least 1 video URL is required'
             }), 400
         
         # Check for optional audio file

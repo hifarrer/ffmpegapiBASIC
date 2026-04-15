@@ -17,6 +17,7 @@ class VideoMerger {
         this.initializeFirstFrameTab();
         this.initializeLastFrameTab();
         this.initializeConvertVerticalTab();
+        this.initializeExtractAudioMp3Tab();
         this.initializeConvertVideoToGifTab();
         this.initializeAutoCaptionTab();
         this.initializeTextOverlayTab();
@@ -338,8 +339,8 @@ class VideoMerger {
             .map(input => input.value.trim())
             .filter(url => url);
 
-        if (videoUrls.length < 2) {
-            this.showVideosAlert('danger', 'At least 2 video URLs are required.');
+        if (videoUrls.length < 1) {
+            this.showVideosAlert('danger', 'At least 1 video URL is required.');
             return;
         }
 
@@ -2351,6 +2352,144 @@ class VideoMerger {
 
     hideConvertVerticalResult() {
         this.convertVerticalResultContainer.style.display = 'none';
+    }
+
+    initializeExtractAudioMp3Tab() {
+        this.extractAudioMp3Form = document.getElementById('extractAudioMp3Form');
+        if (!this.extractAudioMp3Form) {
+            return;
+        }
+
+        this.extractAudioMp3SubmitBtn = document.getElementById('extractAudioMp3SubmitBtn');
+        this.extractAudioMp3ProgressContainer = document.getElementById('extractAudioMp3ProgressContainer');
+        this.extractAudioMp3AlertContainer = document.getElementById('extractAudioMp3AlertContainer');
+        this.extractAudioMp3ResultContainer = document.getElementById('extractAudioMp3ResultContainer');
+        this.extractAudioMp3DownloadBtn = document.getElementById('extractAudioMp3DownloadBtn');
+        this.extractAudioMp3CleanupBtn = document.getElementById('extractAudioMp3CleanupBtn');
+        this.extractAudioMp3ResetBtn = document.getElementById('extractAudioMp3ResetBtn');
+        this.extractAudioMp3CurrentFilename = null;
+
+        this.extractAudioMp3Form.addEventListener('submit', (e) => {
+            e.preventDefault();
+            this.handleExtractAudioMp3Submit();
+        });
+
+        this.extractAudioMp3CleanupBtn.addEventListener('click', () => {
+            this.handleExtractAudioMp3Cleanup();
+        });
+
+        this.extractAudioMp3ResetBtn.addEventListener('click', () => {
+            this.resetExtractAudioMp3Form();
+        });
+    }
+
+    async handleExtractAudioMp3Submit() {
+        const jsonData = {
+            video_url: document.getElementById('extractAudioMp3VideoUrl').value.trim(),
+        };
+        const bitrateVal = document.getElementById('extractAudioMp3Bitrate').value.trim();
+        if (bitrateVal) {
+            jsonData.bitrate = bitrateVal;
+        }
+
+        this.showExtractAudioMp3Progress();
+        this.hideExtractAudioMp3Alert();
+        this.hideExtractAudioMp3Result();
+
+        try {
+            const response = await fetch('/api/extract_audio_mp3', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-API-Key': window.API_KEY,
+                },
+                body: JSON.stringify(jsonData),
+            });
+
+            const result = await response.json();
+
+            if (result.success) {
+                this.extractAudioMp3DownloadBtn.href = result.download_url;
+                this.extractAudioMp3DownloadBtn.download = result.filename;
+                this.extractAudioMp3CurrentFilename = result.filename;
+
+                const messageElement = document.getElementById('extractAudioMp3ResultMessage');
+                messageElement.textContent = result.message || 'Your MP3 is ready to download.';
+
+                this.showExtractAudioMp3Result();
+                this.showExtractAudioMp3Alert('success', result.message || 'MP3 extracted successfully.');
+            } else {
+                this.showExtractAudioMp3Alert('danger', `Error: ${result.error}`);
+            }
+        } catch (error) {
+            console.error('Extract audio MP3 error:', error);
+            this.showExtractAudioMp3Alert('danger', `An error occurred: ${error.message}`);
+        } finally {
+            this.hideExtractAudioMp3Progress();
+        }
+    }
+
+    async handleExtractAudioMp3Cleanup() {
+        if (!this.extractAudioMp3CurrentFilename) return;
+
+        try {
+            const response = await fetch(`/api/cleanup/${this.extractAudioMp3CurrentFilename}`, {
+                method: 'DELETE',
+                headers: {
+                    'X-API-Key': window.API_KEY,
+                },
+            });
+
+            if (response.ok) {
+                this.showExtractAudioMp3Alert('info', 'File deleted from server successfully');
+                this.extractAudioMp3CurrentFilename = null;
+                this.hideExtractAudioMp3Result();
+            } else {
+                this.showExtractAudioMp3Alert('warning', 'File cleanup failed, but it will be automatically deleted after 24 hours');
+            }
+        } catch (error) {
+            console.error('Cleanup error:', error);
+            this.showExtractAudioMp3Alert('warning', 'File cleanup failed, but it will be automatically deleted after 24 hours');
+        }
+    }
+
+    resetExtractAudioMp3Form() {
+        this.extractAudioMp3Form.reset();
+        this.hideExtractAudioMp3Alert();
+        this.hideExtractAudioMp3Result();
+        this.hideExtractAudioMp3Progress();
+        this.extractAudioMp3CurrentFilename = null;
+    }
+
+    showExtractAudioMp3Progress() {
+        this.extractAudioMp3ProgressContainer.style.display = 'block';
+        this.extractAudioMp3SubmitBtn.disabled = true;
+    }
+
+    hideExtractAudioMp3Progress() {
+        this.extractAudioMp3ProgressContainer.style.display = 'none';
+        this.extractAudioMp3SubmitBtn.disabled = false;
+    }
+
+    showExtractAudioMp3Alert(type, message) {
+        this.extractAudioMp3AlertContainer.innerHTML = `
+            <div class="alert alert-${type} alert-dismissible fade show" role="alert">
+                ${message}
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+        `;
+    }
+
+    hideExtractAudioMp3Alert() {
+        this.extractAudioMp3AlertContainer.innerHTML = '';
+    }
+
+    showExtractAudioMp3Result() {
+        this.extractAudioMp3ResultContainer.style.display = 'block';
+    }
+
+    hideExtractAudioMp3Result() {
+        this.extractAudioMp3ResultContainer.style.display = 'none';
     }
 
     initializeConvertVideoToGifTab() {

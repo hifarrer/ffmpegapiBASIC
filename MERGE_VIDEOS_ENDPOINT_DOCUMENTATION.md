@@ -679,10 +679,10 @@ def merge_videos():
         subtitle_url = data.get('subtitle_url')  # Optional subtitle file URL
         watermark_url = data.get('watermark_url')  # Optional watermark image URL
         
-        if not isinstance(video_urls, list) or len(video_urls) < 2:
+        if not isinstance(video_urls, list) or len(video_urls) < 1:
             return jsonify({
                 'success': False,
-                'error': 'At least 2 video URLs are required'
+                'error': 'video_urls is required and must be a non-empty list'
             }), 400
         
         # Generate unique ID for this request
@@ -920,7 +920,7 @@ curl -X POST http://localhost:5000/api/merge_videos \
 | Error | Cause | Solution |
 |-------|-------|----------|
 | `video_urls is required` | Missing video_urls in request body | Include video_urls array in JSON |
-| `At least 2 video URLs are required` | Less than 2 videos provided | Provide 2+ video URLs |
+| `video_urls is required and must be a non-empty list` | Empty or invalid video_urls array | Provide at least 1 video URL |
 | `Failed to download video X` | Video URL inaccessible or invalid | Verify URL is publicly accessible |
 | `Invalid dimensions format` | Wrong dimensions format | Use format like `1280x720` |
 | `Video merge failed` | FFMPEG error during merge | Check video compatibility and FFMPEG logs |

@@ -1761,6 +1761,47 @@ def convert_video_to_gif_with_ffmpeg(
         return False, f"GIF conversion error: {str(e)}"
 
 
+def extract_mp3_from_video_with_ffmpeg(video_path, output_path, bitrate='192k'):
+    """Extract MP3 audio from a video file using FFmpeg."""
+    try:
+        allowed_bitrates = {'96k', '128k', '192k', '256k', '320k'}
+        normalized_bitrate = str(bitrate).strip().lower() if bitrate is not None else '192k'
+        if normalized_bitrate not in allowed_bitrates:
+            normalized_bitrate = '192k'
+
+        cmd = [
+            'ffmpeg',
+            '-hide_banner',
+            '-i', video_path,
+            '-vn',
+            '-acodec', 'libmp3lame',
+            '-b:a', normalized_bitrate,
+            '-y',
+            output_path,
+        ]
+        logging.info(f"Running FFMPEG MP3 extract command: {' '.join(cmd)}")
+
+        result = subprocess.run(
+            cmd,
+            capture_output=True,
+            text=True,
+            timeout=600,
+        )
+
+        if result.returncode == 0:
+            return True, f"Audio extracted to MP3 successfully ({normalized_bitrate})"
+        error_msg = _ffmpeg_error_message_from_stderr(result.stderr, result.stdout)
+        logging.error(f"FFMPEG MP3 extract error (returncode {result.returncode}): {error_msg}")
+        return False, f"MP3 extraction failed: {error_msg}"
+
+    except subprocess.TimeoutExpired:
+        logging.error("MP3 extraction timed out")
+        return False, "MP3 extraction processing timed out"
+    except Exception as e:
+        logging.error(f"MP3 extraction error: {str(e)}")
+        return False, f"MP3 extraction error: {str(e)}"
+
+
 # Routes
 @app.route('/')
 def index():
@@ -2193,11 +2234,6 @@ def merge_videos():
                 'success': False,
                 'error': 'video_urls is required and must be a non-empty list'
             }), 400
-        if len(video_urls) < 2 and not audio_url:
-            return jsonify({
-                'success': False,
-                'error': 'At least 2 video URLs are required, or 1 video URL with an audio_url to merge video with audio'
-            }), 400
 
         # Generate unique ID for this request
         request_id = str(uuid.uuid4())
@@ -2463,8 +2499,6 @@ def neonvideo_merge_videos():
 
         if not isinstance(video_urls, list) or len(video_urls) < 1:
             return jsonify({'success': False, 'error': 'video_urls is required and must be a non-empty list'}), 400
-        if len(video_urls) < 2 and not audio_url:
-            return jsonify({'success': False, 'error': 'At least 2 video URLs are required, or 1 video URL with an audio_url to merge video with audio'}), 400
 
         request_id = str(uuid.uuid4())
         downloaded_videos = []
@@ -6257,6 +6291,85 @@ def _parse_optional_int_clamped(val, default, min_v, max_v):
         return max(min_v, min(n, max_v))
     except (ValueError, TypeError):
         return default
+
+
+@app.route('/api/extract_audio_mp3', methods=['POST'])
+@log_api_request
+@require_api_key
+def extract_audio_mp3():
+    """API: download video from URL and extract audio as MP3."""
+    api_key = request.headers.get('X-API-Key') or request.args.get('api_key')
+    logging.info(f"[EXTRACT_AUDIO_MP3] Request from API key: {api_key[:20] if api_key else 'None'}...")
+
+    try:
+        request_id = str(uuid.uuid4())
+
+        if request.is_json:
+            data = request.get_json() or {}
+            video_url = data.get('video_url')
+            bitrate_raw = data.get('bitrate')
+        else:
+            video_url = request.form.get('video_url')
+            bitrate_raw = request.form.get('bitrate')
+
+        if not video_url or not str(video_url).strip():
+            return jsonify({'success': False, 'error': 'video_url is required'}), 400
+
+        video_url = str(video_url).strip()
+        allowed_bitrates = {'96k', '128k', '192k', '256k', '320k'}
+        bitrate = str(bitrate_raw).strip().lower() if bitrate_raw is not None else '192k'
+        if bitrate not in allowed_bitrates:
+            bitrate = '192k'
+
+        video_ext = video_url.split('.')[-1].split('?')[0].lower() if '.' in video_url else 'mp4'
+        if video_ext not in ['mp4', 'mov', 'avi', 'mkv', 'webm', 'flv', 'wmv']:
+            video_ext = 'mp4'
+        video_filename = f"{request_id}_video.{video_ext}"
+        video_path = os.path.join(UPLOAD_FOLDER, video_filename)
+
+        success, message = download_file_from_url(video_url, video_path, "video")
+        if not success:
+            return jsonify({'success': False, 'error': message}), 400
+
+        output_filename = f"{request_id}_output.mp3"
+        output_path = os.path.join(OUTPUT_FOLDER, output_filename)
+
+        try:
+            ok, msg = extract_mp3_from_video_with_ffmpeg(video_path, output_path, bitrate=bitrate)
+            cleanup_file(video_path)
+
+            if not ok:
+                if os.path.exists(output_path):
+                    cleanup_file(output_path)
+                return jsonify({'success': False, 'error': msg}), 500
+
+            storage_url = upload_to_storage(output_path, output_filename)
+            if storage_url:
+                cleanup_file(output_path)
+                download_url = storage_url
+            else:
+                if os.environ.get('REPLIT_DEPLOYMENT'):
+                    download_url = f"https://www.ffmpegapi.net/download/{output_filename}"
+                elif os.environ.get('REPLIT_DEV_DOMAIN'):
+                    download_url = f"https://{os.environ['REPLIT_DEV_DOMAIN']}/download/{output_filename}"
+                else:
+                    download_url = url_for('download_file', filename=output_filename, _external=True)
+
+            return jsonify({
+                'success': True,
+                'message': msg,
+                'download_url': download_url,
+                'filename': output_filename,
+            })
+        except Exception as e:
+            cleanup_file(video_path)
+            if os.path.exists(output_path):
+                cleanup_file(output_path)
+            raise e
+
+    except Exception as e:
+        logging.error(f"[EXTRACT_AUDIO_MP3] Error: {str(e)}", exc_info=True)
+        return jsonify({'success': False, 'error': f'Server error: {str(e)}'}), 500
 
 
 @app.route('/api/convert_video_to_gif', methods=['POST'])

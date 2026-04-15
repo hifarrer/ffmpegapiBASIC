@@ -121,7 +121,7 @@ curl -X POST "https://ffmpegapi.net/api/merge_image_audio" \
 
 **Endpoint:** `POST /api/merge_videos`
 
-**Description:** Concatenates multiple videos from URLs into a single video, or merges one video with an audio file. Optionally replace audio or specify output dimensions. Use either at least 2 video URLs, or 1 video URL with an `audio_url`.
+**Description:** Concatenates one or more videos from URLs into a single output. Optionally replace audio or specify output dimensions.
 
 **Request Body:**
 ```json
