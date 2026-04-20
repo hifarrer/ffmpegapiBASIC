@@ -20,7 +20,7 @@ import shutil
 
 from models import db, User, ApiKey, SubscriptionPlan, StripeSettings, UserSubscription, SiteSettings, Job, ApiLog, SITE_DEFAULT_API_KEY
 import time
-from storage_utils import upload_to_storage, get_storage_download_url
+from storage_utils import upload_to_storage, get_storage_download_url, get_public_base_url
 
 # Configure logging
 logging.basicConfig(level=logging.DEBUG)
@@ -1638,7 +1638,7 @@ def merge_image_audio():
                 # Fix for Replit: Generate proper URL based on environment
                 if os.environ.get('REPLIT_DEPLOYMENT'):
                     # In production deployment - files are ephemeral!
-                    download_url = f"https://www.ffmpegapi.net/download/{output_filename}"
+                    download_url = f"{get_public_base_url()}/download/{output_filename}"
                     logging.warning(f"Production deployment - file may be lost on container restart: {output_filename}")
                 elif os.environ.get('REPLIT_DEV_DOMAIN'):
                     # In Replit development environment
@@ -1928,7 +1928,7 @@ def merge_videos():
                     # Fix for Replit: Generate proper URL based on environment
                     if os.environ.get('REPLIT_DEPLOYMENT'):
                         # In production deployment
-                        download_url = f"https://www.ffmpegapi.net/download/{output_filename}"
+                        download_url = f"{get_public_base_url()}/download/{output_filename}"
                     elif os.environ.get('REPLIT_DEV_DOMAIN'):
                         # In Replit development environment
                         download_url = f"https://{os.environ['REPLIT_DEV_DOMAIN']}/download/{output_filename}"
@@ -2165,7 +2165,7 @@ def neonvideo_merge_videos():
                     'filename': output_filename
                 })
             if os.environ.get('REPLIT_DEPLOYMENT'):
-                download_url = f"https://www.ffmpegapi.net/download/{output_filename}"
+                download_url = f"{get_public_base_url()}/download/{output_filename}"
             elif os.environ.get('REPLIT_DEV_DOMAIN'):
                 download_url = f"https://{os.environ['REPLIT_DEV_DOMAIN']}/download/{output_filename}"
             else:
@@ -2309,7 +2309,7 @@ def add_watermark():
                 else:
                     logging.warning("Storage upload failed, falling back to local download")
                     if os.environ.get('REPLIT_DEPLOYMENT'):
-                        download_url = f"https://www.ffmpegapi.net/download/{output_filename}"
+                        download_url = f"{get_public_base_url()}/download/{output_filename}"
                     elif os.environ.get('REPLIT_DEV_DOMAIN'):
                         download_url = f"https://{os.environ['REPLIT_DEV_DOMAIN']}/download/{output_filename}"
                     else:
@@ -2637,7 +2637,7 @@ def process_merge_image_audio_job(job, input_data):
             # Fix for Replit: Generate proper URL based on environment
             if os.environ.get('REPLIT_DEPLOYMENT'):
                 # In production deployment
-                download_url = f"https://www.ffmpegapi.net/download/{output_filename}"
+                download_url = f"{get_public_base_url()}/download/{output_filename}"
             elif os.environ.get('REPLIT_DEV_DOMAIN'):
                 # In Replit development environment
                 download_url = f"https://{os.environ['REPLIT_DEV_DOMAIN']}/download/{output_filename}"
@@ -2821,7 +2821,7 @@ def process_merge_videos_job(job, input_data):
                 # Fix for Replit: Generate proper URL based on environment
                 if os.environ.get('REPLIT_DEPLOYMENT'):
                     # In production deployment
-                    download_url = f"https://www.ffmpegapi.net/download/{output_filename}"
+                    download_url = f"{get_public_base_url()}/download/{output_filename}"
                 elif os.environ.get('REPLIT_DEV_DOMAIN'):
                     # In Replit development environment
                     download_url = f"https://{os.environ['REPLIT_DEV_DOMAIN']}/download/{output_filename}"
@@ -2992,7 +2992,7 @@ def process_neonvideo_merge_videos_job(job, input_data):
             cleanup_file(current_path)
             return {'success': True, 'message': message, 'download_url': storage_url, 'filename': output_filename}
         if os.environ.get('REPLIT_DEPLOYMENT'):
-            download_url = f"https://www.ffmpegapi.net/download/{output_filename}"
+            download_url = f"{get_public_base_url()}/download/{output_filename}"
         elif os.environ.get('REPLIT_DEV_DOMAIN'):
             download_url = f"https://{os.environ['REPLIT_DEV_DOMAIN']}/download/{output_filename}"
         else:
@@ -3049,7 +3049,7 @@ def process_add_watermark_job(job, input_data):
                 }
             else:
                 if os.environ.get('REPLIT_DEPLOYMENT'):
-                    download_url = f"https://www.ffmpegapi.net/download/{output_filename}"
+                    download_url = f"{get_public_base_url()}/download/{output_filename}"
                 elif os.environ.get('REPLIT_DEV_DOMAIN'):
                     download_url = f"https://{os.environ['REPLIT_DEV_DOMAIN']}/download/{output_filename}"
                 else:
@@ -3110,7 +3110,7 @@ def process_split_audio_job(job, input_data):
                     # Fix for Replit: Generate proper URL based on environment
                     if os.environ.get('REPLIT_DEPLOYMENT'):
                         # In production deployment
-                        download_url = f"https://www.ffmpegapi.net/download/{request_id}/{filename}"
+                        download_url = f"{get_public_base_url()}/download/{request_id}/{filename}"
                     elif os.environ.get('REPLIT_DEV_DOMAIN'):
                         # In Replit development environment
                         download_url = f"https://{os.environ['REPLIT_DEV_DOMAIN']}/download/{request_id}/{filename}"
@@ -3187,7 +3187,7 @@ def process_split_audio_time_job(job, input_data):
         
         if success:
             if os.environ.get('REPLIT_DEPLOYMENT'):
-                download_url = f"https://www.ffmpegapi.net/download/{request_id}/{output_filename}"
+                download_url = f"{get_public_base_url()}/download/{request_id}/{output_filename}"
             elif os.environ.get('REPLIT_DEV_DOMAIN'):
                 download_url = f"https://{os.environ['REPLIT_DEV_DOMAIN']}/download/{request_id}/{output_filename}"
             else:
@@ -3256,7 +3256,7 @@ def process_split_audio_segments_job(job, input_data):
                     # Fix for Replit: Generate proper URL based on environment
                     if os.environ.get('REPLIT_DEPLOYMENT'):
                         # In production deployment
-                        download_url = f"https://www.ffmpegapi.net/download/{request_id}/{filename}"
+                        download_url = f"{get_public_base_url()}/download/{request_id}/{filename}"
                     elif os.environ.get('REPLIT_DEV_DOMAIN'):
                         # In Replit development environment
                         download_url = f"https://{os.environ['REPLIT_DEV_DOMAIN']}/download/{request_id}/{filename}"
@@ -3442,7 +3442,7 @@ def split_audio():
                     # Fix for Replit: Generate proper URL based on environment
                     if os.environ.get('REPLIT_DEPLOYMENT'):
                         # In production deployment
-                        download_url = f"https://www.ffmpegapi.net/download/{request_id}/{filename}"
+                        download_url = f"{get_public_base_url()}/download/{request_id}/{filename}"
                     elif os.environ.get('REPLIT_DEV_DOMAIN'):
                         # In Replit development environment
                         download_url = f"https://{os.environ['REPLIT_DEV_DOMAIN']}/download/{request_id}/{filename}"
@@ -3590,7 +3590,7 @@ def split_audio_segments():
                     # Fix for Replit: Generate proper URL based on environment
                     if os.environ.get('REPLIT_DEPLOYMENT'):
                         # In production deployment
-                        download_url = f"https://www.ffmpegapi.net/download/{request_id}/{filename}"
+                        download_url = f"{get_public_base_url()}/download/{request_id}/{filename}"
                     elif os.environ.get('REPLIT_DEV_DOMAIN'):
                         # In Replit development environment
                         download_url = f"https://{os.environ['REPLIT_DEV_DOMAIN']}/download/{request_id}/{filename}"
@@ -3740,7 +3740,7 @@ def split_audio_time():
             
             if success:
                 if os.environ.get('REPLIT_DEPLOYMENT'):
-                    download_url = f"https://www.ffmpegapi.net/download/{request_id}/{output_filename}"
+                    download_url = f"{get_public_base_url()}/download/{request_id}/{output_filename}"
                 elif os.environ.get('REPLIT_DEV_DOMAIN'):
                     download_url = f"https://{os.environ['REPLIT_DEV_DOMAIN']}/download/{request_id}/{output_filename}"
                 else:
@@ -3988,7 +3988,7 @@ def get_first_frame_image():
                 image_url = storage_url
             else:
                 if os.environ.get('REPLIT_DEPLOYMENT'):
-                    image_url = f"https://www.ffmpegapi.net/download/{output_filename}"
+                    image_url = f"{get_public_base_url()}/download/{output_filename}"
                 elif os.environ.get('REPLIT_DEV_DOMAIN'):
                     image_url = f"https://{os.environ['REPLIT_DEV_DOMAIN']}/download/{output_filename}"
                 else:
@@ -4069,7 +4069,7 @@ def get_last_frame_image():
                 image_url = storage_url
             else:
                 if os.environ.get('REPLIT_DEPLOYMENT'):
-                    image_url = f"https://www.ffmpegapi.net/download/{output_filename}"
+                    image_url = f"{get_public_base_url()}/download/{output_filename}"
                 elif os.environ.get('REPLIT_DEV_DOMAIN'):
                     image_url = f"https://{os.environ['REPLIT_DEV_DOMAIN']}/download/{output_filename}"
                 else:

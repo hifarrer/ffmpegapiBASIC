@@ -1,6 +1,15 @@
 import os
 import logging
 
+_DEFAULT_PUBLIC_BASE = "https://www.ffmpegapi.net"
+
+
+def get_public_base_url():
+    """HTTPS origin for absolute download/storage URLs in Replit production (no trailing slash)."""
+    base = (os.environ.get("PUBLIC_BASE_URL") or _DEFAULT_PUBLIC_BASE).strip()
+    return base.rstrip("/")
+
+
 def upload_to_storage(local_file_path, storage_filename):
     """
     Upload a file to storage. On Railway we use the volume (files stay on disk);
@@ -28,7 +37,7 @@ def upload_to_storage(local_file_path, storage_filename):
         client.upload_from_filename(storage_filename, local_file_path)
 
         if os.environ.get('REPLIT_DEPLOYMENT'):
-            download_url = f"https://www.ffmpegapi.net/api/storage/{storage_filename}"
+            download_url = f"{get_public_base_url()}/api/storage/{storage_filename}"
         elif os.environ.get('REPLIT_DEV_DOMAIN'):
             download_url = f"https://{os.environ['REPLIT_DEV_DOMAIN']}/api/storage/{storage_filename}"
         else:
@@ -56,7 +65,7 @@ def get_storage_download_url(storage_filename):
             logging.error(f"File {storage_filename} not found in storage")
             return None
         if os.environ.get('REPLIT_DEPLOYMENT'):
-            return f"https://www.ffmpegapi.net/api/storage/{storage_filename}"
+            return f"{get_public_base_url()}/api/storage/{storage_filename}"
         elif os.environ.get('REPLIT_DEV_DOMAIN'):
             return f"https://{os.environ['REPLIT_DEV_DOMAIN']}/api/storage/{storage_filename}"
         else:
