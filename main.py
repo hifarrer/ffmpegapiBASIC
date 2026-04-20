@@ -129,79 +129,110 @@ with app.app_context():
         
         logging.info(f"Created default site API key: {SITE_DEFAULT_API_KEY}")
 
+def _subscription_limits_enabled():
+    """Internal-only deployment: default to bypassing subscription/usage checks.
+    Set BYPASS_SUBSCRIPTION_LIMITS=0 (or false/no/off) to enforce plan limits."""
+    val = os.environ.get('BYPASS_SUBSCRIPTION_LIMITS', '1').strip().lower()
+    bypass = val in ('1', 'true', 'yes', 'on')
+    return not bypass
+
+
 def require_api_key(f):
     """Decorator to require API key for API endpoints with usage limit checking"""
     @wraps(f)
     def decorated_function(*args, **kwargs):
         # Check for API key in header, query param, or form data
         api_key = request.headers.get('X-API-Key') or request.args.get('api_key') or request.form.get('api_key')
-        
+
         if not api_key:
+            logging.warning(f"[AUTH] Missing API key for {request.method} {request.path}")
             return jsonify({
                 'success': False,
                 'error': 'API key is required. Please provide it in X-API-Key header, api_key query parameter, or form data.'
             }), 401
-        
+
+        masked = f"{api_key[:8]}...{api_key[-4:]}" if len(api_key) > 12 else '***'
+        logging.info(f"[AUTH] {request.method} {request.path} key={masked}")
+
         # Validate API key
         key_record = ApiKey.query.filter_by(key=api_key, is_active=True).first()
         if not key_record:
+            logging.warning(f"[AUTH] Invalid or inactive API key {masked} for {request.path}")
             return jsonify({
                 'success': False,
                 'error': 'Invalid or inactive API key.'
             }), 401
-        
-        # Check user's subscription and API usage limits
+
         user = key_record.user
-        subscription = UserSubscription.query.filter_by(user_id=user.id, status='active').first()
-        
-        if not subscription:
-            # Try to assign free plan if user has no subscription
-            free_plan = SubscriptionPlan.query.filter_by(name='Free', is_active=True).first()
-            if free_plan:
-                subscription = UserSubscription()
-                subscription.user_id = user.id
-                subscription.plan_id = free_plan.id
-                subscription.status = 'active'
-                subscription.billing_cycle = 'monthly'
-                subscription.current_period_start = datetime.utcnow()
-                subscription.current_period_end = datetime.utcnow() + timedelta(days=30)
-                subscription.api_calls_used = 0
-                
-                db.session.add(subscription)
-                db.session.commit()
-            else:
+        logging.info(f"[AUTH] Key ok user_id={user.id} username={user.username} key_id={key_record.id}")
+
+        enforce_limits = _subscription_limits_enabled()
+        subscription = None
+        if enforce_limits:
+            # Check user's subscription and API usage limits
+            subscription = UserSubscription.query.filter_by(user_id=user.id, status='active').first()
+
+            if not subscription:
+                # Try to assign free plan if user has no subscription
+                free_plan = SubscriptionPlan.query.filter_by(name='Free', is_active=True).first()
+                if free_plan:
+                    logging.info(f"[AUTH] No subscription for {user.username}; assigning Free plan id={free_plan.id}")
+                    subscription = UserSubscription()
+                    subscription.user_id = user.id
+                    subscription.plan_id = free_plan.id
+                    subscription.status = 'active'
+                    subscription.billing_cycle = 'monthly'
+                    subscription.current_period_start = datetime.utcnow()
+                    subscription.current_period_end = datetime.utcnow() + timedelta(days=30)
+                    subscription.api_calls_used = 0
+
+                    db.session.add(subscription)
+                    db.session.commit()
+                else:
+                    logging.warning(
+                        f"[AUTH] No subscription for {user.username} and no active 'Free' plan. "
+                        f"Set BYPASS_SUBSCRIPTION_LIMITS=1 for internal use, or create a Free plan."
+                    )
+                    return jsonify({
+                        'success': False,
+                        'error': 'No active subscription found. Please contact support.'
+                    }), 403
+
+            # Check if user can make API call
+            if not subscription.can_make_api_call():
+                plan_name = subscription.plan.name
+                api_limit = subscription.plan.api_calls_per_month
+                api_used = subscription.api_calls_used
+                logging.warning(
+                    f"[AUTH] Limit exceeded user={user.username} plan={plan_name} used={api_used}/{api_limit}"
+                )
+
                 return jsonify({
                     'success': False,
-                    'error': 'No active subscription found. Please contact support.'
-                }), 403
-        
-        # Check if user can make API call
-        if not subscription.can_make_api_call():
-            plan_name = subscription.plan.name
-            api_limit = subscription.plan.api_calls_per_month
-            api_used = subscription.api_calls_used
-            
-            return jsonify({
-                'success': False,
-                'error': f'API call limit exceeded. You have used {api_used}/{api_limit} calls for your {plan_name} plan. Please upgrade your plan to continue using the API.',
-                'current_plan': plan_name,
-                'api_calls_used': api_used,
-                'api_calls_limit': api_limit,
-            }), 429
-        
-        # Increment API usage
-        subscription.increment_api_usage()
-        
+                    'error': f'API call limit exceeded. You have used {api_used}/{api_limit} calls for your {plan_name} plan. Please upgrade your plan to continue using the API.',
+                    'current_plan': plan_name,
+                    'api_calls_used': api_used,
+                    'api_calls_limit': api_limit,
+                }), 429
+
+            # Increment API usage
+            subscription.increment_api_usage()
+        else:
+            logging.info(f"[AUTH] Subscription limits bypassed (internal mode) for {user.username}")
+
         # Mark API key as used
-        key_record.mark_used()
-        
+        try:
+            key_record.mark_used()
+        except Exception as e:
+            logging.warning(f"[AUTH] mark_used failed for key_id={key_record.id}: {e}")
+
         # Store user info in request context for logging
         request.api_user_id = user.id
         request.api_username = user.username
         request.api_key_id = key_record.id
-        
+
         return f(*args, **kwargs)
-    
+
     return decorated_function
 
 def sanitize_sensitive_data(data, sensitive_keys=None):
