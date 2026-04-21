@@ -17,6 +17,7 @@ from werkzeug.exceptions import RequestEntityTooLarge
 from werkzeug.middleware.proxy_fix import ProxyFix
 import mimetypes
 import shutil
+from pathlib import Path
 
 from models import db, User, ApiKey, SubscriptionPlan, StripeSettings, UserSubscription, SiteSettings, Job, ApiLog, SITE_DEFAULT_API_KEY
 import time
@@ -4339,9 +4340,14 @@ def add_tiktok_captions():
         if words:
             audio_duration_seconds = words[-1]["end"]
 
+        # Remotion must read the materialized file on disk. Passing the original HTTPS URL
+        # (especially our own /download/ URL) causes Node to HTTP-fetch the app while this
+        # worker is still busy — self-deadlock or 20s read timeouts on large MP4s.
+        remotion_video_url = Path(os.path.abspath(video_path)).as_uri()
+
         # Step 6: Render with Remotion
         render_input = json.dumps({
-            'video_url': video_url,
+            'video_url': remotion_video_url,
             'word_timestamps': words,
             'subtitle_style': subtitle_style,
             'aspect_ratio': aspect_ratio,
