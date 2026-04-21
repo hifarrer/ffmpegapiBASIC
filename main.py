@@ -9,6 +9,8 @@ import re
 import requests
 from datetime import datetime, timedelta
 from functools import wraps
+from contextlib import contextmanager
+from http.server import ThreadingHTTPServer, SimpleHTTPRequestHandler
 from flask import Flask, request, jsonify, send_from_directory, url_for, Response
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy.exc import OperationalError, PendingRollbackError
@@ -17,7 +19,6 @@ from werkzeug.exceptions import RequestEntityTooLarge
 from werkzeug.middleware.proxy_fix import ProxyFix
 import mimetypes
 import shutil
-from pathlib import Path
 
 from models import db, User, ApiKey, SubscriptionPlan, StripeSettings, UserSubscription, SiteSettings, Job, ApiLog, SITE_DEFAULT_API_KEY
 import time
@@ -572,6 +573,48 @@ def resolve_local_download_url(url):
     except Exception as e:
         logging.debug(f"resolve_local_download_url failed for {url}: {e}")
         return False, None
+
+
+@contextmanager
+def remotion_local_http_video_url(local_video_path):
+    """Remotion only accepts http(s) for OffthreadVideo. Serve the file on 127.0.0.1 so the
+    render subprocess can fetch it without calling our public /download/ URL (worker deadlock)."""
+    from urllib.parse import quote
+
+    abs_path = os.path.abspath(local_video_path)
+    if not os.path.isfile(abs_path):
+        raise FileNotFoundError(abs_path)
+    directory = os.path.dirname(abs_path)
+    basename = os.path.basename(abs_path)
+
+    class _QuietHandler(SimpleHTTPRequestHandler):
+        def __init__(self, *args, **kwargs):
+            super().__init__(*args, directory=directory, **kwargs)
+
+        def log_message(self, fmt, *args):
+            logging.debug("[remotion-local-http] " + (fmt % args))
+
+    class _Server(ThreadingHTTPServer):
+        allow_reuse_address = True
+
+    server = _Server(("127.0.0.1", 0), _QuietHandler)
+    port = server.server_address[1]
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    url = f"http://127.0.0.1:{port}/{quote(basename, safe='')}"
+    try:
+        yield url
+    finally:
+        try:
+            server.shutdown()
+        except Exception as e:
+            logging.debug(f"remotion local http shutdown: {e}")
+        try:
+            server.server_close()
+        except Exception:
+            pass
+        thread.join(timeout=5.0)
+
 
 def get_video_dimensions(video_path):
     """Get video dimensions using ffprobe"""
@@ -4340,34 +4383,33 @@ def add_tiktok_captions():
         if words:
             audio_duration_seconds = words[-1]["end"]
 
-        # Remotion must read the materialized file on disk. Passing the original HTTPS URL
-        # (especially our own /download/ URL) causes Node to HTTP-fetch the app while this
-        # worker is still busy — self-deadlock or 20s read timeouts on large MP4s.
-        remotion_video_url = Path(os.path.abspath(video_path)).as_uri()
-
-        # Step 6: Render with Remotion
-        render_input = json.dumps({
-            'video_url': remotion_video_url,
-            'word_timestamps': words,
-            'subtitle_style': subtitle_style,
-            'aspect_ratio': aspect_ratio,
-            'audio_duration_seconds': audio_duration_seconds,
-            'max_chars_per_line': max_chars_per_line,
-            'max_lines': max_lines,
-            'position': position,
-        })
-
+        # Remotion only allows http(s) for remote assets — file:// is rejected. Our public
+        # /download/ URL can deadlock this worker. Serve the materialized file on 127.0.0.1
+        # for the duration of the render subprocess only.
         logging.info("[AUTO_CAPTION] Starting Remotion render...")
-
         try:
-            result = subprocess.run(
-                ['npx', 'tsx', 'server/render-tiktok-captions.ts'],
-                input=render_input,
-                capture_output=True,
-                text=True,
-                timeout=600,
-                cwd=os.path.dirname(os.path.abspath(__file__)) or '.'
-            )
+            with remotion_local_http_video_url(video_path) as remotion_video_url:
+                render_input = json.dumps({
+                    'video_url': remotion_video_url,
+                    'word_timestamps': words,
+                    'subtitle_style': subtitle_style,
+                    'aspect_ratio': aspect_ratio,
+                    'audio_duration_seconds': audio_duration_seconds,
+                    'max_chars_per_line': max_chars_per_line,
+                    'max_lines': max_lines,
+                    'position': position,
+                })
+                result = subprocess.run(
+                    ['npx', 'tsx', 'server/render-tiktok-captions.ts'],
+                    input=render_input,
+                    capture_output=True,
+                    text=True,
+                    timeout=600,
+                    cwd=os.path.dirname(os.path.abspath(__file__)) or '.'
+                )
+        except FileNotFoundError as e:
+            logging.error(f"[AUTO_CAPTION] Video missing for Remotion: {e}")
+            return jsonify({'success': False, 'error': 'Video file not found for rendering'}), 500
         except subprocess.TimeoutExpired:
             logging.error("[AUTO_CAPTION] Rendering timed out after 600 seconds")
             return jsonify({'success': False, 'error': 'Video rendering timed out. The video may be too long.'}), 504
